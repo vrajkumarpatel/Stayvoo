@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
 from database import setup_db, Base, get_db
 from models import Hotel, Room
-from routers import hotels, bookings, admin, search
+from routers import hotels, bookings, admin, search, chat
 
 
 SEED_HOTELS = [
@@ -120,6 +120,7 @@ app.include_router(hotels.router)
 app.include_router(bookings.router)
 app.include_router(admin.router)
 app.include_router(search.router)
+app.include_router(chat.router)
 
 
 @app.get("/")

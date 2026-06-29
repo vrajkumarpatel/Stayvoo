@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Navbar from './components/Navbar'
+import AIChat from './components/AIChat'
 import Home from './pages/Home'
 import ExclusiveHotels from './pages/ExclusiveHotels'
 import HotelDetail from './pages/HotelDetail'
@@ -21,6 +22,7 @@ export default function App() {
         <Route path="/confirmation" element={<Confirmation />} />
         <Route path="/admin" element={<Admin />} />
       </Routes>
+      <AIChat />
     </BrowserRouter>
   )
 }
