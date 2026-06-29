@@ -101,10 +101,22 @@ backend/
 - Frontend sends password as `x-admin-password` header to all `/admin/*` endpoints
 - Confirm booking: POST /admin/bookings/{id}/confirm with `{ pms_confirmation: string }`
 
+## Status: FULLY LIVE — June 29, 2026
+- **Frontend:** https://stayvoo.com (Vercel)
+- **Backend:** https://stayvoo-backend-production.up.railway.app (Railway)
+- **All features working:** booking flow, SendGrid emails, Stripe card guarantee, SMS, AI chat, admin modal
+
+## Email Service
+- Provider: SendGrid HTTP API (`services/email_service.py`)
+- FROM: `hello@stayvoo.com` (Stayvoo) — domain authenticated, goes to inbox
+- 5 email functions: `send_booking_received`, `send_booking_confirmed`, `send_pre_arrival_email`, `send_post_stay_email`, `send_invoice_email`
+- Test endpoint: `GET /admin/test-email` (admin-only)
+- Env vars: `SENDGRID_API_KEY`, `SENDGRID_FROM_EMAIL=hello@stayvoo.com`
+
 ## Session Log
 - **Session 1 (2026-06-29):** Complete — project scaffold, FastAPI + CORS, Vite + Tailwind + react-router-dom, folder structure created.
 - **Session 2 (2026-06-29):** Complete — PostgreSQL via Supabase, 5 tables (hotels/rooms/guests/bookings/commissions), 3 hotels + 6 rooms seeded, all API endpoints live and tested.
 - **Session 3 (2026-06-29):** Complete — GET /search (3 exclusive + 5 Tier 2 mock hotels), Twilio SMS notifications (5 functions), wired to booking + confirm endpoints via BackgroundTasks.
 - **Session 5 (2026-06-29):** Complete — full React frontend: Navbar, HotelCard, SearchBar, RoomCard components; Home, ExclusiveHotels, HotelDetail, SearchResults, BookingForm, Confirmation, Admin pages; complete booking flow from homepage → hotel detail → booking form → confirmation → admin confirm.
 - **Session 6 (2026-06-29):** Complete — AI chat widget (Stayvo): `backend/services/ai_chat.py` (Groq llama-3.3-70b-versatile, system prompt), `backend/routers/chat.py` (POST /chat), `frontend/src/components/AIChat.tsx` (fixed bottom-right widget, typing indicator, conversation history, unread dot).
-- **Session 7 (2026-06-29):** Complete — DEPLOYED LIVE. Email service (5 HTML email functions via Gmail SMTP/aiosmtplib), Stripe SetupIntent card guarantee on BookingForm, APScheduler daily jobs (9AM pre-arrival, 10AM post-stay), 3 new Booking columns (card_last4, card_brand, stripe_payment_method_id), Railway backend deployment (`backend/railway.toml`, `backend/Procfile`), Vercel frontend deployment (`frontend/vercel.json`). Backend live: `https://stayvoo-backend-production.up.railway.app`. Frontend live: `https://frontend-two-rho-98.vercel.app`. Custom domain stayvoo.com added to Vercel — pending DNS propagation.
+- **Session 7 (2026-06-29):** Complete — FULLY LIVE. SendGrid email service (5 HTML emails, domain authenticated, inbox delivery), Stripe SetupIntent card guarantee, APScheduler daily jobs (9AM pre-arrival, 10AM post-stay), admin booking detail modal (clickable rows, full guest/booking/payment/PMS/action sections, cancel + confirm flow), Railway backend, Vercel frontend, stayvoo.com live.
