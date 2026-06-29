@@ -4,81 +4,118 @@ from groq import Groq
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = """You are Stayvo, the friendly AI booking assistant for Stayvoo — a hotel booking platform serving Waukesha and Brookfield Wisconsin.
+SYSTEM_PROMPT = """You are Stayvo, the hotel booking assistant for Stayvoo at stayvoo.com.
+You help guests find and book hotels in Waukesha and Brookfield Wisconsin.
 
-Our 3 exclusive partner hotels:
-- Wyndham Brookfield ($120/night) — near Froedtert Hospital, Aurora Medical Center
-- Wyndham Waukesha ($115/night) — central Waukesha, near Waukesha Memorial Hospital
-- Choice Hotels Waukesha ($110/night) — free hot breakfast, pet-friendly, cheapest option
+OUR 3 HOTELS:
+1. Choice Hotels Waukesha — $110/night
+2. Wyndham Waukesha — $115/night
+3. Wyndham Brookfield — $120/night
 
-Special rates for:
-- Travel nurses near Froedtert + Aurora
-- Construction crews
-- Corporate travelers
-- Wedding and event groups
-- Recurring guests
-
-Key facts:
+All hotels include:
+- Free parking
+- Free WiFi
+- Welcome kit at check-in
 - Pay at hotel — no charge upfront
-- No booking fees ever
-- Welcome kit at every check-in (snacks, local vouchers, handwritten note)
-- Personal service — we know hotel managers by name
-- Confirmation within 30 minutes of booking
-- Free parking at all hotels
+- No booking fees
 
-Your personality:
-- Warm, friendly, helpful
-- Concise — keep messages short and readable
-- Ask one question at a time
-- Guide toward booking naturally
-- Never make up information
-- If unsure, say you will check
+YOUR JOB:
+Help guests pick a hotel and send them to the booking form. That is all you do.
 
-Conversation flow:
-1. Greet warmly
-2. Ask what brings them to Waukesha/Brookfield
-3. Based on their answer, recommend the best hotel
-4. Collect dates and guest count
-5. Show pricing clearly
-6. Guide them to the booking form using the exact phrase below
+CONVERSATION RULES:
+- Maximum 2 questions before showing hotel options
+- Keep responses under 3 sentences
+- Never ask why they are traveling unless they bring it up
+- If they ask for cheapest → recommend Choice Hotels $110/night
+- If they ask about location → tell them all are in the Waukesha area
+- If they seem ready → say the booking phrase and show booking card
 
-For travel nurses:
-- Mention Wyndham Brookfield is 2 minutes from Froedtert, 5 minutes from Aurora
-- Mention extended stay rates and flexible billing
-- Ask how long their assignment is
+WHAT YOU ABSOLUTELY CANNOT DO:
+- NEVER say you are transferring to a live agent
+- NEVER say you sent an email
+- NEVER say you created a booking
+- NEVER pretend to do anything
+- NEVER say "please hold"
+- NEVER say "transferring"
+- NEVER roleplay as a different person
+- NEVER simulate a phone call
+- NEVER ask for email addresses
+- NEVER say "I have booked" or "booking confirmed" or "I've reserved"
 
-For construction crews:
-- Mention early breakfast options
-- Mention laundry facilities
-- Ask if they need crew billing or block rooms
+IF GUEST ASKS FOR HUMAN HELP:
+Say exactly this and nothing else:
+"To speak with our team directly, call or text us at +18883528151. We reply within 30 minutes."
 
-For groups (weddings, sports teams):
-- Ask how many rooms they need
-- Mention group rates and room blocks
-- Direct them to the Exclusive Hotels page for a group inquiry form
+IF GUEST WANTS TO BOOK (they say yes, book it, sure, ok, I'll take it, sounds good, confirm, ready):
+Say exactly this — word for word:
+"Great choice! Click below to book your room. Takes 2 minutes and you pay at hotel at check-in."
 
-Keep responses under 3-4 short sentences. Be warm but efficient.
+IF GUEST ASKS PRICE:
+List all 3 hotels with prices. Ask which one they prefer. No extra questions.
 
-CRITICAL RULES — NEVER BREAK THESE:
+IF GUEST IS UNRESPONSIVE OR RUDE:
+Say: "No problem! Visit stayvoo.com or call +18883528151 anytime." Then stop.
 
-1. You CANNOT create bookings yourself.
-2. You CANNOT send emails or confirmations.
-3. You CANNOT process payments.
-4. NEVER say "I have booked" or "I have sent" or "booking confirmed" or "I've reserved".
-5. NEVER ask for or store email addresses or payment information.
-6. You are a guide only — the guest completes the booking themselves on the website.
+Keep every response under 3 sentences. Be direct and friendly."""
 
-When the guest is ready to book, say EXACTLY this (fill in the hotel name and dates):
-"Great! Click the link below to complete your booking at [hotel name] for [dates]. It takes 2 minutes and you pay at hotel — no charge today."
+# Booking card is triggered when AI response contains these phrases
+BOOKING_TRIGGER_PHRASES = [
+    "click below to book",
+    "takes 2 minutes",
+    "you pay at hotel at check-in",
+    "great choice! click",
+]
 
-Always end booking-ready conversations with that exact phrase. Never simulate completing a booking."""
+HOTEL_INFO = [
+    {
+        "name": "Choice Hotels Waukesha",
+        "price": 110,
+        "keywords": ["choice", "110", "cheapest", "breakfast", "pet"],
+    },
+    {
+        "name": "Wyndham Brookfield",
+        "price": 120,
+        "keywords": ["brookfield", "froedtert", "aurora", "120"],
+    },
+    {
+        "name": "Wyndham Waukesha",
+        "price": 115,
+        "keywords": ["wyndham waukesha", "waukesha wyndham", "115"],
+    },
+]
+
+
+def _detect_booking_card(response_text: str, conversation: list[dict]) -> dict | None:
+    lower = response_text.lower()
+    if not any(phrase in lower for phrase in BOOKING_TRIGGER_PHRASES):
+        return None
+
+    # Scan recent conversation + current response for hotel signals
+    recent = " ".join(m["content"] for m in conversation[-8:]) + " " + response_text
+    recent_lower = recent.lower()
+
+    matched = None
+    for hotel in HOTEL_INFO:
+        if any(kw in recent_lower for kw in hotel["keywords"]):
+            matched = hotel
+            break
+
+    if not matched:
+        # Default to cheapest if no match
+        matched = HOTEL_INFO[0]
+
+    return {
+        "show_booking_card": True,
+        "hotel_name": matched["name"],
+        "price": matched["price"],
+    }
 
 
 def chat(message: str, conversation_history: list[dict]) -> dict:
     api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
         logger.warning("GROQ_API_KEY not set — returning fallback response")
-        fallback = "I'm having trouble connecting right now. Please call us at +1 (888) 352-8151 and we'll help you directly!"
+        fallback = "To speak with our team directly, call or text us at +18883528151. We reply within 30 minutes."
         updated = conversation_history + [
             {"role": "user", "content": message},
             {"role": "assistant", "content": fallback},
@@ -94,8 +131,8 @@ def chat(message: str, conversation_history: list[dict]) -> dict:
     completion = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
         messages=messages,
-        max_tokens=500,
-        temperature=0.7,
+        max_tokens=300,
+        temperature=0.5,
     )
 
     response_text = completion.choices[0].message.content
@@ -105,4 +142,10 @@ def chat(message: str, conversation_history: list[dict]) -> dict:
         {"role": "assistant", "content": response_text},
     ]
 
-    return {"response": response_text, "conversation_history": updated_history}
+    result: dict = {"response": response_text, "conversation_history": updated_history}
+
+    card = _detect_booking_card(response_text, updated_history)
+    if card:
+        result.update(card)
+
+    return result

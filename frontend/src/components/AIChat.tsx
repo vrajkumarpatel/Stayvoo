@@ -6,11 +6,7 @@ const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 interface BookingCard {
   hotelName: string
   hotelId: string
-  roomId: string
-  checkin: string
-  checkout: string
-  pricePerNight: number
-  guests: number
+  price: number
 }
 
 interface Message {
@@ -21,26 +17,21 @@ interface Message {
   bookingCard?: BookingCard
 }
 
-const GREETING: Message = {
-  role: 'assistant',
-  content: "Hi! I'm Stayvo, your hotel assistant 🏨 I can help you find the perfect hotel and guide you to book directly. What brings you to Waukesha or Brookfield?",
-  ts: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-  initial: true,
+const GREETING_TEXT =
+  `Hi! I'm Stayvo 🏨\nHotels in Waukesha from $110/night.\nWhich works for you?\n\n• Choice Hotels — $110/night\n• Wyndham Waukesha — $115/night\n• Wyndham Brookfield — $120/night\n\nOr ask me anything!`
+
+const QUICK_REPLIES = [
+  { label: 'Cheapest Option', message: 'What is the cheapest option?' },
+  { label: 'Near Froedtert', message: 'I need a hotel near Froedtert' },
+  { label: 'Group Booking', message: 'I need rooms for a group' },
+]
+
+// Hotel name → pattern for matching against fetched hotel list
+const HOTEL_NAME_PATTERNS: Record<string, string> = {
+  'Choice Hotels Waukesha': 'choice',
+  'Wyndham Waukesha': 'wyndham waukesha',
+  'Wyndham Brookfield': 'wyndham brookfield',
 }
-
-const BOOKING_KEYWORDS = [
-  'complete your booking',
-  'click the link below',
-  'takes 2 minutes',
-  'you pay at hotel',
-  'no charge today',
-]
-
-const HOTEL_PATTERNS: Array<{ keywords: string[]; nameFragment: string }> = [
-  { keywords: ['choice', '110', 'breakfast', 'cheapest', 'pet'], nameFragment: 'choice' },
-  { keywords: ['brookfield', 'froedtert', 'aurora'], nameFragment: 'brookfield' },
-  { keywords: ['wyndham waukesha', 'waukesha wyndham', '115'], nameFragment: 'waukesha' },
-]
 
 function TypingDots() {
   return (
@@ -57,40 +48,19 @@ function TypingDots() {
 }
 
 function BookingCardUI({ card }: { card: BookingCard }) {
-  const nights = Math.max(1, Math.round(
-    (new Date(card.checkout).getTime() - new Date(card.checkin).getTime()) / 86400000
-  ))
-  const params = new URLSearchParams({
-    hotel_id: card.hotelId,
-    room_id: card.roomId,
-    checkin: card.checkin,
-    checkout: card.checkout,
-  })
-  const formatDate = (d: string) =>
-    new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-
   return (
-    <div className="bg-white border-2 border-orange-100 rounded-2xl p-4 shadow-sm w-full max-w-[90%] text-sm mt-1">
+    <div className="bg-white border-2 border-orange-100 rounded-2xl p-4 shadow-sm w-full mt-1.5">
       <div className="font-bold text-[#1e3a5f] text-sm mb-2">🏨 {card.hotelName}</div>
       <div className="flex flex-col gap-1 text-xs text-slate-600 mb-3">
-        <div className="flex justify-between">
-          <span>Check-in</span>
-          <span className="font-semibold text-[#1e3a5f]">{formatDate(card.checkin)}</span>
-        </div>
-        <div className="flex justify-between">
-          <span>Check-out</span>
-          <span className="font-semibold text-[#1e3a5f]">{formatDate(card.checkout)}</span>
-        </div>
-        <div className="flex justify-between">
-          <span>{card.guests} Guest · ${card.pricePerNight}/night</span>
-          {nights > 1 && <span className="font-semibold">${card.pricePerNight * nights} total</span>}
-        </div>
+        <div className="font-semibold text-base text-[#1e3a5f]">From ${card.price}/night</div>
+        <div className="flex items-center gap-1.5 text-green-700">✅ Pay at hotel — no charge today</div>
+        <div className="flex items-center gap-1.5 text-orange-600">🎁 Welcome kit included</div>
       </div>
       <Link
-        to={`/book?${params}`}
-        className="flex items-center justify-center gap-1 bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs py-2.5 rounded-xl transition-colors w-full"
+        to={`/book?hotel_id=${card.hotelId}`}
+        className="flex items-center justify-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white font-black text-sm py-3 rounded-xl transition-colors w-full"
       >
-        Complete Booking →
+        Book Now →
       </Link>
     </div>
   )
@@ -99,10 +69,16 @@ function BookingCardUI({ card }: { card: BookingCard }) {
 export default function AIChat() {
   const [open, setOpen] = useState(false)
   const [hasUnread, setHasUnread] = useState(true)
-  const [messages, setMessages] = useState<Message[]>([GREETING])
+  const [messages, setMessages] = useState<Message[]>([{
+    role: 'assistant',
+    content: GREETING_TEXT,
+    ts: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    initial: true,
+  }])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [hotels, setHotels] = useState<any[]>([])
+  const [quickRepliesVisible, setQuickRepliesVisible] = useState(true)
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -129,58 +105,20 @@ export default function AIChat() {
   const now = () =>
     new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
-  const today = new Date().toISOString().split('T')[0]
-  const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0]
-
-  const detectBookingCard = (responseText: string, priorMessages: Message[]): BookingCard | null => {
-    if (hotels.length === 0) return null
-    const lower = responseText.toLowerCase()
-    const hasBookingIntent = BOOKING_KEYWORDS.some(kw => lower.includes(kw))
-    if (!hasBookingIntent) return null
-
-    // Scan recent conversation for hotel context
-    const contextText = [...priorMessages.slice(-8), { content: responseText }]
-      .map(m => m.content)
-      .join(' ')
-      .toLowerCase()
-
-    let matched = hotels[0]
-    for (const pattern of HOTEL_PATTERNS) {
-      if (pattern.keywords.some(kw => contextText.includes(kw))) {
-        const found = hotels.find(h => h.name.toLowerCase().includes(pattern.nameFragment))
-        if (found) { matched = found; break }
-      }
-    }
-
-    // Extract ISO dates from context
-    const dateMatches = contextText.match(/\d{4}-\d{2}-\d{2}/g) ?? []
-    const checkin = dateMatches[0] ?? today
-    const checkout = dateMatches[1] ?? tomorrow
-
-    // Extract guest count
-    const guestMatch = contextText.match(/(\d+)\s*(guest|person|people|room)/)
-    const guests = guestMatch ? Math.min(parseInt(guestMatch[1]), 10) : 1
-
-    const room = matched?.rooms?.[0]
-    if (!matched || !room) return null
-
-    return {
-      hotelName: matched.name,
-      hotelId: matched.id,
-      roomId: room.id,
-      checkin,
-      checkout,
-      pricePerNight: room.price_per_night,
-      guests,
-    }
+  const resolveHotelId = (hotelName: string): string => {
+    const pattern = HOTEL_NAME_PATTERNS[hotelName]
+    if (!pattern) return ''
+    const found = hotels.find(h => h.name.toLowerCase().includes(pattern))
+    return found?.id ?? ''
   }
 
-  const send = async () => {
-    const text = input.trim()
-    if (!text || loading) return
+  const send = async (text: string) => {
+    const trimmed = text.trim()
+    if (!trimmed || loading) return
     setInput('')
+    setQuickRepliesVisible(false)
 
-    const userMsg: Message = { role: 'user', content: text, ts: now() }
+    const userMsg: Message = { role: 'user', content: trimmed, ts: now() }
     setMessages(prev => [...prev, userMsg])
     setLoading(true)
 
@@ -188,24 +126,29 @@ export default function AIChat() {
       const r = await fetch(`${BASE}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, conversation_history: buildHistory() }),
+        body: JSON.stringify({ message: trimmed, conversation_history: buildHistory() }),
       })
       const data = await r.json()
 
-      setMessages(prev => {
-        const card = detectBookingCard(data.response, [...prev, userMsg])
-        const aiMsg: Message = {
-          role: 'assistant',
-          content: data.response,
-          ts: now(),
-          bookingCard: card ?? undefined,
+      let bookingCard: BookingCard | undefined
+      if (data.show_booking_card && data.hotel_name) {
+        const hotelId = resolveHotelId(data.hotel_name)
+        if (hotelId) {
+          bookingCard = { hotelName: data.hotel_name, hotelId, price: data.price ?? 110 }
         }
-        return [...prev, aiMsg]
-      })
+      }
+
+      const aiMsg: Message = {
+        role: 'assistant',
+        content: data.response,
+        ts: now(),
+        bookingCard,
+      }
+      setMessages(prev => [...prev, aiMsg])
     } catch {
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: "Sorry, I'm having trouble connecting. Call us at +1 (888) 352-8151 and we'll help right away!",
+        content: "Sorry, I'm having trouble connecting. Call or text us at +18883528151 and we'll help right away!",
         ts: now(),
       }])
     } finally {
@@ -214,7 +157,7 @@ export default function AIChat() {
   }
 
   const handleKey = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input) }
   }
 
   return (
@@ -222,7 +165,7 @@ export default function AIChat() {
       {open && (
         <div
           className="fixed bottom-24 right-4 sm:right-6 z-50 flex flex-col shadow-2xl rounded-2xl overflow-hidden"
-          style={{ width: 350, height: 500 }}
+          style={{ width: 350, height: 520 }}
         >
           {/* Header */}
           <div className="bg-[#1e3a5f] px-4 py-3 flex items-center justify-between flex-shrink-0">
@@ -252,7 +195,7 @@ export default function AIChat() {
             {messages.map((m, i) => (
               <div key={i} className={`flex flex-col gap-0.5 ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
                 <div
-                  className={`max-w-[82%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap
+                  className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap
                     ${m.role === 'user'
                       ? 'bg-orange-500 text-white rounded-br-sm'
                       : 'bg-white text-slate-700 shadow-sm rounded-bl-sm'
@@ -260,6 +203,28 @@ export default function AIChat() {
                 >
                   {m.content}
                 </div>
+
+                {/* Quick replies — only below the initial greeting */}
+                {m.initial && quickRepliesVisible && (
+                  <div className="flex flex-wrap gap-1.5 mt-1 max-w-[85%]">
+                    {QUICK_REPLIES.map(qr => (
+                      <button
+                        key={qr.label}
+                        onClick={() => send(qr.message)}
+                        className="bg-white border border-orange-200 hover:border-orange-400 hover:bg-orange-50 text-orange-600 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors"
+                      >
+                        {qr.label}
+                      </button>
+                    ))}
+                    <a
+                      href="tel:+18883528151"
+                      className="bg-white border border-slate-200 hover:border-slate-300 text-slate-600 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors"
+                    >
+                      📞 Call Us
+                    </a>
+                  </div>
+                )}
+
                 {m.bookingCard && <BookingCardUI card={m.bookingCard} />}
                 <span className="text-slate-400 text-[10px] px-1">{m.ts}</span>
               </div>
@@ -288,7 +253,7 @@ export default function AIChat() {
               className="flex-1 text-sm border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400 disabled:opacity-60"
             />
             <button
-              onClick={send}
+              onClick={() => send(input)}
               disabled={loading || !input.trim()}
               className="bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white rounded-xl p-2.5 transition-colors flex-shrink-0"
               aria-label="Send"
@@ -304,7 +269,7 @@ export default function AIChat() {
       {/* Floating button */}
       <button
         onClick={() => setOpen(o => !o)}
-        className="fixed bottom-5 right-4 sm:right-6 z-50 w-14 h-14 bg-orange-500 hover:bg-orange-600 text-white rounded-full shadow-xl hover:shadow-orange-200 transition-all flex items-center justify-center text-2xl"
+        className="fixed bottom-5 right-4 sm:right-6 z-50 w-14 h-14 bg-orange-500 hover:bg-orange-600 text-white rounded-full shadow-xl hover:shadow-orange-200 transition-all flex items-center justify-center"
         aria-label="Open chat"
       >
         {open ? (
@@ -312,7 +277,7 @@ export default function AIChat() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
           </svg>
         ) : (
-          <span className="relative">
+          <span className="relative text-2xl leading-none">
             💬
             {hasUnread && (
               <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white" />
