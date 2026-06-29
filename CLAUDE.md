@@ -104,7 +104,13 @@ backend/
 ## Status: FULLY LIVE — June 29, 2026
 - **Frontend:** https://stayvoo.com (Vercel)
 - **Backend:** https://stayvoo-backend-production.up.railway.app (Railway)
-- **All features working:** booking flow, SendGrid emails, Stripe card guarantee, SMS, AI chat, admin modal
+- **All features working:** booking flow, SendGrid emails, Stripe card guarantee, SMS, AI chat, admin modal (4 tabs: Bookings, Inquiries, Active Stays, Billing)
+
+## Deployment Notes
+- **Railway:** `cd backend && railway service stayvoo-backend && railway up --detach` to force redeploy (Railway auto-deploy from GitHub can lag)
+- **Vercel:** `vercel --prod --yes` from repo root. Root-level `vercel.json` configures the build (installCommand: `cd frontend && npm install`, buildCommand: `cd frontend && npm run build`, outputDirectory: `frontend/dist`)
+- **Vercel env vars:** `VITE_API_URL` and `VITE_STRIPE_PUBLISHABLE_KEY` must be set in Vercel dashboard/CLI — they are NOT in git (`.env` is gitignored). Vite bakes them in at build time. Missing = all API calls silently go to `localhost:8000`.
+- **Vercel link:** Run `vercel link --yes` from repo root to link CLI to the `vrajkumarpatels-projects/frontend` project before using `vercel env` commands.
 
 ## Email Service
 - Provider: SendGrid HTTP API (`services/email_service.py`)
@@ -122,3 +128,4 @@ backend/
 - **Session 7 (2026-06-29):** Complete — FULLY LIVE. SendGrid email service (5 HTML emails, domain authenticated, inbox delivery), Stripe SetupIntent card guarantee, APScheduler daily jobs (9AM pre-arrival, 10AM post-stay), admin booking detail modal (clickable rows, full guest/booking/payment/PMS/action sections, cancel + confirm flow), Railway backend, Vercel frontend, stayvoo.com live.
 - **Session 8 (2026-06-29):** Complete — Two-tier booking model. Inquiry model + `/inquiries` table in DB. `POST /inquiries` (saves, fires 3 notifications: internal email, guest auto-reply, SMS). `GET|PUT /admin/inquiries`. Admin panel Inquiries tab (stats, table, detail modal with editable status/notes). ExclusiveHotels page rewritten with inquiry form (9 fields). Home page: two-button hotel cards (Extended Stay Quote + Book Short Stay), two-path section. SearchResults: 7+ night extended stay banner. Navbar: dropdown under Exclusive Hotels. `/groups` page for weddings/sports teams.
 - **Session 9 (2026-06-29):** Complete — Messaging system + Stay tracking + Billing. `messages` table + `GET|POST /admin/inquiries/{id}/messages` (admin sends email to guest). `stays` table + full CRUD + checkout + billing endpoints. 3 new email functions. 5 APScheduler jobs total (14-day expiry reminder at 9:05AM, checkout-today alert at 9:10AM, monthly invoices 1st-of-month 8AM). Admin panel: 4 tabs (Bookings, Inquiries, Active Stays, Billing). InquiryDetailModal: Messages tab (chat thread, reply → emails guest) + Convert to Stay button. StayDetailModal with edit/billing/commission/extend/checkout. Billing tab: month selector, summary cards, hotel table, Send Invoice button.
+- **Session 10 (2026-06-29):** Complete — Production incident fix. Railway was running pre-Session-9 code (new endpoints 404'd) — fixed with `railway up`. Vercel was missing `VITE_API_URL` + `VITE_STRIPE_PUBLISHABLE_KEY` env vars — Vite baked `localhost:8000` into bundle, all API calls silently failed, admin showed 0. Fixed by `vercel env add` + `vercel --prod --yes`.
