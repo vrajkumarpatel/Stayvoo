@@ -1,11 +1,12 @@
 import os
+import asyncio
 import logging
-import aiosmtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
 
 logger = logging.getLogger(__name__)
 
+FROM_EMAIL = os.getenv("SENDGRID_FROM_EMAIL", "hello@stayvoo.com")
 FROM_NAME = "Stayvoo"
 SUPPORT_PHONE = "+18883528151"
 BRAND_COLOR = "#1e3a5f"
@@ -20,20 +21,17 @@ def _base_html(title: str, body: str) -> str:
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:32px 16px;">
     <tr><td align="center">
       <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
-        <!-- Header -->
         <tr>
           <td style="background:{BRAND_COLOR};padding:24px 32px;border-radius:12px 12px 0 0;">
             <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:900;letter-spacing:-0.5px;">Stayvoo</h1>
             <p style="margin:4px 0 0;color:rgba(255,255,255,0.6);font-size:13px;">{title}</p>
           </td>
         </tr>
-        <!-- Body -->
         <tr>
           <td style="background:#ffffff;padding:32px;border-radius:0 0 12px 12px;">
             {body}
           </td>
         </tr>
-        <!-- Footer -->
         <tr>
           <td style="padding:20px 0;text-align:center;">
             <p style="margin:0;color:#94a3b8;font-size:12px;">
@@ -80,29 +78,26 @@ def _ref_badge(ref: str) -> str:
     </div>"""
 
 
-async def _send(to_email: str, subject: str, html: str) -> None:
-    smtp_user = os.getenv("GMAIL_USER")
-    smtp_pass = os.getenv("GMAIL_APP_PASSWORD")
-    if not smtp_user or not smtp_pass:
-        logger.warning("SMTP credentials not set — skipping email to %s", to_email)
+def _send_sync(to_email: str, subject: str, html: str) -> None:
+    api_key = os.getenv("SENDGRID_API_KEY")
+    from_email = os.getenv("SENDGRID_FROM_EMAIL", FROM_EMAIL)
+    if not api_key:
+        logger.warning("SENDGRID_API_KEY not set — skipping email to %s", to_email)
         return
-    smtp_host = os.getenv("SMTP_HOST", "mail.privateemail.com")
-    smtp_port = int(os.getenv("SMTP_PORT", "587"))
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"] = f"{FROM_NAME} <{smtp_user}>"
-    msg["To"] = to_email
-    msg.attach(MIMEText(html, "html"))
+    message = Mail(
+        from_email=(from_email, FROM_NAME),
+        to_emails=to_email,
+        subject=subject,
+        html_content=html,
+    )
+    sg = SendGridAPIClient(api_key)
+    response = sg.send(message)
+    logger.info("Email sent to %s: %s (status %s)", to_email, subject, response.status_code)
+
+
+async def _send(to_email: str, subject: str, html: str) -> None:
     try:
-        await aiosmtplib.send(
-            msg,
-            hostname=smtp_host,
-            port=smtp_port,
-            username=smtp_user,
-            password=smtp_pass,
-            start_tls=True,
-        )
-        logger.info("Email sent to %s: %s", to_email, subject)
+        await asyncio.to_thread(_send_sync, to_email, subject, html)
     except Exception as e:
         logger.error("Failed to send email to %s: %s", to_email, e)
 
@@ -245,7 +240,6 @@ async def send_invoice_email(b: dict) -> None:
     nights = b.get("nights", 0)
     rate = float(b.get("room_rate", 0))
     total = float(b.get("total_amount", 0))
-    commission = float(b.get("commission_amount", 0))
     body = f"""
     <h2 style="margin:0 0 6px;color:{BRAND_COLOR};font-size:20px;font-weight:900;">Your Stayvoo Invoice</h2>
     <p style="margin:0 0 20px;color:#475569;font-size:15px;">Stay reference: <strong>{ref}</strong></p>

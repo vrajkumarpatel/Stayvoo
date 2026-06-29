@@ -151,38 +151,31 @@ async def send_post_stay(
     return {"sent": True, "booking_ref": booking_dict["booking_ref"]}
 
 
+@router.get("/test-email")
 @router.post("/test-email")
 async def test_email(_: None = Depends(_verify_admin)):
-    """Diagnostic endpoint — sends a test email and returns SMTP result directly."""
-    import aiosmtplib
-    from email.mime.text import MIMEText
+    """Diagnostic endpoint — sends a test email via SendGrid and returns result."""
+    import asyncio
+    from sendgrid import SendGridAPIClient
+    from sendgrid.helpers.mail import Mail
 
-    smtp_user = os.getenv("GMAIL_USER")
-    smtp_pass = os.getenv("GMAIL_APP_PASSWORD")
-    smtp_host = os.getenv("SMTP_HOST", "mail.privateemail.com")
-    smtp_port = int(os.getenv("SMTP_PORT", "587"))
+    api_key = os.getenv("SENDGRID_API_KEY")
+    from_email = os.getenv("SENDGRID_FROM_EMAIL", "hello@stayvoo.com")
 
-    if not smtp_user:
-        return {"status": "error", "issue": "GMAIL_USER is not set in Railway environment variables"}
-    if not smtp_pass:
-        return {"status": "error", "issue": "GMAIL_APP_PASSWORD is not set in Railway environment variables"}
+    if not api_key:
+        return {"status": "error", "issue": "SENDGRID_API_KEY is not set in Railway environment variables"}
 
-    msg = MIMEText("Test email from Stayvoo — SMTP is working correctly!", "plain")
-    msg["Subject"] = "Stayvoo Email Test"
-    msg["From"] = f"Stayvoo <{smtp_user}>"
-    msg["To"] = "vp431030@gmail.com"
-
+    message = Mail(
+        from_email=(from_email, "Stayvoo"),
+        to_emails="vp431030@gmail.com",
+        subject="Stayvoo Email Test",
+        html_content="<p>Test email from Stayvoo — SendGrid is working correctly!</p>",
+    )
     try:
-        await aiosmtplib.send(
-            msg,
-            hostname=smtp_host,
-            port=smtp_port,
-            username=smtp_user,
-            password=smtp_pass,
-            start_tls=True,
-        )
-        logger.info("Test email sent from %s via %s", smtp_user, smtp_host)
-        return {"status": "sent", "to": "vp431030@gmail.com", "from": smtp_user, "via": smtp_host}
+        sg = SendGridAPIClient(api_key)
+        response = await asyncio.to_thread(sg.send, message)
+        logger.info("Test email sent via SendGrid (status %s)", response.status_code)
+        return {"status": "sent", "to": "vp431030@gmail.com", "from": from_email, "sendgrid_status": response.status_code}
     except Exception as e:
         logger.error("Test email failed: %s", e)
-        return {"status": "error", "issue": str(e), "smtp_user": smtp_user, "smtp_host": smtp_host}
+        return {"status": "error", "issue": str(e)}

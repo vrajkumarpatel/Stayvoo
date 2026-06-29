@@ -101,7 +101,7 @@ export async function cancelAdminBooking(id: string, password: string) {
 
 export async function testAdminEmail(password: string) {
   const r = await fetch(`${BASE}/admin/test-email`, {
-    method: 'POST',
+    method: 'GET',
     headers: { 'x-admin-password': password },
   })
   if (r.status === 401) throw new Error('Invalid password')
