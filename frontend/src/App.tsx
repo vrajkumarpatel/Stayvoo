@@ -1,21 +1,19 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
-
-function Home() {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold text-gray-900 mb-2">Stayvoo</h1>
-        <p className="text-gray-500">Session 1 — project scaffold complete</p>
-      </div>
-    </div>
-  )
-}
+import Navbar from './components/Navbar'
+import Home from './pages/Home'
+import ExclusiveHotels from './pages/ExclusiveHotels'
+import HotelDetail from './pages/HotelDetail'
+import SearchResults from './pages/SearchResults'
 
 export default function App() {
   return (
     <BrowserRouter>
+      <Navbar />
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/exclusive" element={<ExclusiveHotels />} />
+        <Route path="/hotels/:id" element={<HotelDetail />} />
+        <Route path="/search" element={<SearchResults />} />
       </Routes>
     </BrowserRouter>
   )
