@@ -42,6 +42,24 @@ export default function SearchResults() {
       </div>
 
       <div className="max-w-6xl mx-auto px-4 py-10">
+        {/* Extended stay banner for 7+ nights */}
+        {nights >= 7 && !loading && (
+          <div className="bg-orange-50 border border-orange-200 rounded-2xl px-5 py-4 mb-6 flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+            <div>
+              <p className="text-orange-800 font-bold text-sm">Looking for an extended stay?</p>
+              <p className="text-orange-700 text-sm mt-0.5">
+                Our exclusive partner hotels offer special rates for 7+ night stays with welcome kits and personal service.
+              </p>
+            </div>
+            <Link
+              to="/exclusive#inquiry-form"
+              className="flex-shrink-0 bg-orange-500 hover:bg-orange-600 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-colors whitespace-nowrap"
+            >
+              Get Extended Stay Quote →
+            </Link>
+          </div>
+        )}
+
         {/* Result summary */}
         {!loading && !error && meta && (
           <div className="flex items-center justify-between mb-6 flex-wrap gap-3">

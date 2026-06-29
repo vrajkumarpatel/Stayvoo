@@ -8,6 +8,7 @@ import SearchResults from './pages/SearchResults'
 import BookingForm from './pages/BookingForm'
 import Confirmation from './pages/Confirmation'
 import Admin from './pages/Admin'
+import GroupBooking from './pages/GroupBooking'
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/exclusive" element={<ExclusiveHotels />} />
+        <Route path="/groups" element={<GroupBooking />} />
         <Route path="/hotels/:id" element={<HotelDetail />} />
         <Route path="/search" element={<SearchResults />} />
         <Route path="/book" element={<BookingForm />} />

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getAdminBookings, confirmAdminBooking, cancelAdminBooking, testAdminEmail } from '../lib/api'
+import { getAdminBookings, confirmAdminBooking, cancelAdminBooking, testAdminEmail, getAdminInquiries, updateAdminInquiry } from '../lib/api'
 
 const STORAGE_KEY = 'stayvoo_admin_pw'
 
@@ -41,6 +41,158 @@ interface Booking {
   } | null
   hotel: { id: string; name: string; brand: string; address: string } | null
   room: { id: string; name: string; price_per_night: number } | null
+}
+
+interface Inquiry {
+  id: string
+  first_name: string
+  last_name: string
+  email: string
+  phone: string
+  guest_type: string
+  hotel_preference: string | null
+  num_rooms: number
+  length_of_stay: string
+  start_date: string
+  special_requirements: string | null
+  source: string
+  status: string
+  notes: string | null
+  created_at: string | null
+}
+
+const INQUIRY_STATUS_COLORS: Record<string, string> = {
+  new: 'bg-orange-100 text-orange-700',
+  contacted: 'bg-blue-100 text-blue-700',
+  quoted: 'bg-purple-100 text-purple-700',
+  booked: 'bg-green-100 text-green-700',
+  closed: 'bg-slate-100 text-slate-600',
+}
+
+const INQUIRY_STATUSES = ['new', 'contacted', 'quoted', 'booked', 'closed']
+
+function InquiryDetailModal({ inq, password, onClose, onUpdate }: {
+  inq: Inquiry; password: string; onClose: () => void; onUpdate: (i: Inquiry) => void
+}) {
+  const [status, setStatus] = useState(inq.status)
+  const [notes, setNotes] = useState(inq.notes ?? '')
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      const updated = await updateAdminInquiry(inq.id, { status, notes }, password)
+      onUpdate(updated)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch (err: any) {
+      alert(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const inqRef = inq.id.slice(0, 8).toUpperCase()
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm"
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg max-h-[95vh] sm:max-h-[90vh] flex flex-col">
+        <div className="bg-[#1e3a5f] px-5 py-4 rounded-t-3xl sm:rounded-t-2xl flex-shrink-0">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <span className="text-white font-mono font-black text-lg tracking-wider">INQ-{inqRef}</span>
+                <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full capitalize ${INQUIRY_STATUS_COLORS[inq.status] ?? 'bg-slate-100 text-slate-600'}`}>
+                  {inq.status}
+                </span>
+              </div>
+              <p className="text-white/50 text-xs mt-1.5">{inq.guest_type} · {inq.num_rooms} rooms · {inq.length_of_stay}</p>
+            </div>
+            <button onClick={onClose} className="text-white/50 hover:text-white w-8 h-8 flex items-center justify-center rounded-xl hover:bg-white/10 transition-colors flex-shrink-0">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div className="overflow-y-auto flex-1 px-5 py-5 flex flex-col gap-5">
+          {/* Contact */}
+          <div>
+            <SectionHeader title="Contact Info" />
+            <div className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-3">
+              <InfoRow label="Full Name">{inq.first_name} {inq.last_name}</InfoRow>
+              <InfoRow label="Email">
+                <a href={`mailto:${inq.email}`} className="text-orange-500 hover:underline break-all">{inq.email}</a>
+              </InfoRow>
+              <InfoRow label="Phone">
+                <a href={`tel:${inq.phone}`} className="text-orange-500 hover:underline">{inq.phone}</a>
+              </InfoRow>
+              <InfoRow label="Guest Type">{inq.guest_type}</InfoRow>
+              {inq.source && <InfoRow label="Source">{inq.source}</InfoRow>}
+            </div>
+          </div>
+
+          {/* Inquiry details */}
+          <div>
+            <SectionHeader title="Inquiry Details" />
+            <div className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-3">
+              <InfoRow label="Hotel Pref">{inq.hotel_preference || 'No preference'}</InfoRow>
+              <InfoRow label="Rooms">{inq.num_rooms}</InfoRow>
+              <InfoRow label="Duration">{inq.length_of_stay}</InfoRow>
+              <InfoRow label="Start Date">{inq.start_date}</InfoRow>
+              {inq.special_requirements && (
+                <div className="border-t border-slate-200 pt-3 mt-1">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Special Requirements</p>
+                  <p className="text-[#1e3a5f] text-sm leading-relaxed">{inq.special_requirements}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Update status + notes */}
+          <div>
+            <SectionHeader title="Update" />
+            <div className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-3">
+              <div>
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block mb-1.5">Status</label>
+                <select
+                  value={status}
+                  onChange={e => setStatus(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400"
+                >
+                  {INQUIRY_STATUSES.map(s => (
+                    <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block mb-1.5">Notes</label>
+                <textarea
+                  rows={3}
+                  value={notes}
+                  onChange={e => setNotes(e.target.value)}
+                  placeholder="Internal notes about this inquiry..."
+                  className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-orange-400"
+                />
+              </div>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="w-full bg-[#1e3a5f] hover:bg-[#162d4a] disabled:opacity-60 text-white font-bold py-3 rounded-xl text-sm transition-colors"
+              >
+                {saving ? 'Saving...' : saved ? '✅ Saved!' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
@@ -293,8 +445,11 @@ export default function Admin() {
   const [inputPw, setInputPw] = useState('')
   const [loginError, setLoginError] = useState('')
   const [bookings, setBookings] = useState<Booking[]>([])
+  const [inquiries, setInquiries] = useState<Inquiry[]>([])
   const [loading, setLoading] = useState(false)
+  const [activeTab, setActiveTab] = useState<'bookings' | 'inquiries'>('bookings')
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
+  const [selectedInquiry, setSelectedInquiry] = useState<Inquiry | null>(null)
   const [emailTestResult, setEmailTestResult] = useState<string | null>(null)
   const [testingEmail, setTestingEmail] = useState(false)
 
@@ -303,12 +458,17 @@ export default function Admin() {
   const loadBookings = async (pw: string) => {
     setLoading(true)
     try {
-      const data = await getAdminBookings(pw)
-      setBookings(data)
+      const [bData, iData] = await Promise.all([
+        getAdminBookings(pw),
+        getAdminInquiries(pw),
+      ])
+      setBookings(bData)
+      setInquiries(iData)
       return true
     } catch (err: any) {
       if (err.message === 'Invalid password') return false
       setBookings([])
+      setInquiries([])
       return true
     } finally {
       setLoading(false)
@@ -340,8 +500,15 @@ export default function Admin() {
   const handleLogout = () => {
     setPassword('')
     setBookings([])
+    setInquiries([])
     setSelectedBooking(null)
+    setSelectedInquiry(null)
     localStorage.removeItem(STORAGE_KEY)
+  }
+
+  const handleInquiryUpdate = (updated: Inquiry) => {
+    setInquiries(is => is.map(i => i.id === updated.id ? updated : i))
+    setSelectedInquiry(updated)
   }
 
   const handleBookingUpdate = (updated: Booking) => {
@@ -368,6 +535,11 @@ export default function Admin() {
   const pending = bookings.filter(b => b.status === 'pending').length
   const confirmed = bookings.filter(b => b.status === 'confirmed').length
   const todayCount = bookings.filter(b => b.created_at?.startsWith(today)).length
+
+  const inqTotal = inquiries.length
+  const inqNew = inquiries.filter(i => i.status === 'new').length
+  const inqContacted = inquiries.filter(i => i.status === 'contacted').length
+  const inqBooked = inquiries.filter(i => i.status === 'booked').length
 
   const formatDate = (s: string) => {
     if (!s) return '—'
@@ -440,6 +612,31 @@ export default function Admin() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Tabs */}
+        <div className="flex gap-2 mb-6">
+          <button
+            onClick={() => setActiveTab('bookings')}
+            className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-colors ${activeTab === 'bookings' ? 'bg-[#1e3a5f] text-white' : 'bg-white text-slate-600 hover:bg-slate-50 shadow-sm'}`}
+          >
+            Bookings {total > 0 && <span className="ml-1.5 bg-orange-500 text-white text-xs px-1.5 py-0.5 rounded-full">{total}</span>}
+          </button>
+          <button
+            onClick={() => setActiveTab('inquiries')}
+            className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-colors ${activeTab === 'inquiries' ? 'bg-[#1e3a5f] text-white' : 'bg-white text-slate-600 hover:bg-slate-50 shadow-sm'}`}
+          >
+            Inquiries {inqNew > 0 && <span className="ml-1.5 bg-orange-500 text-white text-xs px-1.5 py-0.5 rounded-full">{inqNew} new</span>}
+          </button>
+          <button
+            onClick={() => loadBookings(password)}
+            disabled={loading}
+            className="ml-auto text-sm text-[#1e3a5f] hover:text-orange-500 font-semibold transition-colors"
+          >
+            {loading ? 'Loading...' : '↻ Refresh'}
+          </button>
+        </div>
+
+        {/* Bookings tab */}
+        {activeTab === 'bookings' && <>
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
           {[
@@ -457,13 +654,6 @@ export default function Admin() {
 
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-[#1e3a5f] font-bold text-lg">Bookings</h2>
-          <button
-            onClick={() => loadBookings(password)}
-            disabled={loading}
-            className="text-sm text-[#1e3a5f] hover:text-orange-500 font-semibold transition-colors"
-          >
-            {loading ? 'Loading...' : '↻ Refresh'}
-          </button>
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
@@ -544,6 +734,73 @@ export default function Admin() {
             </div>
           )}
         </div>
+
+        </>}
+
+        {/* Inquiries tab */}
+        {activeTab === 'inquiries' && <>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+          {[
+            { label: 'Total', value: inqTotal, color: 'text-[#1e3a5f]' },
+            { label: 'New', value: inqNew, color: 'text-orange-500' },
+            { label: 'Contacted', value: inqContacted, color: 'text-blue-600' },
+            { label: 'Booked', value: inqBooked, color: 'text-green-600' },
+          ].map(s => (
+            <div key={s.label} className="bg-white rounded-2xl shadow-sm p-5 text-center">
+              <div className={`font-black text-4xl ${s.color}`}>{s.value}</div>
+              <div className="text-slate-500 text-xs font-semibold uppercase tracking-wider mt-1">{s.label}</div>
+            </div>
+          ))}
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+          {inquiries.length === 0 ? (
+            <div className="p-10 text-center text-slate-400">No inquiries yet.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-100 text-slate-400 text-xs uppercase tracking-wider">
+                    <th className="text-left px-5 py-3 font-semibold">Date</th>
+                    <th className="text-left px-5 py-3 font-semibold">Name</th>
+                    <th className="text-left px-5 py-3 font-semibold hidden sm:table-cell">Type</th>
+                    <th className="text-left px-5 py-3 font-semibold hidden md:table-cell">Rooms</th>
+                    <th className="text-left px-5 py-3 font-semibold hidden md:table-cell">Duration</th>
+                    <th className="text-left px-5 py-3 font-semibold">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {inquiries.map(inq => (
+                    <tr
+                      key={inq.id}
+                      onClick={() => setSelectedInquiry(inq)}
+                      className="border-b border-slate-100 last:border-0 cursor-pointer hover:bg-slate-50 transition-colors"
+                    >
+                      <td className="px-5 py-4 text-slate-500 text-xs whitespace-nowrap">
+                        {inq.created_at ? new Date(inq.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="font-semibold text-[#1e3a5f]">{inq.first_name} {inq.last_name}</div>
+                        <div className="text-slate-400 text-xs">{inq.phone}</div>
+                      </td>
+                      <td className="px-5 py-4 hidden sm:table-cell">
+                        <span className="bg-slate-100 text-slate-600 text-xs font-semibold px-2 py-1 rounded-full">{inq.guest_type}</span>
+                      </td>
+                      <td className="px-5 py-4 hidden md:table-cell text-slate-600">{inq.num_rooms}</td>
+                      <td className="px-5 py-4 hidden md:table-cell text-slate-600 text-xs">{inq.length_of_stay}</td>
+                      <td className="px-5 py-4">
+                        <span className={`text-xs font-bold px-2.5 py-1 rounded-full capitalize ${INQUIRY_STATUS_COLORS[inq.status] ?? 'bg-slate-100 text-slate-600'}`}>
+                          {inq.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+        </>}
       </div>
 
       {selectedBooking && (
@@ -552,6 +809,15 @@ export default function Admin() {
           password={password}
           onClose={() => setSelectedBooking(null)}
           onUpdate={handleBookingUpdate}
+        />
+      )}
+
+      {selectedInquiry && (
+        <InquiryDetailModal
+          inq={selectedInquiry}
+          password={password}
+          onClose={() => setSelectedInquiry(null)}
+          onUpdate={handleInquiryUpdate}
         />
       )}
     </div>

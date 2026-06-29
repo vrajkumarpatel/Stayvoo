@@ -99,6 +99,54 @@ export async function cancelAdminBooking(id: string, password: string) {
   return r.json()
 }
 
+export async function createInquiry(data: {
+  first_name: string
+  last_name: string
+  email: string
+  phone: string
+  guest_type: string
+  hotel_preference?: string
+  num_rooms: number
+  length_of_stay: string
+  start_date: string
+  special_requirements?: string
+  source?: string
+}) {
+  const r = await fetch(`${BASE}/inquiries`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ source: 'website', ...data }),
+  })
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}))
+    throw new Error(err.detail ?? 'Inquiry submission failed')
+  }
+  return r.json()
+}
+
+export async function getAdminInquiries(password: string) {
+  const r = await fetch(`${BASE}/admin/inquiries`, {
+    headers: { 'x-admin-password': password },
+  })
+  if (r.status === 401) throw new Error('Invalid password')
+  if (!r.ok) throw new Error('Failed to fetch inquiries')
+  return r.json()
+}
+
+export async function updateAdminInquiry(id: string, data: { status?: string; notes?: string }, password: string) {
+  const r = await fetch(`${BASE}/admin/inquiries/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'x-admin-password': password },
+    body: JSON.stringify(data),
+  })
+  if (r.status === 401) throw new Error('Invalid password')
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}))
+    throw new Error(err.detail ?? 'Update failed')
+  }
+  return r.json()
+}
+
 export async function testAdminEmail(password: string) {
   const r = await fetch(`${BASE}/admin/test-email`, {
     method: 'GET',

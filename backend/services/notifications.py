@@ -100,6 +100,19 @@ def notify_pre_arrival(booking: dict) -> bool:
     return _send_sms(to, body)
 
 
+def notify_new_inquiry(inq: dict) -> bool:
+    to = os.getenv("NOTIFY_PHONE", "")
+    body = (
+        f"🏨 NEW INQUIRY\n"
+        f"{inq.get('guest_type')}: {inq.get('first_name')} {inq.get('last_name')}\n"
+        f"{inq.get('num_rooms')} rooms × {inq.get('length_of_stay')}\n"
+        f"Start: {inq.get('start_date')}\n"
+        f"Phone: {inq.get('phone')}\n"
+        f"Reply within 2 hours!"
+    )
+    return _send_sms(to, body)
+
+
 def notify_post_stay(booking: dict) -> bool:
     guest = booking.get("guest", {}) or {}
     to = guest.get("phone", "")

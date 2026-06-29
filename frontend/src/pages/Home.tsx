@@ -103,10 +103,10 @@ export default function Home() {
               ⭐ Exclusive Partner Hotels
             </div>
             <h2 className="text-[#1e3a5f] font-black text-3xl sm:text-4xl">
-              Our Partner Hotels
+              ⭐ Exclusive Partner Hotels
             </h2>
             <p className="text-slate-500 mt-3 max-w-xl mx-auto">
-              Personal rates, welcome kits, and dedicated service — exclusive to Stayvoo guests.
+              Specialized rates for extended stays, travel nurses, construction crews, and group bookings (7+ nights)
             </p>
           </div>
 
@@ -119,10 +119,54 @@ export default function Home() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {hotels.map(h => (
-                <HotelCard key={h.id} hotel={{ ...h, exclusive: true, price_per_night: h.rooms?.[0]?.price_per_night ?? 120 }} />
+                <HotelCard
+                  key={h.id}
+                  hotel={{ ...h, exclusive: true, price_per_night: h.rooms?.[0]?.price_per_night ?? 120 }}
+                  twoButton
+                />
               ))}
             </div>
           )}
+
+          {/* Two-path section */}
+          <div className="mt-16">
+            <h3 className="text-[#1e3a5f] font-black text-2xl text-center mb-8">How would you like to book?</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div className="border-2 border-orange-400 rounded-2xl p-6 flex flex-col">
+                <div className="text-3xl mb-3">🏥 🏗️ 💼</div>
+                <div className="flex items-center gap-3 mb-2">
+                  <h4 className="text-[#1e3a5f] font-black text-lg">Extended Stay & Groups</h4>
+                  <span className="bg-orange-100 text-orange-600 text-xs font-bold px-2 py-0.5 rounded-full">7+ nights</span>
+                </div>
+                <p className="text-slate-500 text-sm leading-relaxed flex-1">
+                  Travel nurses, construction crews, corporate teams, and groups get exclusive negotiated rates with personalized service and welcome kits.
+                </p>
+                <Link
+                  to="/exclusive"
+                  className="mt-5 w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl text-sm text-center transition-colors"
+                >
+                  Get a Quote →
+                </Link>
+              </div>
+
+              <div className="border-2 border-[#1e3a5f] rounded-2xl p-6 flex flex-col">
+                <div className="text-3xl mb-3">🏨</div>
+                <div className="flex items-center gap-3 mb-2">
+                  <h4 className="text-[#1e3a5f] font-black text-lg">Short Stay</h4>
+                  <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2 py-0.5 rounded-full">1–6 nights</span>
+                </div>
+                <p className="text-slate-500 text-sm leading-relaxed flex-1">
+                  Quick trips, weekend stays, and business travel. Instant booking at the best available rates.
+                </p>
+                <Link
+                  to="/search"
+                  className="mt-5 w-full bg-[#1e3a5f] hover:bg-[#162d4a] text-white font-bold py-3 rounded-xl text-sm text-center transition-colors"
+                >
+                  Search Hotels →
+                </Link>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 

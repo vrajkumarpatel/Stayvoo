@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 
 const AMENITY_ICONS: Record<string, string> = {
   'Free Parking': '🚗',
@@ -40,9 +40,10 @@ interface Hotel {
 interface Props {
   hotel: Hotel
   large?: boolean
+  twoButton?: boolean
 }
 
-export default function HotelCard({ hotel, large = false }: Props) {
+export default function HotelCard({ hotel, large = false, twoButton = false }: Props) {
   const navigate = useNavigate()
   const hotelId = hotel.id ?? hotel.hotel_id ?? ''
   const isMock = hotelId.startsWith('mock-')
@@ -98,22 +99,40 @@ export default function HotelCard({ hotel, large = false }: Props) {
         </div>
 
         {/* Price + CTA */}
-        <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between gap-3">
-          <div>
+        <div className="mt-4 pt-4 border-t border-slate-100">
+          <div className="flex items-center gap-2 mb-3">
             <span className="text-[#1e3a5f] font-black text-xl">${hotel.price_per_night}</span>
             <span className="text-slate-400 text-sm">/night</span>
+            {twoButton && (
+              <span className="ml-auto text-orange-500 text-xs font-bold bg-orange-50 px-2 py-0.5 rounded-full">Extended Stay Specialist</span>
+            )}
           </div>
-          {hotel.exclusive ? (
+          {twoButton ? (
+            <div className="flex flex-col gap-2">
+              <Link
+                to="/exclusive#inquiry-form"
+                className="w-full bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold py-2.5 px-4 rounded-xl transition-colors text-center"
+              >
+                Get Extended Stay Quote
+              </Link>
+              <Link
+                to="/search"
+                className="w-full border-2 border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white text-sm font-bold py-2 px-4 rounded-xl transition-colors text-center"
+              >
+                Book Short Stay (1–6 nights)
+              </Link>
+            </div>
+          ) : hotel.exclusive ? (
             <button
               onClick={handleClick}
-              className="flex-1 bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold py-2.5 px-4 rounded-xl transition-colors"
+              className="w-full bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold py-2.5 px-4 rounded-xl transition-colors"
             >
               Get Exclusive Rate →
             </button>
           ) : (
             <button
               onClick={handleClick}
-              className="flex-1 bg-[#1e3a5f] hover:bg-[#162d4a] text-white text-sm font-bold py-2.5 px-4 rounded-xl transition-colors"
+              className="w-full bg-[#1e3a5f] hover:bg-[#162d4a] text-white text-sm font-bold py-2.5 px-4 rounded-xl transition-colors"
             >
               View Rooms →
             </button>

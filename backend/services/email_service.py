@@ -228,6 +228,90 @@ async def send_post_stay_email(b: dict) -> None:
     await _send(to_email, f"Thanks for staying with Stayvoo — {ref}", _base_html("Post-Stay Thank You", body))
 
 
+async def send_inquiry_notification(inq: dict) -> None:
+    """Internal alert to hello@stayvoo.com when a new inquiry arrives."""
+    to_email = os.getenv("SENDGRID_FROM_EMAIL", "hello@stayvoo.com")
+    guest_type = inq.get("guest_type", "Guest")
+    first = inq.get("first_name", "")
+    last = inq.get("last_name", "")
+    inq_id = str(inq.get("id", ""))[:8].upper()
+    body = f"""
+    <h2 style="margin:0 0 16px;color:{BRAND_COLOR};font-size:20px;font-weight:900;">
+      New Extended Stay Inquiry
+    </h2>
+    <div style="background:#fff7ed;border:2px solid #fed7aa;border-radius:10px;padding:16px 20px;margin-bottom:20px;">
+      <p style="margin:0;color:{ACCENT_COLOR};font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">
+        INQ-{inq_id} · {guest_type}
+      </p>
+    </div>
+    <table width="100%" cellpadding="0" cellspacing="0">
+      {"".join(f'<tr><td style="padding:7px 0;color:#64748b;font-size:14px;border-bottom:1px solid #f1f5f9;width:40%;">{lbl}</td><td style="padding:7px 0;color:{BRAND_COLOR};font-size:14px;font-weight:600;border-bottom:1px solid #f1f5f9;">{val}</td></tr>' for lbl, val in [
+        ("Name", f"{first} {last}"),
+        ("Email", inq.get("email", "—")),
+        ("Phone", inq.get("phone", "—")),
+        ("Guest Type", inq.get("guest_type", "—")),
+        ("Rooms Needed", str(inq.get("num_rooms", "—"))),
+        ("Length of Stay", inq.get("length_of_stay", "—")),
+        ("Start Date", str(inq.get("start_date", "—"))),
+        ("Hotel Preference", inq.get("hotel_preference") or "No preference"),
+        ("Special Requirements", inq.get("special_requirements") or "None"),
+      ])}
+    </table>
+    <div style="margin-top:24px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:16px;">
+      <p style="margin:0;color:#1d4ed8;font-size:14px;font-weight:700;">Reply to this guest within 2 hours.</p>
+      <p style="margin:6px 0 0;color:#1e40af;font-size:13px;">
+        View in admin: <a href="https://stayvoo.com/admin" style="color:{ACCENT_COLOR};">stayvoo.com/admin</a>
+      </p>
+    </div>"""
+    await _send(to_email, f"New Extended Stay Inquiry — {guest_type}", _base_html("New Inquiry", body))
+
+
+async def send_inquiry_auto_reply(inq: dict) -> None:
+    """Auto-reply email to the guest confirming their inquiry was received."""
+    to_email = inq.get("email")
+    if not to_email:
+        return
+    first = inq.get("first_name", "there")
+    inq_id = str(inq.get("id", ""))[:8].upper()
+    body = f"""
+    <h2 style="margin:0 0 6px;color:{BRAND_COLOR};font-size:20px;font-weight:900;">Hi {first}!</h2>
+    <p style="margin:0 0 20px;color:#475569;font-size:15px;line-height:1.6;">
+      Thank you for reaching out to Stayvoo. We have received your inquiry for
+      extended stay accommodation in <strong>Waukesha and Brookfield, Wisconsin</strong>.
+    </p>
+    <div style="text-align:center;margin:20px 0;">
+      <div style="display:inline-block;background:#fff7ed;border:2px solid #fed7aa;border-radius:12px;padding:12px 28px;">
+        <p style="margin:0;color:#94a3b8;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">Reference</p>
+        <span style="color:{ACCENT_COLOR};font-size:22px;font-weight:900;letter-spacing:2px;">INQ-{inq_id}</span>
+      </div>
+    </div>
+    <h3 style="margin:24px 0 10px;color:{BRAND_COLOR};font-size:15px;">What happens next:</h3>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px;">
+      {"".join(f'<div style="display:flex;align-items:center;gap:12px;padding:12px;background:#f8fafc;border-radius:10px;"><span style="font-size:20px;">{icon}</span><p style="margin:0;color:#475569;font-size:14px;">{text}</p></div>' for icon, text in [
+        ("🤝", "We review your requirements"),
+        ("📞", "We contact you <strong>within 2 hours</strong>"),
+        ("💰", "We provide custom pricing for your stay"),
+        ("🎁", "Welcome kit included with every extended stay"),
+      ])}
+    </div>
+    <h3 style="margin:0 0 8px;color:{BRAND_COLOR};font-size:15px;">Your Inquiry Details:</h3>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+      {"".join(f'<tr><td style="padding:7px 0;color:#64748b;font-size:14px;border-bottom:1px solid #f1f5f9;width:40%;">{lbl}</td><td style="padding:7px 0;color:{BRAND_COLOR};font-size:14px;font-weight:600;border-bottom:1px solid #f1f5f9;">{val}</td></tr>' for lbl, val in [
+        ("Guest Type", inq.get("guest_type", "—")),
+        ("Rooms Needed", str(inq.get("num_rooms", "—"))),
+        ("Length of Stay", inq.get("length_of_stay", "—")),
+        ("Start Date", str(inq.get("start_date", "—"))),
+      ])}
+    </table>
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px;text-align:center;">
+      <p style="margin:0;color:#166534;font-size:14px;">
+        Questions? Call or text us: <strong><a href="tel:{SUPPORT_PHONE}" style="color:{BRAND_COLOR};">{SUPPORT_PHONE}</a></strong>
+      </p>
+      <p style="margin:6px 0 0;color:#166534;font-size:13px;">We look forward to hosting you! — Stayvoo Team</p>
+    </div>"""
+    await _send(to_email, "We received your Stayvoo inquiry!", _base_html("Inquiry Received", body))
+
+
 async def send_invoice_email(b: dict) -> None:
     guest = b.get("guest") or {}
     to_email = guest.get("email")

@@ -93,6 +93,26 @@ class Booking(Base):
     guest = relationship("Guest", back_populates="bookings")
 
 
+class Inquiry(Base):
+    __tablename__ = "inquiries"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    first_name = Column(String, nullable=False)
+    last_name = Column(String, nullable=False)
+    email = Column(String, nullable=False)
+    phone = Column(String, nullable=False)
+    guest_type = Column(String, nullable=False)
+    hotel_preference = Column(String, nullable=True)
+    num_rooms = Column(Integer, nullable=False)
+    length_of_stay = Column(String, nullable=False)
+    start_date = Column(Date, nullable=False)
+    special_requirements = Column(Text, nullable=True)
+    source = Column(String, default="website")
+    status = Column(String, default="new")
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 class Commission(Base):
     __tablename__ = "commissions"
 

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 
 const PHONE = '+1 (888) 352-8151'
@@ -6,16 +6,22 @@ const PHONE_HREF = 'tel:+18883528151'
 
 export default function Navbar() {
   const [open, setOpen] = useState(false)
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
   const { pathname } = useLocation()
-
-  const links = [
-    { to: '/', label: 'Home' },
-    { to: '/exclusive', label: 'Exclusive Hotels' },
-    { to: '/search', label: 'Search' },
-  ]
 
   const active = (to: string) =>
     pathname === to ? 'text-orange-500 font-semibold' : 'text-white/80 hover:text-white'
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-[#1e3a5f] shadow-lg">
@@ -33,11 +39,41 @@ export default function Navbar() {
 
           {/* Desktop nav */}
           <div className="hidden md:flex items-center gap-8">
-            {links.map(l => (
-              <Link key={l.to} to={l.to} className={`text-sm font-medium transition-colors ${active(l.to)}`}>
-                {l.label}
-              </Link>
-            ))}
+            <Link to="/" className={`text-sm font-medium transition-colors ${active('/')}`}>Home</Link>
+
+            {/* Exclusive Hotels dropdown */}
+            <div className="relative" ref={dropdownRef}>
+              <button
+                onClick={() => setDropdownOpen(o => !o)}
+                className={`flex items-center gap-1 text-sm font-medium transition-colors ${pathname === '/exclusive' || pathname === '/groups' ? 'text-orange-500 font-semibold' : 'text-white/80 hover:text-white'}`}
+              >
+                Exclusive Hotels
+                <svg className={`w-3.5 h-3.5 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {dropdownOpen && (
+                <div className="absolute top-full left-0 mt-2 w-52 bg-white rounded-xl shadow-xl border border-slate-100 py-1 z-50">
+                  <Link
+                    to="/exclusive"
+                    onClick={() => setDropdownOpen(false)}
+                    className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-[#1e3a5f] hover:bg-orange-50 hover:text-orange-600 font-medium transition-colors"
+                  >
+                    <span>🏥</span> Extended Stay Quote
+                  </Link>
+                  <Link
+                    to="/exclusive#inquiry-form"
+                    onClick={() => setDropdownOpen(false)}
+                    className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-[#1e3a5f] hover:bg-orange-50 hover:text-orange-600 font-medium transition-colors"
+                  >
+                    <span>🏗️</span> Group Booking
+                  </Link>
+                </div>
+              )}
+            </div>
+
+            <Link to="/search" className={`text-sm font-medium transition-colors ${active('/search')}`}>Search</Link>
+
             <a
               href={PHONE_HREF}
               className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
@@ -68,16 +104,10 @@ export default function Navbar() {
         {/* Mobile menu */}
         {open && (
           <div className="md:hidden border-t border-white/10 py-4 flex flex-col gap-3">
-            {links.map(l => (
-              <Link
-                key={l.to}
-                to={l.to}
-                onClick={() => setOpen(false)}
-                className={`text-sm font-medium py-1 ${active(l.to)}`}
-              >
-                {l.label}
-              </Link>
-            ))}
+            <Link to="/" onClick={() => setOpen(false)} className={`text-sm font-medium py-1 ${active('/')}`}>Home</Link>
+            <Link to="/exclusive" onClick={() => setOpen(false)} className={`text-sm font-medium py-1 ${active('/exclusive')}`}>Extended Stay Quote</Link>
+            <Link to="/exclusive#inquiry-form" onClick={() => setOpen(false)} className="text-sm font-medium py-1 text-white/80 hover:text-white">Group Booking</Link>
+            <Link to="/search" onClick={() => setOpen(false)} className={`text-sm font-medium py-1 ${active('/search')}`}>Search Hotels</Link>
             <a
               href={PHONE_HREF}
               className="mt-2 flex items-center justify-center gap-2 bg-orange-500 text-white text-sm font-semibold px-4 py-2.5 rounded-lg"
