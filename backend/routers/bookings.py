@@ -1,4 +1,5 @@
 import os
+import logging
 from datetime import date
 from decimal import Decimal
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
@@ -9,6 +10,9 @@ from sqlalchemy.orm import selectinload
 from database import get_db
 from models import Hotel, Room, Guest, Booking
 from services.notifications import notify_new_booking, notify_guest_received
+from services.email_service import send_booking_received
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/bookings", tags=["bookings"])
 
@@ -39,6 +43,7 @@ class BookingIn(BaseModel):
     special_requests: str | None = None
     estimated_arrival: str | None = None
     source: str = "website"
+    stripe_payment_method_id: str | None = None
 
 
 def booking_to_dict(b: Booking) -> dict:
@@ -61,6 +66,8 @@ def booking_to_dict(b: Booking) -> dict:
         "status": b.status,
         "guest_type": b.guest_type,
         "source": b.source,
+        "card_last4": b.card_last4,
+        "card_brand": b.card_brand,
         "created_at": b.created_at.isoformat() if b.created_at else None,
         "guest": {
             "id": str(b.guest.id),
@@ -89,7 +96,6 @@ def booking_to_dict(b: Booking) -> dict:
 async def _generate_booking_ref(db: AsyncSession, hotel: Hotel) -> str:
     brand_code = BRAND_CODES.get(hotel.brand.lower(), hotel.brand[:3].upper())
 
-    # Determine hotel number within brand
     result = await db.execute(
         select(Hotel)
         .where(Hotel.brand == hotel.brand, Hotel.active == True)
@@ -99,11 +105,21 @@ async def _generate_booking_ref(db: AsyncSession, hotel: Hotel) -> str:
     hotel_ids = [str(h.id) for h in brand_hotels]
     hotel_num = hotel_ids.index(str(hotel.id)) + 1
 
-    # Total bookings so far
     count_result = await db.execute(select(func.count()).select_from(Booking))
     total = count_result.scalar() or 0
 
     return f"SD-{brand_code}{hotel_num}-{total + 1:04d}"
+
+
+@router.post("/setup-intent")
+async def create_setup_intent():
+    import stripe as stripe_lib
+    stripe_key = os.getenv("STRIPE_SECRET_KEY")
+    if not stripe_key:
+        return {"client_secret": None}
+    stripe_lib.api_key = stripe_key
+    intent = stripe_lib.SetupIntent.create(usage="off_session")
+    return {"client_secret": intent.client_secret}
 
 
 @router.post("")
@@ -112,7 +128,6 @@ async def create_booking(
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ):
-    # Validate hotel
     hotel_result = await db.execute(
         select(Hotel).where(Hotel.id == payload.hotel_id, Hotel.active == True)
     )
@@ -120,7 +135,6 @@ async def create_booking(
     if not hotel:
         raise HTTPException(status_code=404, detail="Hotel not found")
 
-    # Validate room and availability
     room_result = await db.execute(
         select(Room).where(Room.id == payload.room_id, Room.hotel_id == payload.hotel_id)
     )
@@ -133,7 +147,6 @@ async def create_booking(
     if payload.checkout_date <= payload.checkin_date:
         raise HTTPException(status_code=400, detail="Checkout must be after checkin")
 
-    # Upsert guest
     guest_result = await db.execute(
         select(Guest).where(Guest.email == payload.guest.email)
     )
@@ -151,13 +164,26 @@ async def create_booking(
         db.add(guest)
         await db.flush()
 
-    # Compute financials
     nights = (payload.checkout_date - payload.checkin_date).days
     room_rate = Decimal(str(room.price_per_night))
     total_amount = room_rate * nights
     commission_amount = (total_amount * COMMISSION_RATE).quantize(Decimal("0.01"))
 
     booking_ref = await _generate_booking_ref(db, hotel)
+
+    card_last4 = None
+    card_brand = None
+    if payload.stripe_payment_method_id:
+        import stripe as stripe_lib
+        stripe_key = os.getenv("STRIPE_SECRET_KEY")
+        if stripe_key:
+            try:
+                stripe_lib.api_key = stripe_key
+                pm = stripe_lib.PaymentMethod.retrieve(payload.stripe_payment_method_id)
+                card_last4 = pm.card.last4
+                card_brand = pm.card.brand
+            except Exception as e:
+                logger.warning("Could not retrieve Stripe payment method: %s", e)
 
     booking = Booking(
         booking_ref=booking_ref,
@@ -176,15 +202,16 @@ async def create_booking(
         status="pending",
         guest_type=payload.guest.guest_type,
         source=payload.source,
+        stripe_payment_method_id=payload.stripe_payment_method_id,
+        card_last4=card_last4,
+        card_brand=card_brand,
     )
     db.add(booking)
 
-    # Decrement availability
     room.available_count -= 1
 
     await db.commit()
 
-    # Reload with relationships
     result = await db.execute(
         select(Booking)
         .where(Booking.id == booking.id)
@@ -199,6 +226,7 @@ async def create_booking(
 
     background_tasks.add_task(notify_new_booking, booking_dict)
     background_tasks.add_task(notify_guest_received, booking_dict)
+    background_tasks.add_task(send_booking_received, booking_dict)
 
     return booking_dict
 

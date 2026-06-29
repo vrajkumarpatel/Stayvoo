@@ -12,6 +12,12 @@ from services.notifications import (
     notify_pre_arrival,
     notify_post_stay,
 )
+from services.email_service import (
+    send_booking_confirmed,
+    send_pre_arrival_email,
+    send_post_stay_email,
+    send_invoice_email,
+)
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -72,11 +78,11 @@ async def confirm_booking(
     booking.status = "confirmed"
     await db.commit()
 
-    # Re-query so relationships are fresh after commit
     booking = await _load_booking(booking_id, db)
     booking_dict = booking_to_dict(booking)
 
     background_tasks.add_task(notify_guest_confirmed, booking_dict)
+    background_tasks.add_task(send_booking_confirmed, booking_dict)
 
     return booking_dict
 
@@ -91,6 +97,7 @@ async def send_pre_arrival(
     booking = await _load_booking(booking_id, db)
     booking_dict = booking_to_dict(booking)
     background_tasks.add_task(notify_pre_arrival, booking_dict)
+    background_tasks.add_task(send_pre_arrival_email, booking_dict)
     return {"sent": True, "booking_ref": booking_dict["booking_ref"]}
 
 
@@ -104,4 +111,6 @@ async def send_post_stay(
     booking = await _load_booking(booking_id, db)
     booking_dict = booking_to_dict(booking)
     background_tasks.add_task(notify_post_stay, booking_dict)
+    background_tasks.add_task(send_post_stay_email, booking_dict)
+    background_tasks.add_task(send_invoice_email, booking_dict)
     return {"sent": True, "booking_ref": booking_dict["booking_ref"]}

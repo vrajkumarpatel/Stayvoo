@@ -43,6 +43,7 @@ export async function createBooking(data: {
   special_requests?: string
   estimated_arrival?: string
   source?: string
+  stripe_payment_method_id?: string
 }) {
   const r = await fetch(`${BASE}/bookings`, {
     method: 'POST',

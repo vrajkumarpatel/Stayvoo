@@ -1,11 +1,17 @@
+import os
+import logging
 from contextlib import asynccontextmanager
+from datetime import date, timedelta
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from database import setup_db, Base, get_db
-from models import Hotel, Room
+from models import Hotel, Room, Booking
 from routers import hotels, bookings, admin, search, chat
 
+logger = logging.getLogger(__name__)
 
 SEED_HOTELS = [
     {
@@ -89,6 +95,58 @@ async def seed_hotels(session):
     await session.commit()
 
 
+async def _daily_pre_arrival_job():
+    from database import _AsyncSessionLocal
+    from services.email_service import send_pre_arrival_email
+    from routers.bookings import booking_to_dict as _btd
+
+    tomorrow = date.today() + timedelta(days=1)
+    async with _AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(Booking)
+            .where(Booking.status == "confirmed", Booking.checkin_date == tomorrow)
+            .options(
+                selectinload(Booking.guest),
+                selectinload(Booking.hotel),
+                selectinload(Booking.room),
+            )
+        )
+        bookings_list = result.scalars().all()
+        for b in bookings_list:
+            try:
+                await send_pre_arrival_email(_btd(b))
+            except Exception as e:
+                logger.error("Pre-arrival email failed for %s: %s", b.booking_ref, e)
+    logger.info("Pre-arrival job complete: %d bookings for %s", len(bookings_list), tomorrow)
+
+
+async def _daily_post_stay_job():
+    from database import _AsyncSessionLocal
+    from services.email_service import send_post_stay_email, send_invoice_email
+    from routers.bookings import booking_to_dict as _btd
+
+    yesterday = date.today() - timedelta(days=1)
+    async with _AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(Booking)
+            .where(Booking.status == "confirmed", Booking.checkout_date == yesterday)
+            .options(
+                selectinload(Booking.guest),
+                selectinload(Booking.hotel),
+                selectinload(Booking.room),
+            )
+        )
+        bookings_list = result.scalars().all()
+        for b in bookings_list:
+            try:
+                bd = _btd(b)
+                await send_post_stay_email(bd)
+                await send_invoice_email(bd)
+            except Exception as e:
+                logger.error("Post-stay email failed for %s: %s", b.booking_ref, e)
+    logger.info("Post-stay job complete: %d bookings for %s", len(bookings_list), yesterday)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     engine = setup_db()
@@ -96,21 +154,36 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-    # Import here to avoid circular issues at module level
     from database import _AsyncSessionLocal
     async with _AsyncSessionLocal() as session:
         await seed_hotels(session)
 
+    scheduler = AsyncIOScheduler()
+    scheduler.add_job(_daily_pre_arrival_job, "cron", hour=9, minute=0)
+    scheduler.add_job(_daily_post_stay_job, "cron", hour=10, minute=0)
+    scheduler.start()
+    logger.info("APScheduler started — pre-arrival 9AM, post-stay 10AM")
+
     yield
 
+    scheduler.shutdown()
     await engine.dispose()
 
+
+_allowed_origins = [
+    "http://localhost:5173",
+    "https://stayvoo.com",
+    "https://www.stayvoo.com",
+]
+if _frontend_url := os.getenv("FRONTEND_URL"):
+    _allowed_origins.append(_frontend_url)
 
 app = FastAPI(title="Stayvoo API", version="1.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=_allowed_origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

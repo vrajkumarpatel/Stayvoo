@@ -83,6 +83,9 @@ class Booking(Base):
     status = Column(String, default="pending")
     guest_type = Column(String)
     source = Column(String, default="website")
+    stripe_payment_method_id = Column(String, nullable=True)
+    card_last4 = Column(String, nullable=True)
+    card_brand = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     hotel = relationship("Hotel", back_populates="bookings")

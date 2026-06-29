@@ -123,6 +123,14 @@ export default function Confirmation() {
                 <span className="text-slate-500 font-semibold">Total (due at hotel)</span>
                 <span className="text-[#1e3a5f] font-black text-lg">${booking.total_amount?.toFixed(0)}</span>
               </div>
+              {booking.card_last4 && (
+                <div className="flex justify-between text-sm pt-1">
+                  <span className="text-slate-500">Card guarantee</span>
+                  <span className="text-[#1e3a5f] font-semibold capitalize">
+                    {booking.card_brand} •••• {booking.card_last4}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         )}
