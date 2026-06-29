@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 
-const PHONE = '(262) 555-0100'
-const PHONE_HREF = 'tel:+12625550100'
+const PHONE = '+1 (888) 352-8151'
+const PHONE_HREF = 'tel:+18883528151'
 
 export default function Navbar() {
   const [open, setOpen] = useState(false)

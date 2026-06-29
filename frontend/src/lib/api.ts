@@ -55,3 +55,32 @@ export async function createBooking(data: {
   }
   return r.json()
 }
+
+export async function getBooking(ref: string) {
+  const r = await fetch(`${BASE}/bookings/${ref}`)
+  if (!r.ok) throw new Error('Booking not found')
+  return r.json()
+}
+
+export async function getAdminBookings(password: string) {
+  const r = await fetch(`${BASE}/admin/bookings`, {
+    headers: { 'x-admin-password': password },
+  })
+  if (r.status === 401) throw new Error('Invalid password')
+  if (!r.ok) throw new Error('Failed to fetch bookings')
+  return r.json()
+}
+
+export async function confirmAdminBooking(id: string, pmsConfirmation: string, password: string) {
+  const r = await fetch(`${BASE}/admin/bookings/${id}/confirm`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-admin-password': password },
+    body: JSON.stringify({ pms_confirmation: pmsConfirmation }),
+  })
+  if (r.status === 401) throw new Error('Invalid password')
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}))
+    throw new Error(err.detail ?? 'Confirm failed')
+  }
+  return r.json()
+}

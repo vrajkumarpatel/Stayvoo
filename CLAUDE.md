@@ -87,7 +87,22 @@ backend/
 - Username format: `postgres.[project-ref]`
 - asyncpg requires `statement_cache_size=0` when using PgBouncer transaction mode
 
+## Frontend Routes
+- `/` — Home (hero, partner hotels, why Stayvoo, who we serve)
+- `/exclusive` — Exclusive Hotels + group inquiry form
+- `/hotels/:id` — Hotel detail (gallery, amenities, rooms)
+- `/search` — Search results (exclusive-first)
+- `/book` — Booking form (hotel_id, room_id, checkin, checkout in query params)
+- `/confirmation` — Booking confirmation (ref in query param, fetches from GET /bookings/{ref})
+- `/admin` — Admin dashboard (password → localStorage, x-admin-password header to backend)
+
+## Admin
+- Default password: `admin123` (set `ADMIN_PASSWORD` in backend/.env to change)
+- Frontend sends password as `x-admin-password` header to all `/admin/*` endpoints
+- Confirm booking: POST /admin/bookings/{id}/confirm with `{ pms_confirmation: string }`
+
 ## Session Log
 - **Session 1 (2026-06-29):** Complete — project scaffold, FastAPI + CORS, Vite + Tailwind + react-router-dom, folder structure created.
 - **Session 2 (2026-06-29):** Complete — PostgreSQL via Supabase, 5 tables (hotels/rooms/guests/bookings/commissions), 3 hotels + 6 rooms seeded, all API endpoints live and tested.
 - **Session 3 (2026-06-29):** Complete — GET /search (3 exclusive + 5 Tier 2 mock hotels), Twilio SMS notifications (5 functions), wired to booking + confirm endpoints via BackgroundTasks.
+- **Session 5 (2026-06-29):** Complete — full React frontend: Navbar, HotelCard, SearchBar, RoomCard components; Home, ExclusiveHotels, HotelDetail, SearchResults, BookingForm, Confirmation, Admin pages; complete booking flow from homepage → hotel detail → booking form → confirmation → admin confirm.

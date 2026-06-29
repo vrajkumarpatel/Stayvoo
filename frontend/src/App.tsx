@@ -4,6 +4,9 @@ import Home from './pages/Home'
 import ExclusiveHotels from './pages/ExclusiveHotels'
 import HotelDetail from './pages/HotelDetail'
 import SearchResults from './pages/SearchResults'
+import BookingForm from './pages/BookingForm'
+import Confirmation from './pages/Confirmation'
+import Admin from './pages/Admin'
 
 export default function App() {
   return (
@@ -14,6 +17,9 @@ export default function App() {
         <Route path="/exclusive" element={<ExclusiveHotels />} />
         <Route path="/hotels/:id" element={<HotelDetail />} />
         <Route path="/search" element={<SearchResults />} />
+        <Route path="/book" element={<BookingForm />} />
+        <Route path="/confirmation" element={<Confirmation />} />
+        <Route path="/admin" element={<Admin />} />
       </Routes>
     </BrowserRouter>
   )
