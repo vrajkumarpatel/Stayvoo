@@ -61,11 +61,25 @@ backend/
 ├── models.py        # hotels, rooms, guests, bookings, commissions
 ├── requirements.txt
 ├── .env             # secrets (gitignored)
-└── routers/
-    ├── hotels.py    # GET /hotels, GET /hotels/{id}
-    ├── bookings.py  # POST /bookings, GET /bookings/{ref}
-    └── admin.py     # GET /admin/bookings, POST /admin/bookings/{id}/confirm
+├── routers/
+│   ├── hotels.py    # GET /hotels, GET /hotels/{id}
+│   ├── bookings.py  # POST /bookings, GET /bookings/{ref}
+│   ├── admin.py     # GET|POST /admin/bookings, confirm, pre-arrival, post-stay
+│   └── search.py    # GET /search?checkin_date&checkout_date&guests
+└── services/
+    ├── hotel_search.py   # HotelSearchService — Tier 1 DB + 5 mock Tier 2 hotels
+    └── notifications.py  # Twilio SMS: new_booking, guest_received, confirmed, pre_arrival, post_stay
 ```
+
+## Notifications
+- All 5 SMS functions in `services/notifications.py`
+- Fire via `BackgroundTasks` so they never block the response
+- Gracefully skip (log warning) if Twilio creds not set
+- `POST /bookings` → fires `notify_new_booking` + `notify_guest_received`
+- `POST /admin/bookings/{id}/confirm` → fires `notify_guest_confirmed`
+- `POST /admin/bookings/{id}/send-pre-arrival` → manual trigger for pre-arrival SMS
+- `POST /admin/bookings/{id}/send-post-stay` → manual trigger for post-stay SMS
+- Fill in `.env`: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`, `NOTIFY_PHONE`
 
 ## Supabase Notes
 - Direct host (`db.xxx.supabase.co`) is IPv6-only — Python on Windows can't connect
@@ -76,3 +90,4 @@ backend/
 ## Session Log
 - **Session 1 (2026-06-29):** Complete — project scaffold, FastAPI + CORS, Vite + Tailwind + react-router-dom, folder structure created.
 - **Session 2 (2026-06-29):** Complete — PostgreSQL via Supabase, 5 tables (hotels/rooms/guests/bookings/commissions), 3 hotels + 6 rooms seeded, all API endpoints live and tested.
+- **Session 3 (2026-06-29):** Complete — GET /search (3 exclusive + 5 Tier 2 mock hotels), Twilio SMS notifications (5 functions), wired to booking + confirm endpoints via BackgroundTasks.

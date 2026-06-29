@@ -1,13 +1,14 @@
 import os
 from datetime import date
 from decimal import Decimal
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 from database import get_db
 from models import Hotel, Room, Guest, Booking
+from services.notifications import notify_new_booking, notify_guest_received
 
 router = APIRouter(prefix="/bookings", tags=["bookings"])
 
@@ -106,7 +107,11 @@ async def _generate_booking_ref(db: AsyncSession, hotel: Hotel) -> str:
 
 
 @router.post("")
-async def create_booking(payload: BookingIn, db: AsyncSession = Depends(get_db)):
+async def create_booking(
+    payload: BookingIn,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+):
     # Validate hotel
     hotel_result = await db.execute(
         select(Hotel).where(Hotel.id == payload.hotel_id, Hotel.active == True)
@@ -190,7 +195,12 @@ async def create_booking(payload: BookingIn, db: AsyncSession = Depends(get_db))
         )
     )
     booking = result.scalar_one()
-    return booking_to_dict(booking)
+    booking_dict = booking_to_dict(booking)
+
+    background_tasks.add_task(notify_new_booking, booking_dict)
+    background_tasks.add_task(notify_guest_received, booking_dict)
+
+    return booking_dict
 
 
 @router.get("/{booking_ref}")
