@@ -1,5 +1,10 @@
 import { useEffect, useState } from 'react'
-import { getAdminBookings, confirmAdminBooking, cancelAdminBooking, testAdminEmail, getAdminInquiries, updateAdminInquiry } from '../lib/api'
+import {
+  getAdminBookings, confirmAdminBooking, cancelAdminBooking, testAdminEmail,
+  getAdminInquiries, updateAdminInquiry, getInquiryMessages, sendInquiryMessage,
+  getAdminStays, createAdminStay, updateAdminStay, checkoutAdminStay,
+  getAdminBilling, sendHotelInvoice,
+} from '../lib/api'
 
 const STORAGE_KEY = 'stayvoo_admin_pw'
 
@@ -13,54 +18,6 @@ const CARD_BRAND_ICONS: Record<string, string> = {
   discover: '💳 Discover', jcb: '💳 JCB', unionpay: '💳 UnionPay',
 }
 
-interface Booking {
-  id: string
-  booking_ref: string
-  status: string
-  guest_type: string
-  checkin_date: string
-  checkout_date: string
-  nights: number
-  room_rate: number
-  total_amount: number
-  special_requests: string | null
-  estimated_arrival: string | null
-  source: string
-  card_last4: string | null
-  card_brand: string | null
-  pms_confirmation?: string | null
-  created_at: string
-  guest: {
-    first_name: string
-    last_name: string
-    email: string
-    phone: string
-    guest_type: string
-    company: string | null
-    total_stays: number
-  } | null
-  hotel: { id: string; name: string; brand: string; address: string } | null
-  room: { id: string; name: string; price_per_night: number } | null
-}
-
-interface Inquiry {
-  id: string
-  first_name: string
-  last_name: string
-  email: string
-  phone: string
-  guest_type: string
-  hotel_preference: string | null
-  num_rooms: number
-  length_of_stay: string
-  start_date: string
-  special_requirements: string | null
-  source: string
-  status: string
-  notes: string | null
-  created_at: string | null
-}
-
 const INQUIRY_STATUS_COLORS: Record<string, string> = {
   new: 'bg-orange-100 text-orange-700',
   contacted: 'bg-blue-100 text-blue-700',
@@ -71,128 +28,55 @@ const INQUIRY_STATUS_COLORS: Record<string, string> = {
 
 const INQUIRY_STATUSES = ['new', 'contacted', 'quoted', 'booked', 'closed']
 
-function InquiryDetailModal({ inq, password, onClose, onUpdate }: {
-  inq: Inquiry; password: string; onClose: () => void; onUpdate: (i: Inquiry) => void
-}) {
-  const [status, setStatus] = useState(inq.status)
-  const [notes, setNotes] = useState(inq.notes ?? '')
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
+const STAY_STATUS_COLORS: Record<string, string> = {
+  active: 'bg-green-100 text-green-700',
+  extended: 'bg-blue-100 text-blue-700',
+  checked_out: 'bg-slate-100 text-slate-600',
+}
 
-  const handleSave = async () => {
-    setSaving(true)
-    try {
-      const updated = await updateAdminInquiry(inq.id, { status, notes }, password)
-      onUpdate(updated)
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
-    } catch (err: any) {
-      alert(err.message)
-    } finally {
-      setSaving(false)
-    }
-  }
+interface Booking {
+  id: string; booking_ref: string; status: string; guest_type: string
+  checkin_date: string; checkout_date: string; nights: number
+  room_rate: number; total_amount: number; special_requests: string | null
+  estimated_arrival: string | null; source: string; card_last4: string | null
+  card_brand: string | null; pms_confirmation?: string | null; created_at: string
+  guest: { first_name: string; last_name: string; email: string; phone: string; guest_type: string; company: string | null; total_stays: number } | null
+  hotel: { id: string; name: string; brand: string; address: string } | null
+  room: { id: string; name: string; price_per_night: number } | null
+}
 
-  const inqRef = inq.id.slice(0, 8).toUpperCase()
+interface Inquiry {
+  id: string; first_name: string; last_name: string; email: string; phone: string
+  guest_type: string; hotel_preference: string | null; num_rooms: number
+  length_of_stay: string; start_date: string; special_requirements: string | null
+  source: string; status: string; notes: string | null; created_at: string | null
+}
 
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm"
-      onClick={e => { if (e.target === e.currentTarget) onClose() }}
-    >
-      <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg max-h-[95vh] sm:max-h-[90vh] flex flex-col">
-        <div className="bg-[#1e3a5f] px-5 py-4 rounded-t-3xl sm:rounded-t-2xl flex-shrink-0">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <span className="text-white font-mono font-black text-lg tracking-wider">INQ-{inqRef}</span>
-                <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full capitalize ${INQUIRY_STATUS_COLORS[inq.status] ?? 'bg-slate-100 text-slate-600'}`}>
-                  {inq.status}
-                </span>
-              </div>
-              <p className="text-white/50 text-xs mt-1.5">{inq.guest_type} · {inq.num_rooms} rooms · {inq.length_of_stay}</p>
-            </div>
-            <button onClick={onClose} className="text-white/50 hover:text-white w-8 h-8 flex items-center justify-center rounded-xl hover:bg-white/10 transition-colors flex-shrink-0">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        </div>
+interface Message {
+  id: string; inquiry_id: string; sender: string; sender_name: string
+  message: string; is_read: boolean; created_at: string | null
+}
 
-        <div className="overflow-y-auto flex-1 px-5 py-5 flex flex-col gap-5">
-          {/* Contact */}
-          <div>
-            <SectionHeader title="Contact Info" />
-            <div className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-3">
-              <InfoRow label="Full Name">{inq.first_name} {inq.last_name}</InfoRow>
-              <InfoRow label="Email">
-                <a href={`mailto:${inq.email}`} className="text-orange-500 hover:underline break-all">{inq.email}</a>
-              </InfoRow>
-              <InfoRow label="Phone">
-                <a href={`tel:${inq.phone}`} className="text-orange-500 hover:underline">{inq.phone}</a>
-              </InfoRow>
-              <InfoRow label="Guest Type">{inq.guest_type}</InfoRow>
-              {inq.source && <InfoRow label="Source">{inq.source}</InfoRow>}
-            </div>
-          </div>
+interface Stay {
+  id: string; inquiry_id: string | null; guest_first_name: string; guest_last_name: string
+  guest_email: string; guest_phone: string; guest_type: string | null; hotel_id: string | null
+  hotel_name: string; room_number: string | null; num_rooms: number; checkin_date: string
+  expected_checkout: string; actual_checkout: string | null; nights_total: number
+  rate_per_night: number; total_amount: number; amount_paid: number; balance_due: number
+  commission_rate: number; commission_amount: number; commission_paid: boolean
+  commission_paid_date: string | null; pms_confirmation: string | null; notes: string | null
+  status: string; created_at: string | null; updated_at: string | null
+}
 
-          {/* Inquiry details */}
-          <div>
-            <SectionHeader title="Inquiry Details" />
-            <div className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-3">
-              <InfoRow label="Hotel Pref">{inq.hotel_preference || 'No preference'}</InfoRow>
-              <InfoRow label="Rooms">{inq.num_rooms}</InfoRow>
-              <InfoRow label="Duration">{inq.length_of_stay}</InfoRow>
-              <InfoRow label="Start Date">{inq.start_date}</InfoRow>
-              {inq.special_requirements && (
-                <div className="border-t border-slate-200 pt-3 mt-1">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Special Requirements</p>
-                  <p className="text-[#1e3a5f] text-sm leading-relaxed">{inq.special_requirements}</p>
-                </div>
-              )}
-            </div>
-          </div>
+interface BillingHotel {
+  hotel_name: string; hotel_id: string | null; total_stays: number; active_stays: number
+  completed_stays: number; total_revenue: number; total_commission: number
+  commission_paid: number; commission_pending: number; stays: Stay[]
+}
 
-          {/* Update status + notes */}
-          <div>
-            <SectionHeader title="Update" />
-            <div className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-3">
-              <div>
-                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block mb-1.5">Status</label>
-                <select
-                  value={status}
-                  onChange={e => setStatus(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400"
-                >
-                  {INQUIRY_STATUSES.map(s => (
-                    <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block mb-1.5">Notes</label>
-                <textarea
-                  rows={3}
-                  value={notes}
-                  onChange={e => setNotes(e.target.value)}
-                  placeholder="Internal notes about this inquiry..."
-                  className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-orange-400"
-                />
-              </div>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="w-full bg-[#1e3a5f] hover:bg-[#162d4a] disabled:opacity-60 text-white font-bold py-3 rounded-xl text-sm transition-colors"
-              >
-                {saving ? 'Saving...' : saved ? '✅ Saved!' : 'Save Changes'}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
+interface BillingData {
+  month: string; total_stays: number; total_revenue: number; total_commission: number
+  commission_paid: number; commission_pending: number; by_hotel: BillingHotel[]
 }
 
 function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
@@ -205,19 +89,40 @@ function InfoRow({ label, children }: { label: string; children: React.ReactNode
 }
 
 function SectionHeader({ title }: { title: string }) {
+  return <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2.5 mt-1">{title}</h3>
+}
+
+function ModalShell({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
   return (
-    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2.5 mt-1">{title}</h3>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg max-h-[95vh] sm:max-h-[90vh] flex flex-col">
+        {children}
+      </div>
+    </div>
   )
 }
 
-interface DetailModalProps {
-  booking: Booking
-  password: string
-  onClose: () => void
-  onUpdate: (b: Booking) => void
+function ModalHeader({ title, sub, onClose }: { title: React.ReactNode; sub?: string; onClose: () => void }) {
+  return (
+    <div className="bg-[#1e3a5f] px-5 py-4 rounded-t-3xl sm:rounded-t-2xl flex-shrink-0">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2.5 flex-wrap">{title}</div>
+          {sub && <p className="text-white/50 text-xs mt-1.5">{sub}</p>}
+        </div>
+        <button onClick={onClose} className="text-white/50 hover:text-white w-8 h-8 flex items-center justify-center rounded-xl hover:bg-white/10 transition-colors flex-shrink-0">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  )
 }
 
-function BookingDetailModal({ booking: b, password, onClose, onUpdate }: DetailModalProps) {
+function BookingDetailModal({ booking: b, password, onClose, onUpdate }: {
+  booking: Booking; password: string; onClose: () => void; onUpdate: (b: Booking) => void
+}) {
   const [pmsInput, setPmsInput] = useState('')
   const [confirming, setConfirming] = useState(false)
   const [confirmError, setConfirmError] = useState('')
@@ -256,184 +161,617 @@ function BookingDetailModal({ booking: b, password, onClose, onUpdate }: DetailM
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg max-h-[95vh] sm:max-h-[90vh] flex flex-col">
-
-        {/* Header */}
-        <div className="bg-[#1e3a5f] px-5 py-4 rounded-t-3xl sm:rounded-t-2xl flex-shrink-0">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <span className="text-white font-mono font-black text-lg tracking-wider leading-none">{b.booking_ref}</span>
-                {isPending && <span className="bg-orange-400/30 text-orange-200 text-xs font-bold px-2.5 py-0.5 rounded-full">Pending</span>}
-                {isConfirmed && <span className="bg-green-400/30 text-green-200 text-xs font-bold px-2.5 py-0.5 rounded-full">Confirmed</span>}
-                {isCancelled && <span className="bg-slate-400/30 text-slate-200 text-xs font-bold px-2.5 py-0.5 rounded-full">Cancelled</span>}
+    <ModalShell onClose={onClose}>
+      <ModalHeader
+        onClose={onClose}
+        title={<>
+          <span className="text-white font-mono font-black text-lg tracking-wider leading-none">{b.booking_ref}</span>
+          {isPending && <span className="bg-orange-400/30 text-orange-200 text-xs font-bold px-2.5 py-0.5 rounded-full">Pending</span>}
+          {isConfirmed && <span className="bg-green-400/30 text-green-200 text-xs font-bold px-2.5 py-0.5 rounded-full">Confirmed</span>}
+          {isCancelled && <span className="bg-slate-400/30 text-slate-200 text-xs font-bold px-2.5 py-0.5 rounded-full">Cancelled</span>}
+        </>}
+        sub={`${b.hotel?.name} · ${b.checkin_date} → ${b.checkout_date}`}
+      />
+      <div className="overflow-y-auto flex-1 px-5 py-5 flex flex-col gap-5">
+        <div>
+          <SectionHeader title="Guest Info" />
+          <div className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-3">
+            <InfoRow label="Full Name">{b.guest?.first_name} {b.guest?.last_name}</InfoRow>
+            <InfoRow label="Email"><a href={`mailto:${b.guest?.email}`} className="text-orange-500 hover:underline break-all">{b.guest?.email}</a></InfoRow>
+            <InfoRow label="Phone"><a href={`tel:${b.guest?.phone}`} className="text-orange-500 hover:underline">{b.guest?.phone}</a></InfoRow>
+            <InfoRow label="Guest Type">{GUEST_TYPE_LABELS[b.guest_type] ?? b.guest_type}</InfoRow>
+            {b.guest?.company && <InfoRow label="Company">{b.guest.company}</InfoRow>}
+            {b.special_requests && (
+              <div className="border-t border-slate-200 pt-3 mt-1">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Special Requests</p>
+                <p className="text-[#1e3a5f] text-sm leading-relaxed">{b.special_requests}</p>
               </div>
-              <p className="text-white/50 text-xs mt-1.5 leading-relaxed">
-                {b.hotel?.name} · {b.checkin_date} → {b.checkout_date}
-              </p>
-            </div>
-            <button
-              onClick={onClose}
-              className="text-white/50 hover:text-white w-8 h-8 flex items-center justify-center rounded-xl hover:bg-white/10 transition-colors flex-shrink-0"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+            )}
           </div>
         </div>
+        <div>
+          <SectionHeader title="Booking Info" />
+          <div className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-3">
+            <InfoRow label="Reference"><span className="font-mono font-bold text-orange-600">{b.booking_ref}</span></InfoRow>
+            <InfoRow label="Hotel">{b.hotel?.name ?? '—'}</InfoRow>
+            <InfoRow label="Room">{b.room?.name ?? '—'}</InfoRow>
+            <InfoRow label="Check-in">{b.checkin_date}</InfoRow>
+            <InfoRow label="Check-out">{b.checkout_date}</InfoRow>
+            <InfoRow label="Nights">{b.nights} {b.nights === 1 ? 'night' : 'nights'}</InfoRow>
+            <InfoRow label="Est. Arrival">{b.estimated_arrival ?? '—'}</InfoRow>
+            <div className="border-t border-slate-200 pt-3 mt-1 flex justify-between items-center">
+              <span className="text-slate-400 text-sm">${b.room_rate}/night × {b.nights}</span>
+              <span className="text-[#1e3a5f] font-black text-xl">${(b.total_amount ?? 0).toFixed(0)}</span>
+            </div>
+          </div>
+        </div>
+        <div>
+          <SectionHeader title="Payment Info" />
+          <div className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-3">
+            {b.card_last4 ? (
+              <>
+                <InfoRow label="Card">{CARD_BRAND_ICONS[b.card_brand ?? ''] ?? `💳 ${b.card_brand ?? 'Card'}`}</InfoRow>
+                <InfoRow label="Last 4"><span className="font-mono tracking-widest">•••• {b.card_last4}</span></InfoRow>
+                <InfoRow label="Status"><span className="text-green-600">✅ Guarantee on file</span></InfoRow>
+              </>
+            ) : (
+              <p className="text-slate-400 text-sm">No card on file — guest pays at check-in.</p>
+            )}
+          </div>
+        </div>
+        {isConfirmed && b.pms_confirmation && (
+          <div>
+            <SectionHeader title="PMS Confirmation" />
+            <div className="bg-green-50 border border-green-200 rounded-2xl p-4">
+              <p className="text-green-600 text-xs font-bold uppercase tracking-wider mb-1.5">Confirmation Number</p>
+              <p className="font-mono font-black text-green-700 text-2xl">{b.pms_confirmation}</p>
+            </div>
+          </div>
+        )}
+        <div>
+          <SectionHeader title="Actions" />
+          <div className="flex flex-col gap-3">
+            {isPending && (
+              <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 flex flex-col gap-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block mb-1.5">PMS Confirmation Number *</label>
+                  <input
+                    autoFocus placeholder="e.g. WYN-789456" value={pmsInput}
+                    onChange={e => { setPmsInput(e.target.value); setConfirmError('') }}
+                    onKeyDown={e => { if (e.key === 'Enter' && pmsInput.trim()) handleConfirm() }}
+                    className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+                  />
+                </div>
+                {confirmError && <p className="text-red-500 text-sm bg-red-50 rounded-xl px-3 py-2 border border-red-200">{confirmError}</p>}
+                <button onClick={handleConfirm} disabled={confirming || !pmsInput.trim()} className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-black py-3.5 rounded-xl text-sm transition-colors">
+                  {confirming ? 'Confirming...' : '✅ Confirm Booking'}
+                </button>
+              </div>
+            )}
+            {isConfirmed && (
+              <div className="bg-green-50 border border-green-200 rounded-2xl p-4 flex items-center gap-3">
+                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                </div>
+                <div>
+                  <p className="text-green-700 font-bold text-sm">Booking Confirmed</p>
+                  <p className="text-green-600 text-xs mt-0.5">PMS #{b.pms_confirmation}</p>
+                </div>
+              </div>
+            )}
+            {!isCancelled && (
+              <button onClick={handleCancel} disabled={cancelling} className={`w-full font-bold py-3 rounded-xl text-sm transition-all ${cancelStep ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-200' : 'bg-white hover:bg-red-50 text-red-500 border border-red-200'}`}>
+                {cancelling ? 'Cancelling...' : cancelStep ? '⚠ Confirm Cancel — This cannot be undone' : 'Cancel Booking'}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </ModalShell>
+  )
+}
 
-        {/* Scrollable body */}
+function InquiryDetailModal({ inq, password, onClose, onUpdate, onConvertToStay }: {
+  inq: Inquiry; password: string; onClose: () => void
+  onUpdate: (i: Inquiry) => void; onConvertToStay: (i: Inquiry) => void
+}) {
+  const [innerTab, setInnerTab] = useState<'details' | 'messages'>('details')
+  const [status, setStatus] = useState(inq.status)
+  const [notes, setNotes] = useState(inq.notes ?? '')
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [messages, setMessages] = useState<Message[]>([])
+  const [msgsLoaded, setMsgsLoaded] = useState(false)
+  const [reply, setReply] = useState('')
+  const [sending, setSending] = useState(false)
+  const inqRef = inq.id.slice(0, 8).toUpperCase()
+
+  const loadMessages = async () => {
+    try {
+      const data = await getInquiryMessages(inq.id, password)
+      setMessages(data)
+      setMsgsLoaded(true)
+    } catch {
+      setMsgsLoaded(true)
+    }
+  }
+
+  useEffect(() => {
+    if (innerTab === 'messages' && !msgsLoaded) loadMessages()
+  }, [innerTab])
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      const updated = await updateAdminInquiry(inq.id, { status, notes }, password)
+      onUpdate(updated)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch (err: any) {
+      alert(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleSend = async () => {
+    if (!reply.trim()) return
+    setSending(true)
+    try {
+      const msg = await sendInquiryMessage(inq.id, { sender: 'admin', sender_name: 'Stayvoo Team', message: reply.trim() }, password)
+      setMessages(m => [...m, msg])
+      setReply('')
+    } catch (err: any) {
+      alert(err.message)
+    } finally {
+      setSending(false)
+    }
+  }
+
+  const fmt = (ts: string | null) => {
+    if (!ts) return ''
+    return new Date(ts).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+  }
+
+  return (
+    <ModalShell onClose={onClose}>
+      <ModalHeader
+        onClose={onClose}
+        title={<>
+          <span className="text-white font-mono font-black text-lg tracking-wider">INQ-{inqRef}</span>
+          <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full capitalize ${INQUIRY_STATUS_COLORS[inq.status] ?? 'bg-slate-100 text-slate-600'}`}>{inq.status}</span>
+        </>}
+        sub={`${inq.guest_type} · ${inq.num_rooms} rooms · ${inq.length_of_stay}`}
+      />
+
+      {/* Inner tabs */}
+      <div className="flex gap-0 border-b border-slate-100 flex-shrink-0 px-5">
+        {(['details', 'messages'] as const).map(t => (
+          <button key={t} onClick={() => setInnerTab(t)} className={`py-3 px-4 text-sm font-bold capitalize border-b-2 transition-colors ${innerTab === t ? 'border-orange-500 text-orange-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>
+            {t}
+          </button>
+        ))}
+      </div>
+
+      <div className="overflow-y-auto flex-1">
+        {innerTab === 'details' && (
+          <div className="px-5 py-5 flex flex-col gap-5">
+            <div>
+              <SectionHeader title="Contact Info" />
+              <div className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-3">
+                <InfoRow label="Full Name">{inq.first_name} {inq.last_name}</InfoRow>
+                <InfoRow label="Email"><a href={`mailto:${inq.email}`} className="text-orange-500 hover:underline break-all">{inq.email}</a></InfoRow>
+                <InfoRow label="Phone"><a href={`tel:${inq.phone}`} className="text-orange-500 hover:underline">{inq.phone}</a></InfoRow>
+                <InfoRow label="Guest Type">{inq.guest_type}</InfoRow>
+                {inq.source && <InfoRow label="Source">{inq.source}</InfoRow>}
+              </div>
+            </div>
+            <div>
+              <SectionHeader title="Inquiry Details" />
+              <div className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-3">
+                <InfoRow label="Hotel Pref">{inq.hotel_preference || 'No preference'}</InfoRow>
+                <InfoRow label="Rooms">{inq.num_rooms}</InfoRow>
+                <InfoRow label="Duration">{inq.length_of_stay}</InfoRow>
+                <InfoRow label="Start Date">{inq.start_date}</InfoRow>
+                {inq.special_requirements && (
+                  <div className="border-t border-slate-200 pt-3 mt-1">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Special Requirements</p>
+                    <p className="text-[#1e3a5f] text-sm leading-relaxed">{inq.special_requirements}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div>
+              <SectionHeader title="Update" />
+              <div className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block mb-1.5">Status</label>
+                  <select value={status} onChange={e => setStatus(e.target.value)} className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400">
+                    {INQUIRY_STATUSES.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block mb-1.5">Notes</label>
+                  <textarea rows={3} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Internal notes..." className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                </div>
+                <button onClick={handleSave} disabled={saving} className="w-full bg-[#1e3a5f] hover:bg-[#162d4a] disabled:opacity-60 text-white font-bold py-3 rounded-xl text-sm transition-colors">
+                  {saving ? 'Saving...' : saved ? '✅ Saved!' : 'Save Changes'}
+                </button>
+                {inq.status !== 'booked' && (
+                  <button onClick={() => onConvertToStay(inq)} className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl text-sm transition-colors">
+                    Convert to Stay →
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {innerTab === 'messages' && (
+          <div className="flex flex-col h-full" style={{ minHeight: 0 }}>
+            <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-3">
+              {!msgsLoaded ? (
+                <div className="text-center text-slate-400 text-sm py-8">Loading messages...</div>
+              ) : messages.length === 0 ? (
+                <div className="text-center text-slate-400 text-sm py-8">No messages yet. Send the first reply below.</div>
+              ) : (
+                messages.map(m => (
+                  <div key={m.id} className={`flex ${m.sender === 'admin' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${m.sender === 'admin' ? 'bg-orange-500 text-white rounded-br-sm' : 'bg-slate-100 text-[#1e3a5f] rounded-bl-sm'}`}>
+                      <p className="text-sm leading-relaxed">{m.message}</p>
+                      <p className={`text-xs mt-1.5 ${m.sender === 'admin' ? 'text-orange-100' : 'text-slate-400'}`}>{m.sender_name} · {fmt(m.created_at)}</p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="border-t border-slate-100 px-5 py-4 flex gap-2 flex-shrink-0">
+              <textarea
+                rows={2}
+                value={reply}
+                onChange={e => setReply(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
+                placeholder="Type a reply... (Enter to send)"
+                className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-orange-400"
+              />
+              <button onClick={handleSend} disabled={sending || !reply.trim()} className="bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white font-bold px-4 rounded-xl text-sm transition-colors">
+                {sending ? '...' : 'Send'}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </ModalShell>
+  )
+}
+
+function CreateStayModal({ inquiry, password, onClose, onCreated }: {
+  inquiry: Inquiry | null; password: string; onClose: () => void; onCreated: (s: Stay) => void
+}) {
+  const today = new Date().toISOString().split('T')[0]
+  const [form, setForm] = useState({
+    guest_first_name: inquiry?.first_name ?? '',
+    guest_last_name: inquiry?.last_name ?? '',
+    guest_email: inquiry?.email ?? '',
+    guest_phone: inquiry?.phone ?? '',
+    guest_type: inquiry?.guest_type ?? '',
+    hotel_name: inquiry?.hotel_preference ?? '',
+    room_number: '',
+    num_rooms: String(inquiry?.num_rooms ?? 1),
+    checkin_date: inquiry?.start_date ?? today,
+    expected_checkout: '',
+    nights_total: '',
+    rate_per_night: '120',
+    commission_rate: '10',
+    pms_confirmation: '',
+    notes: '',
+  })
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+    setForm(f => ({ ...f, [k]: e.target.value }))
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSaving(true)
+    setError(null)
+    try {
+      const nights = parseInt(form.nights_total)
+      const payload: Record<string, unknown> = {
+        guest_first_name: form.guest_first_name,
+        guest_last_name: form.guest_last_name,
+        guest_email: form.guest_email,
+        guest_phone: form.guest_phone,
+        guest_type: form.guest_type || null,
+        hotel_name: form.hotel_name,
+        room_number: form.room_number || null,
+        num_rooms: parseInt(form.num_rooms),
+        checkin_date: form.checkin_date,
+        expected_checkout: form.expected_checkout,
+        nights_total: nights,
+        rate_per_night: parseFloat(form.rate_per_night),
+        commission_rate: parseFloat(form.commission_rate),
+        pms_confirmation: form.pms_confirmation || null,
+        notes: form.notes || null,
+      }
+      if (inquiry?.id) payload.inquiry_id = inquiry.id
+      const stay = await createAdminStay(payload, password)
+      if (inquiry?.id && inquiry.status !== 'booked') {
+        await updateAdminInquiry(inquiry.id, { status: 'booked' }, password).catch(() => null)
+      }
+      onCreated(stay)
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const inp = "w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+
+  return (
+    <ModalShell onClose={onClose}>
+      <ModalHeader onClose={onClose}
+        title={<span className="text-white font-black text-lg">{inquiry ? 'Convert to Stay' : 'New Stay'}</span>}
+        sub={inquiry ? `INQ-${inquiry.id.slice(0, 8).toUpperCase()}` : undefined}
+      />
+      <form onSubmit={handleSubmit} className="overflow-y-auto flex-1 px-5 py-5 flex flex-col gap-4">
+        <div className="grid grid-cols-2 gap-3">
+          <div><label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">First Name *</label><input required value={form.guest_first_name} onChange={set('guest_first_name')} className={inp} /></div>
+          <div><label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Last Name *</label><input required value={form.guest_last_name} onChange={set('guest_last_name')} className={inp} /></div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div><label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Email *</label><input required type="email" value={form.guest_email} onChange={set('guest_email')} className={inp} /></div>
+          <div><label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Phone *</label><input required value={form.guest_phone} onChange={set('guest_phone')} className={inp} /></div>
+        </div>
+        <div><label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Hotel Name *</label><input required value={form.hotel_name} onChange={set('hotel_name')} placeholder="e.g. Wyndham Brookfield" className={inp} /></div>
+        <div className="grid grid-cols-2 gap-3">
+          <div><label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Room #</label><input value={form.room_number} onChange={set('room_number')} placeholder="e.g. 204" className={inp} /></div>
+          <div><label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1"># of Rooms *</label><input required type="number" min="1" value={form.num_rooms} onChange={set('num_rooms')} className={inp} /></div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div><label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Check-in *</label><input required type="date" value={form.checkin_date} onChange={set('checkin_date')} className={inp} /></div>
+          <div><label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Expected Checkout *</label><input required type="date" value={form.expected_checkout} onChange={set('expected_checkout')} min={form.checkin_date} className={inp} /></div>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          <div><label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Nights *</label><input required type="number" min="1" value={form.nights_total} onChange={set('nights_total')} className={inp} /></div>
+          <div><label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Rate/Night *</label><input required type="number" min="1" step="0.01" value={form.rate_per_night} onChange={set('rate_per_night')} className={inp} /></div>
+          <div><label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Commission %</label><input type="number" min="0" max="100" step="0.1" value={form.commission_rate} onChange={set('commission_rate')} className={inp} /></div>
+        </div>
+        <div><label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">PMS Confirmation</label><input value={form.pms_confirmation} onChange={set('pms_confirmation')} placeholder="Optional" className={inp} /></div>
+        <div><label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Notes</label><textarea rows={2} value={form.notes} onChange={set('notes')} className={`${inp} resize-none`} /></div>
+        {error && <p className="text-red-500 text-sm bg-red-50 rounded-xl px-3 py-2 border border-red-200">{error}</p>}
+        <button type="submit" disabled={saving} className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-black py-3.5 rounded-xl text-sm transition-colors">
+          {saving ? 'Creating...' : 'Create Stay'}
+        </button>
+      </form>
+    </ModalShell>
+  )
+}
+
+function StayDetailModal({ stay: s, password, onClose, onUpdate }: {
+  stay: Stay; password: string; onClose: () => void; onUpdate: (s: Stay) => void
+}) {
+  const [showExtend, setShowExtend] = useState(false)
+  const [showCheckout, setShowCheckout] = useState(false)
+  const [pms, setPms] = useState(s.pms_confirmation ?? '')
+  const [roomNum, setRoomNum] = useState(s.room_number ?? '')
+  const [commPaid, setCommPaid] = useState(s.commission_paid)
+  const [amtPaid, setAmtPaid] = useState(String(s.amount_paid))
+  const [notes, setNotes] = useState(s.notes ?? '')
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      const updated = await updateAdminStay(s.id, {
+        pms_confirmation: pms || null,
+        room_number: roomNum || null,
+        commission_paid: commPaid,
+        amount_paid: parseFloat(amtPaid) || 0,
+        notes: notes || null,
+      }, password)
+      onUpdate(updated)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch (err: any) {
+      alert(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleExtend = async (newCheckout: string, extNotes: string) => {
+    const checkin = new Date(s.checkin_date)
+    const checkout = new Date(newCheckout)
+    const nights = Math.round((checkout.getTime() - checkin.getTime()) / 86400000)
+    try {
+      const updated = await updateAdminStay(s.id, {
+        expected_checkout: newCheckout,
+        nights_total: nights,
+        status: 'extended',
+        notes: extNotes ? ((s.notes ?? '') + `\n[Extended to ${newCheckout}]: ${extNotes}`).trim() : s.notes,
+      }, password)
+      onUpdate(updated)
+      setShowExtend(false)
+    } catch (err: any) {
+      alert(err.message)
+    }
+  }
+
+  const handleCheckout = async (actualDate: string, coNotes: string) => {
+    try {
+      const updated = await checkoutAdminStay(s.id, { actual_checkout: actualDate, notes: coNotes || undefined }, password)
+      onUpdate(updated)
+      setShowCheckout(false)
+    } catch (err: any) {
+      alert(err.message)
+    }
+  }
+
+  const isActive = s.status === 'active' || s.status === 'extended'
+
+  return (
+    <>
+      <ModalShell onClose={onClose}>
+        <ModalHeader
+          onClose={onClose}
+          title={<>
+            <span className="text-white font-black text-lg">{s.guest_first_name} {s.guest_last_name}</span>
+            <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full capitalize ${STAY_STATUS_COLORS[s.status] ?? 'bg-slate-100 text-slate-600'}`}>{s.status}</span>
+          </>}
+          sub={`${s.hotel_name} · ${s.checkin_date} → ${s.expected_checkout}`}
+        />
         <div className="overflow-y-auto flex-1 px-5 py-5 flex flex-col gap-5">
-
-          {/* Guest Info */}
           <div>
             <SectionHeader title="Guest Info" />
             <div className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-3">
-              <InfoRow label="Full Name">
-                {b.guest?.first_name} {b.guest?.last_name}
+              <InfoRow label="Email"><a href={`mailto:${s.guest_email}`} className="text-orange-500 hover:underline break-all">{s.guest_email}</a></InfoRow>
+              <InfoRow label="Phone"><a href={`tel:${s.guest_phone}`} className="text-orange-500 hover:underline">{s.guest_phone}</a></InfoRow>
+              {s.guest_type && <InfoRow label="Type">{s.guest_type}</InfoRow>}
+              <InfoRow label="Rooms">{s.num_rooms}</InfoRow>
+            </div>
+          </div>
+          <div>
+            <SectionHeader title="Stay Info" />
+            <div className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-3">
+              <InfoRow label="Hotel">{s.hotel_name}</InfoRow>
+              <InfoRow label="Check-in">{s.checkin_date}</InfoRow>
+              <InfoRow label="Exp. Checkout">{s.expected_checkout}</InfoRow>
+              {s.actual_checkout && <InfoRow label="Actual Checkout"><span className="text-green-600 font-bold">{s.actual_checkout}</span></InfoRow>}
+              <InfoRow label="Nights">{s.nights_total}</InfoRow>
+              <InfoRow label="Rate">${s.rate_per_night}/night</InfoRow>
+            </div>
+          </div>
+          <div>
+            <SectionHeader title="Billing" />
+            <div className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-3">
+              <InfoRow label="Total">${s.total_amount.toFixed(2)}</InfoRow>
+              <InfoRow label="Amount Paid">
+                <input
+                  type="number" min="0" step="0.01"
+                  value={amtPaid}
+                  onChange={e => setAmtPaid(e.target.value)}
+                  className="border border-slate-200 rounded-lg px-2 py-1 text-sm w-24 text-right focus:outline-none focus:ring-1 focus:ring-orange-400"
+                />
               </InfoRow>
-              <InfoRow label="Email">
-                <a href={`mailto:${b.guest?.email}`} className="text-orange-500 hover:underline break-all">
-                  {b.guest?.email}
-                </a>
-              </InfoRow>
-              <InfoRow label="Phone">
-                <a href={`tel:${b.guest?.phone}`} className="text-orange-500 hover:underline">
-                  {b.guest?.phone}
-                </a>
-              </InfoRow>
-              <InfoRow label="Guest Type">
-                {GUEST_TYPE_LABELS[b.guest_type] ?? b.guest_type}
-              </InfoRow>
-              {b.guest?.company && (
-                <InfoRow label="Company">{b.guest.company}</InfoRow>
-              )}
-              {b.special_requests && (
-                <div className="border-t border-slate-200 pt-3 mt-1">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Special Requests</p>
-                  <p className="text-[#1e3a5f] text-sm leading-relaxed">{b.special_requests}</p>
+              <InfoRow label="Balance Due"><span className={s.balance_due > 0 ? 'text-orange-600 font-black' : 'text-green-600'}>${s.balance_due.toFixed(2)}</span></InfoRow>
+              <div className="border-t border-slate-200 pt-3 mt-1">
+                <InfoRow label="Commission">${s.commission_amount.toFixed(2)} ({s.commission_rate}%)</InfoRow>
+                <div className="flex justify-between items-center mt-2">
+                  <span className="text-slate-400 text-sm w-28">Comm. Paid</span>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={commPaid} onChange={e => setCommPaid(e.target.checked)} className="w-4 h-4 accent-orange-500" />
+                    <span className={`text-sm font-semibold ${commPaid ? 'text-green-600' : 'text-slate-400'}`}>{commPaid ? '✅ Paid' : 'Pending'}</span>
+                  </label>
                 </div>
-              )}
-            </div>
-          </div>
-
-          {/* Booking Info */}
-          <div>
-            <SectionHeader title="Booking Info" />
-            <div className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-3">
-              <InfoRow label="Reference">
-                <span className="font-mono font-bold text-orange-600">{b.booking_ref}</span>
-              </InfoRow>
-              <InfoRow label="Hotel">{b.hotel?.name ?? '—'}</InfoRow>
-              <InfoRow label="Room">{b.room?.name ?? '—'}</InfoRow>
-              <InfoRow label="Check-in">{b.checkin_date}</InfoRow>
-              <InfoRow label="Check-out">{b.checkout_date}</InfoRow>
-              <InfoRow label="Nights">{b.nights} {b.nights === 1 ? 'night' : 'nights'}</InfoRow>
-              <InfoRow label="Est. Arrival">{b.estimated_arrival ?? '—'}</InfoRow>
-              <div className="border-t border-slate-200 pt-3 mt-1 flex justify-between items-center">
-                <span className="text-slate-400 text-sm">${b.room_rate}/night × {b.nights}</span>
-                <span className="text-[#1e3a5f] font-black text-xl">${(b.total_amount ?? 0).toFixed(0)}</span>
               </div>
             </div>
           </div>
-
-          {/* Payment Info */}
           <div>
-            <SectionHeader title="Payment Info" />
+            <SectionHeader title="Edit Details" />
             <div className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-3">
-              {b.card_last4 ? (
-                <>
-                  <InfoRow label="Card">
-                    {CARD_BRAND_ICONS[b.card_brand ?? ''] ?? `💳 ${b.card_brand ?? 'Card'}`}
-                  </InfoRow>
-                  <InfoRow label="Last 4">
-                    <span className="font-mono tracking-widest">•••• {b.card_last4}</span>
-                  </InfoRow>
-                  <InfoRow label="Status">
-                    <span className="text-green-600">✅ Guarantee on file</span>
-                  </InfoRow>
-                </>
-              ) : (
-                <p className="text-slate-400 text-sm">No card on file — guest pays at check-in.</p>
-              )}
+              <div><label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">PMS Confirmation</label>
+                <input value={pms} onChange={e => setPms(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white" /></div>
+              <div><label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Room Number</label>
+                <input value={roomNum} onChange={e => setRoomNum(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white" /></div>
+              <div><label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Notes</label>
+                <textarea rows={2} value={notes} onChange={e => setNotes(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-orange-400" /></div>
+              <button onClick={handleSave} disabled={saving} className="w-full bg-[#1e3a5f] hover:bg-[#162d4a] disabled:opacity-60 text-white font-bold py-3 rounded-xl text-sm transition-colors">
+                {saving ? 'Saving...' : saved ? '✅ Saved!' : 'Save Changes'}
+              </button>
             </div>
           </div>
-
-          {/* PMS Info — only when confirmed */}
-          {isConfirmed && b.pms_confirmation && (
-            <div>
-              <SectionHeader title="PMS Confirmation" />
-              <div className="bg-green-50 border border-green-200 rounded-2xl p-4">
-                <p className="text-green-600 text-xs font-bold uppercase tracking-wider mb-1.5">Confirmation Number</p>
-                <p className="font-mono font-black text-green-700 text-2xl">{b.pms_confirmation}</p>
-              </div>
+          {isActive && (
+            <div className="flex gap-2">
+              <button onClick={() => setShowExtend(true)} className="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold py-3 rounded-xl text-sm border border-blue-200 transition-colors">
+                Extend Stay
+              </button>
+              <button onClick={() => setShowCheckout(true)} className="flex-1 bg-green-50 hover:bg-green-100 text-green-700 font-bold py-3 rounded-xl text-sm border border-green-200 transition-colors">
+                Checkout
+              </button>
             </div>
           )}
+        </div>
+      </ModalShell>
 
-          {/* Actions */}
-          <div>
-            <SectionHeader title="Actions" />
-            <div className="flex flex-col gap-3">
+      {showExtend && <ExtendStayModal stay={s} onClose={() => setShowExtend(false)} onConfirm={handleExtend} />}
+      {showCheckout && <CheckoutStayModal onClose={() => setShowCheckout(false)} onConfirm={handleCheckout} />}
+    </>
+  )
+}
 
-              {isPending && (
-                <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 flex flex-col gap-3">
-                  <div>
-                    <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block mb-1.5">
-                      PMS Confirmation Number *
-                    </label>
-                    <input
-                      autoFocus
-                      placeholder="e.g. WYN-789456"
-                      value={pmsInput}
-                      onChange={e => { setPmsInput(e.target.value); setConfirmError('') }}
-                      onKeyDown={e => { if (e.key === 'Enter' && pmsInput.trim()) handleConfirm() }}
-                      className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
-                    />
-                  </div>
-                  {confirmError && (
-                    <p className="text-red-500 text-sm bg-red-50 rounded-xl px-3 py-2 border border-red-200">{confirmError}</p>
-                  )}
-                  <button
-                    onClick={handleConfirm}
-                    disabled={confirming || !pmsInput.trim()}
-                    className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-black py-3.5 rounded-xl text-sm transition-colors"
-                  >
-                    {confirming ? 'Confirming...' : '✅ Confirm Booking'}
-                  </button>
-                </div>
-              )}
+function ExtendStayModal({ stay: s, onClose, onConfirm }: {
+  stay: Stay; onClose: () => void; onConfirm: (newCheckout: string, notes: string) => void
+}) {
+  const [newCheckout, setNewCheckout] = useState(s.expected_checkout)
+  const [notes, setNotes] = useState('')
+  const [saving, setSaving] = useState(false)
 
-              {isConfirmed && (
-                <div className="bg-green-50 border border-green-200 rounded-2xl p-4 flex items-center gap-3">
-                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-green-700 font-bold text-sm">Booking Confirmed</p>
-                    <p className="text-green-600 text-xs mt-0.5">PMS #{b.pms_confirmation}</p>
-                  </div>
-                </div>
-              )}
+  const checkin = new Date(s.checkin_date)
+  const newCo = new Date(newCheckout)
+  const newNights = Math.round((newCo.getTime() - checkin.getTime()) / 86400000)
 
-              {!isCancelled && (
-                <button
-                  onClick={handleCancel}
-                  disabled={cancelling}
-                  className={`w-full font-bold py-3 rounded-xl text-sm transition-all ${
-                    cancelStep
-                      ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-200'
-                      : 'bg-white hover:bg-red-50 text-red-500 border border-red-200'
-                  }`}
-                >
-                  {cancelling ? 'Cancelling...' : cancelStep ? '⚠ Confirm Cancel — This cannot be undone' : 'Cancel Booking'}
-                </button>
-              )}
-            </div>
-          </div>
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 flex flex-col gap-4">
+        <h3 className="text-[#1e3a5f] font-black text-lg">Extend Stay</h3>
+        <p className="text-slate-500 text-sm">Current checkout: <strong>{s.expected_checkout}</strong> ({s.nights_total} nights)</p>
+        <div>
+          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">New Checkout Date</label>
+          <input type="date" value={newCheckout} min={s.expected_checkout} onChange={e => setNewCheckout(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+          {newNights > 0 && <p className="text-orange-600 text-xs mt-1 font-semibold">{newNights} total nights</p>}
+        </div>
+        <div>
+          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Notes</label>
+          <textarea rows={2} value={notes} onChange={e => setNotes(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-orange-400" />
+        </div>
+        <div className="flex gap-2">
+          <button onClick={onClose} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2.5 rounded-xl text-sm">Cancel</button>
+          <button
+            onClick={async () => { setSaving(true); await onConfirm(newCheckout, notes); setSaving(false) }}
+            disabled={saving || newCheckout <= s.expected_checkout}
+            className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl text-sm transition-colors"
+          >
+            {saving ? '...' : 'Confirm Extend'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function CheckoutStayModal({ onClose, onConfirm }: {
+  onClose: () => void; onConfirm: (actualDate: string, notes: string) => void
+}) {
+  const today = new Date().toISOString().split('T')[0]
+  const [actualDate, setActualDate] = useState(today)
+  const [notes, setNotes] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 flex flex-col gap-4">
+        <h3 className="text-[#1e3a5f] font-black text-lg">Confirm Checkout</h3>
+        <div>
+          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Actual Checkout Date</label>
+          <input type="date" value={actualDate} onChange={e => setActualDate(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+        </div>
+        <div>
+          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Notes</label>
+          <textarea rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Any checkout notes..." className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-orange-400" />
+        </div>
+        <div className="flex gap-2">
+          <button onClick={onClose} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2.5 rounded-xl text-sm">Cancel</button>
+          <button
+            onClick={async () => { setSaving(true); await onConfirm(actualDate, notes); setSaving(false) }}
+            disabled={saving}
+            className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl text-sm transition-colors"
+          >
+            {saving ? '...' : 'Confirm Checkout'}
+          </button>
         </div>
       </div>
     </div>
@@ -446,63 +784,95 @@ export default function Admin() {
   const [loginError, setLoginError] = useState('')
   const [bookings, setBookings] = useState<Booking[]>([])
   const [inquiries, setInquiries] = useState<Inquiry[]>([])
+  const [stays, setStays] = useState<Stay[]>([])
   const [loading, setLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState<'bookings' | 'inquiries'>('bookings')
+  const [staysLoaded, setStaysLoaded] = useState(false)
+  const [activeTab, setActiveTab] = useState<'bookings' | 'inquiries' | 'stays' | 'billing'>('bookings')
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
   const [selectedInquiry, setSelectedInquiry] = useState<Inquiry | null>(null)
+  const [selectedStay, setSelectedStay] = useState<Stay | null>(null)
+  const [createStayInquiry, setCreateStayInquiry] = useState<Inquiry | null>(null)
+  const [showCreateStay, setShowCreateStay] = useState(false)
+  const [billingMonth, setBillingMonth] = useState(() => {
+    const n = new Date()
+    return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`
+  })
+  const [billingData, setBillingData] = useState<BillingData | null>(null)
+  const [billingLoading, setBillingLoading] = useState(false)
   const [emailTestResult, setEmailTestResult] = useState<string | null>(null)
   const [testingEmail, setTestingEmail] = useState(false)
+  const [invoicingSending, setInvoicingSending] = useState<string | null>(null)
 
   const today = new Date().toISOString().split('T')[0]
 
-  const loadBookings = async (pw: string) => {
+  const loadData = async (pw: string) => {
     setLoading(true)
     try {
-      const [bData, iData] = await Promise.all([
-        getAdminBookings(pw),
-        getAdminInquiries(pw),
-      ])
+      const [bData, iData] = await Promise.all([getAdminBookings(pw), getAdminInquiries(pw)])
       setBookings(bData)
       setInquiries(iData)
       return true
     } catch (err: any) {
       if (err.message === 'Invalid password') return false
-      setBookings([])
-      setInquiries([])
+      setBookings([]); setInquiries([])
       return true
     } finally {
       setLoading(false)
     }
   }
 
+  const loadStays = async (pw: string) => {
+    try {
+      const data = await getAdminStays(pw)
+      setStays(data)
+      setStaysLoaded(true)
+    } catch { setStaysLoaded(true) }
+  }
+
+  const loadBilling = async (month: string, pw: string) => {
+    setBillingLoading(true)
+    try {
+      const data = await getAdminBilling(month, pw)
+      setBillingData(data)
+    } catch { setBillingData(null) }
+    finally { setBillingLoading(false) }
+  }
+
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY)
     if (saved) {
-      loadBookings(saved).then(ok => {
-        if (ok) setPassword(saved)
+      loadData(saved).then(ok => {
+        if (ok) { setPassword(saved); loadStays(saved) }
         else localStorage.removeItem(STORAGE_KEY)
       })
     }
   }, [])
 
+  useEffect(() => {
+    if (activeTab === 'billing' && password && !billingData) loadBilling(billingMonth, password)
+  }, [activeTab])
+
+  useEffect(() => {
+    if (activeTab === 'billing' && password) loadBilling(billingMonth, password)
+  }, [billingMonth])
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoginError('')
-    const ok = await loadBookings(inputPw)
+    const ok = await loadData(inputPw)
     if (ok) {
       setPassword(inputPw)
       localStorage.setItem(STORAGE_KEY, inputPw)
+      loadStays(inputPw)
     } else {
       setLoginError('Incorrect password')
     }
   }
 
   const handleLogout = () => {
-    setPassword('')
-    setBookings([])
-    setInquiries([])
-    setSelectedBooking(null)
-    setSelectedInquiry(null)
+    setPassword(''); setBookings([]); setInquiries([]); setStays([])
+    setSelectedBooking(null); setSelectedInquiry(null); setSelectedStay(null)
+    setBillingData(null); setStaysLoaded(false)
     localStorage.removeItem(STORAGE_KEY)
   }
 
@@ -516,14 +886,31 @@ export default function Admin() {
     setSelectedBooking(updated)
   }
 
+  const handleStayUpdate = (updated: Stay) => {
+    setStays(ss => ss.map(s => s.id === updated.id ? updated : s))
+    setSelectedStay(updated)
+  }
+
+  const handleStayCreated = (stay: Stay) => {
+    setStays(ss => [stay, ...ss])
+    setShowCreateStay(false)
+    setCreateStayInquiry(null)
+    if (createStayInquiry) setSelectedInquiry(null)
+    setActiveTab('stays')
+  }
+
+  const handleConvertToStay = (inq: Inquiry) => {
+    setCreateStayInquiry(inq)
+    setSelectedInquiry(null)
+    setShowCreateStay(true)
+  }
+
   const handleTestEmail = async () => {
     setTestingEmail(true)
     setEmailTestResult(null)
     try {
       const result = await testAdminEmail(password)
-      setEmailTestResult(result.status === 'sent'
-        ? `✅ Sent to ${result.to}`
-        : `❌ ${result.issue}`)
+      setEmailTestResult(result.status === 'sent' ? `✅ Sent to ${result.to}` : `❌ ${result.issue}`)
     } catch (err: any) {
       setEmailTestResult(`❌ ${err.message}`)
     } finally {
@@ -531,20 +918,39 @@ export default function Admin() {
     }
   }
 
-  const total = bookings.length
-  const pending = bookings.filter(b => b.status === 'pending').length
-  const confirmed = bookings.filter(b => b.status === 'confirmed').length
-  const todayCount = bookings.filter(b => b.created_at?.startsWith(today)).length
-
-  const inqTotal = inquiries.length
-  const inqNew = inquiries.filter(i => i.status === 'new').length
-  const inqContacted = inquiries.filter(i => i.status === 'contacted').length
-  const inqBooked = inquiries.filter(i => i.status === 'booked').length
+  const handleSendInvoice = async (hotelName: string) => {
+    setInvoicingSending(hotelName)
+    try {
+      await sendHotelInvoice(hotelName, billingMonth, password)
+      alert(`Invoice sent for ${hotelName}`)
+    } catch (err: any) {
+      alert(`Invoice failed: ${err.message}`)
+    } finally {
+      setInvoicingSending(null)
+    }
+  }
 
   const formatDate = (s: string) => {
     if (!s) return '—'
     return new Date(s + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   }
+
+  // Stats
+  const total = bookings.length
+  const pending = bookings.filter(b => b.status === 'pending').length
+  const confirmed = bookings.filter(b => b.status === 'confirmed').length
+  const todayCount = bookings.filter(b => b.created_at?.startsWith(today)).length
+  const inqTotal = inquiries.length
+  const inqNew = inquiries.filter(i => i.status === 'new').length
+  const inqContacted = inquiries.filter(i => i.status === 'contacted').length
+  const inqBooked = inquiries.filter(i => i.status === 'booked').length
+  const activeStays = stays.filter(s => s.status === 'active' || s.status === 'extended')
+  const checkingSoon = activeStays.filter(s => {
+    const diff = (new Date(s.expected_checkout).getTime() - new Date(today).getTime()) / 86400000
+    return diff >= 0 && diff <= 7
+  })
+  const thisMonthRevenue = activeStays.reduce((sum, s) => sum + s.total_amount, 0)
+  const unpaidCommission = stays.reduce((sum, s) => sum + (s.commission_paid ? 0 : s.commission_amount), 0)
 
   if (!password) {
     return (
@@ -558,15 +964,7 @@ export default function Admin() {
             <form onSubmit={handleLogin} className="p-8 flex flex-col gap-4">
               <div>
                 <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block mb-1.5">Password</label>
-                <input
-                  type="password"
-                  required
-                  autoFocus
-                  value={inputPw}
-                  onChange={e => setInputPw(e.target.value)}
-                  placeholder="Enter admin password"
-                  className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
-                />
+                <input type="password" required autoFocus value={inputPw} onChange={e => setInputPw(e.target.value)} placeholder="Enter admin password" className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
               </div>
               {loginError && <p className="text-red-500 text-sm bg-red-50 rounded-lg px-3 py-2">{loginError}</p>}
               <button type="submit" disabled={loading} className="w-full bg-[#1e3a5f] hover:bg-[#162d4a] disabled:opacity-60 text-white font-bold py-3 rounded-xl text-sm transition-colors">
@@ -581,27 +979,18 @@ export default function Admin() {
 
   return (
     <div className="min-h-screen bg-slate-50 pt-16">
+      {/* Header */}
       <div className="bg-[#1e3a5f] px-4 py-5">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div>
             <h1 className="text-white font-black text-xl">Stayvoo Admin</h1>
-            <p className="text-white/50 text-xs mt-0.5">Click any booking to view details</p>
+            <p className="text-white/50 text-xs mt-0.5">Click any row to view details</p>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={handleTestEmail}
-              disabled={testingEmail}
-              title="Test email service"
-              className="bg-white/10 hover:bg-white/20 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors"
-            >
+            <button onClick={handleTestEmail} disabled={testingEmail} title="Test email service" className="bg-white/10 hover:bg-white/20 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors">
               {testingEmail ? '...' : '📧 Test Email'}
             </button>
-            <button
-              onClick={handleLogout}
-              className="bg-white/10 hover:bg-white/20 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
-            >
-              Logout
-            </button>
+            <button onClick={handleLogout} className="bg-white/10 hover:bg-white/20 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">Logout</button>
           </div>
         </div>
         {emailTestResult && (
@@ -613,212 +1002,340 @@ export default function Admin() {
 
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Tabs */}
-        <div className="flex gap-2 mb-6">
-          <button
-            onClick={() => setActiveTab('bookings')}
-            className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-colors ${activeTab === 'bookings' ? 'bg-[#1e3a5f] text-white' : 'bg-white text-slate-600 hover:bg-slate-50 shadow-sm'}`}
-          >
-            Bookings {total > 0 && <span className="ml-1.5 bg-orange-500 text-white text-xs px-1.5 py-0.5 rounded-full">{total}</span>}
-          </button>
-          <button
-            onClick={() => setActiveTab('inquiries')}
-            className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-colors ${activeTab === 'inquiries' ? 'bg-[#1e3a5f] text-white' : 'bg-white text-slate-600 hover:bg-slate-50 shadow-sm'}`}
-          >
-            Inquiries {inqNew > 0 && <span className="ml-1.5 bg-orange-500 text-white text-xs px-1.5 py-0.5 rounded-full">{inqNew} new</span>}
-          </button>
-          <button
-            onClick={() => loadBookings(password)}
-            disabled={loading}
-            className="ml-auto text-sm text-[#1e3a5f] hover:text-orange-500 font-semibold transition-colors"
-          >
+        <div className="flex gap-2 mb-6 flex-wrap">
+          {([
+            { key: 'bookings', label: 'Bookings', badge: total > 0 ? String(total) : undefined },
+            { key: 'inquiries', label: 'Inquiries', badge: inqNew > 0 ? `${inqNew} new` : undefined },
+            { key: 'stays', label: 'Active Stays', badge: activeStays.length > 0 ? String(activeStays.length) : undefined },
+            { key: 'billing', label: 'Billing', badge: undefined },
+          ] as const).map(t => (
+            <button
+              key={t.key}
+              onClick={() => setActiveTab(t.key)}
+              className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-colors ${activeTab === t.key ? 'bg-[#1e3a5f] text-white' : 'bg-white text-slate-600 hover:bg-slate-50 shadow-sm'}`}
+            >
+              {t.label}
+              {t.badge && <span className="ml-1.5 bg-orange-500 text-white text-xs px-1.5 py-0.5 rounded-full">{t.badge}</span>}
+            </button>
+          ))}
+          <button onClick={() => { loadData(password); loadStays(password) }} disabled={loading} className="ml-auto text-sm text-[#1e3a5f] hover:text-orange-500 font-semibold transition-colors">
             {loading ? 'Loading...' : '↻ Refresh'}
           </button>
         </div>
 
-        {/* Bookings tab */}
+        {/* ── BOOKINGS TAB ── */}
         {activeTab === 'bookings' && <>
-        {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-          {[
-            { label: 'Total', value: total, color: 'text-[#1e3a5f]' },
-            { label: 'Pending', value: pending, color: 'text-orange-500' },
-            { label: 'Confirmed', value: confirmed, color: 'text-green-600' },
-            { label: 'Today', value: todayCount, color: 'text-[#1e3a5f]' },
-          ].map(s => (
-            <div key={s.label} className="bg-white rounded-2xl shadow-sm p-5 text-center">
-              <div className={`font-black text-4xl ${s.color}`}>{s.value}</div>
-              <div className="text-slate-500 text-xs font-semibold uppercase tracking-wider mt-1">{s.label}</div>
-            </div>
-          ))}
-        </div>
-
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-[#1e3a5f] font-bold text-lg">Bookings</h2>
-        </div>
-
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-          {loading && bookings.length === 0 ? (
-            <div className="p-10 text-center text-slate-400">Loading bookings...</div>
-          ) : bookings.length === 0 ? (
-            <div className="p-10 text-center text-slate-400">No bookings yet.</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-100 text-slate-400 text-xs uppercase tracking-wider">
-                    <th className="text-left px-5 py-3 font-semibold">Ref</th>
-                    <th className="text-left px-5 py-3 font-semibold">Guest</th>
-                    <th className="text-left px-5 py-3 font-semibold hidden md:table-cell">Hotel</th>
-                    <th className="text-left px-5 py-3 font-semibold hidden lg:table-cell">Dates</th>
-                    <th className="text-left px-5 py-3 font-semibold hidden sm:table-cell">Type</th>
-                    <th className="text-left px-5 py-3 font-semibold">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {bookings.map(b => {
-                    const isPending = b.status === 'pending'
-                    const isConfirmed = b.status === 'confirmed'
-                    const borderColor = isPending
-                      ? 'border-orange-400 bg-orange-50'
-                      : isConfirmed
-                      ? 'border-green-400 bg-green-50'
-                      : 'border-transparent'
-                    return (
-                      <tr
-                        key={b.id}
-                        onClick={() => setSelectedBooking(b)}
-                        className={`border-b border-slate-100 last:border-0 border-l-4 cursor-pointer hover:bg-slate-50 transition-colors ${borderColor}`}
-                      >
-                        <td className="px-5 py-4">
-                          <span className="font-mono font-bold text-[#1e3a5f] text-xs">{b.booking_ref}</span>
-                        </td>
-                        <td className="px-5 py-4">
-                          <div className="font-semibold text-[#1e3a5f]">
-                            {b.guest?.first_name} {b.guest?.last_name}
-                          </div>
-                          <div className="text-slate-400 text-xs">{b.guest?.phone}</div>
-                        </td>
-                        <td className="px-5 py-4 hidden md:table-cell text-slate-600 max-w-[160px] truncate">
-                          {b.hotel?.name ?? '—'}
-                        </td>
-                        <td className="px-5 py-4 hidden lg:table-cell text-slate-600 whitespace-nowrap">
-                          {formatDate(b.checkin_date)} → {formatDate(b.checkout_date)}
-                          <div className="text-slate-400 text-xs">{b.nights} {b.nights === 1 ? 'night' : 'nights'}</div>
-                        </td>
-                        <td className="px-5 py-4 hidden sm:table-cell">
-                          <span className="bg-slate-100 text-slate-600 text-xs font-semibold px-2 py-1 rounded-full">
-                            {GUEST_TYPE_LABELS[b.guest_type] ?? b.guest_type}
-                          </span>
-                        </td>
-                        <td className="px-5 py-4">
-                          {isPending && (
-                            <span className="bg-orange-100 text-orange-700 text-xs font-bold px-2.5 py-1 rounded-full">Pending</span>
-                          )}
-                          {isConfirmed && (
-                            <div>
-                              <span className="bg-green-100 text-green-700 text-xs font-bold px-2.5 py-1 rounded-full">Confirmed</span>
-                              {b.pms_confirmation && (
-                                <div className="text-slate-400 text-xs mt-1 font-mono">{b.pms_confirmation}</div>
-                              )}
-                            </div>
-                          )}
-                          {!isPending && !isConfirmed && (
-                            <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2.5 py-1 rounded-full capitalize">{b.status}</span>
-                          )}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+            {[
+              { label: 'Total', value: total, color: 'text-[#1e3a5f]' },
+              { label: 'Pending', value: pending, color: 'text-orange-500' },
+              { label: 'Confirmed', value: confirmed, color: 'text-green-600' },
+              { label: 'Today', value: todayCount, color: 'text-[#1e3a5f]' },
+            ].map(s => (
+              <div key={s.label} className="bg-white rounded-2xl shadow-sm p-5 text-center">
+                <div className={`font-black text-4xl ${s.color}`}>{s.value}</div>
+                <div className="text-slate-500 text-xs font-semibold uppercase tracking-wider mt-1">{s.label}</div>
+              </div>
+            ))}
+          </div>
+          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+            {loading && bookings.length === 0 ? (
+              <div className="p-10 text-center text-slate-400">Loading...</div>
+            ) : bookings.length === 0 ? (
+              <div className="p-10 text-center text-slate-400">No bookings yet.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-100 text-slate-400 text-xs uppercase tracking-wider">
+                      <th className="text-left px-5 py-3 font-semibold">Ref</th>
+                      <th className="text-left px-5 py-3 font-semibold">Guest</th>
+                      <th className="text-left px-5 py-3 font-semibold hidden md:table-cell">Hotel</th>
+                      <th className="text-left px-5 py-3 font-semibold hidden lg:table-cell">Dates</th>
+                      <th className="text-left px-5 py-3 font-semibold hidden sm:table-cell">Type</th>
+                      <th className="text-left px-5 py-3 font-semibold">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {bookings.map(b => {
+                      const isPending = b.status === 'pending'
+                      const isConfirmed = b.status === 'confirmed'
+                      const borderColor = isPending ? 'border-orange-400 bg-orange-50' : isConfirmed ? 'border-green-400 bg-green-50' : 'border-transparent'
+                      return (
+                        <tr key={b.id} onClick={() => setSelectedBooking(b)} className={`border-b border-slate-100 last:border-0 border-l-4 cursor-pointer hover:bg-slate-50 transition-colors ${borderColor}`}>
+                          <td className="px-5 py-4"><span className="font-mono font-bold text-[#1e3a5f] text-xs">{b.booking_ref}</span></td>
+                          <td className="px-5 py-4">
+                            <div className="font-semibold text-[#1e3a5f]">{b.guest?.first_name} {b.guest?.last_name}</div>
+                            <div className="text-slate-400 text-xs">{b.guest?.phone}</div>
+                          </td>
+                          <td className="px-5 py-4 hidden md:table-cell text-slate-600 max-w-[160px] truncate">{b.hotel?.name ?? '—'}</td>
+                          <td className="px-5 py-4 hidden lg:table-cell text-slate-600 whitespace-nowrap">
+                            {formatDate(b.checkin_date)} → {formatDate(b.checkout_date)}
+                            <div className="text-slate-400 text-xs">{b.nights} nights</div>
+                          </td>
+                          <td className="px-5 py-4 hidden sm:table-cell">
+                            <span className="bg-slate-100 text-slate-600 text-xs font-semibold px-2 py-1 rounded-full">{GUEST_TYPE_LABELS[b.guest_type] ?? b.guest_type}</span>
+                          </td>
+                          <td className="px-5 py-4">
+                            {isPending && <span className="bg-orange-100 text-orange-700 text-xs font-bold px-2.5 py-1 rounded-full">Pending</span>}
+                            {isConfirmed && (
+                              <div>
+                                <span className="bg-green-100 text-green-700 text-xs font-bold px-2.5 py-1 rounded-full">Confirmed</span>
+                                {b.pms_confirmation && <div className="text-slate-400 text-xs mt-1 font-mono">{b.pms_confirmation}</div>}
+                              </div>
+                            )}
+                            {!isPending && !isConfirmed && <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2.5 py-1 rounded-full capitalize">{b.status}</span>}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </>}
 
-        {/* Inquiries tab */}
+        {/* ── INQUIRIES TAB ── */}
         {activeTab === 'inquiries' && <>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-          {[
-            { label: 'Total', value: inqTotal, color: 'text-[#1e3a5f]' },
-            { label: 'New', value: inqNew, color: 'text-orange-500' },
-            { label: 'Contacted', value: inqContacted, color: 'text-blue-600' },
-            { label: 'Booked', value: inqBooked, color: 'text-green-600' },
-          ].map(s => (
-            <div key={s.label} className="bg-white rounded-2xl shadow-sm p-5 text-center">
-              <div className={`font-black text-4xl ${s.color}`}>{s.value}</div>
-              <div className="text-slate-500 text-xs font-semibold uppercase tracking-wider mt-1">{s.label}</div>
-            </div>
-          ))}
-        </div>
-
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-          {inquiries.length === 0 ? (
-            <div className="p-10 text-center text-slate-400">No inquiries yet.</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-100 text-slate-400 text-xs uppercase tracking-wider">
-                    <th className="text-left px-5 py-3 font-semibold">Date</th>
-                    <th className="text-left px-5 py-3 font-semibold">Name</th>
-                    <th className="text-left px-5 py-3 font-semibold hidden sm:table-cell">Type</th>
-                    <th className="text-left px-5 py-3 font-semibold hidden md:table-cell">Rooms</th>
-                    <th className="text-left px-5 py-3 font-semibold hidden md:table-cell">Duration</th>
-                    <th className="text-left px-5 py-3 font-semibold">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {inquiries.map(inq => (
-                    <tr
-                      key={inq.id}
-                      onClick={() => setSelectedInquiry(inq)}
-                      className="border-b border-slate-100 last:border-0 cursor-pointer hover:bg-slate-50 transition-colors"
-                    >
-                      <td className="px-5 py-4 text-slate-500 text-xs whitespace-nowrap">
-                        {inq.created_at ? new Date(inq.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}
-                      </td>
-                      <td className="px-5 py-4">
-                        <div className="font-semibold text-[#1e3a5f]">{inq.first_name} {inq.last_name}</div>
-                        <div className="text-slate-400 text-xs">{inq.phone}</div>
-                      </td>
-                      <td className="px-5 py-4 hidden sm:table-cell">
-                        <span className="bg-slate-100 text-slate-600 text-xs font-semibold px-2 py-1 rounded-full">{inq.guest_type}</span>
-                      </td>
-                      <td className="px-5 py-4 hidden md:table-cell text-slate-600">{inq.num_rooms}</td>
-                      <td className="px-5 py-4 hidden md:table-cell text-slate-600 text-xs">{inq.length_of_stay}</td>
-                      <td className="px-5 py-4">
-                        <span className={`text-xs font-bold px-2.5 py-1 rounded-full capitalize ${INQUIRY_STATUS_COLORS[inq.status] ?? 'bg-slate-100 text-slate-600'}`}>
-                          {inq.status}
-                        </span>
-                      </td>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+            {[
+              { label: 'Total', value: inqTotal, color: 'text-[#1e3a5f]' },
+              { label: 'New', value: inqNew, color: 'text-orange-500' },
+              { label: 'Contacted', value: inqContacted, color: 'text-blue-600' },
+              { label: 'Booked', value: inqBooked, color: 'text-green-600' },
+            ].map(s => (
+              <div key={s.label} className="bg-white rounded-2xl shadow-sm p-5 text-center">
+                <div className={`font-black text-4xl ${s.color}`}>{s.value}</div>
+                <div className="text-slate-500 text-xs font-semibold uppercase tracking-wider mt-1">{s.label}</div>
+              </div>
+            ))}
+          </div>
+          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+            {inquiries.length === 0 ? (
+              <div className="p-10 text-center text-slate-400">No inquiries yet.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-100 text-slate-400 text-xs uppercase tracking-wider">
+                      <th className="text-left px-5 py-3 font-semibold">Date</th>
+                      <th className="text-left px-5 py-3 font-semibold">Name</th>
+                      <th className="text-left px-5 py-3 font-semibold hidden sm:table-cell">Type</th>
+                      <th className="text-left px-5 py-3 font-semibold hidden md:table-cell">Rooms</th>
+                      <th className="text-left px-5 py-3 font-semibold hidden md:table-cell">Duration</th>
+                      <th className="text-left px-5 py-3 font-semibold">Status</th>
                     </tr>
+                  </thead>
+                  <tbody>
+                    {inquiries.map(inq => (
+                      <tr key={inq.id} onClick={() => setSelectedInquiry(inq)} className="border-b border-slate-100 last:border-0 cursor-pointer hover:bg-slate-50 transition-colors">
+                        <td className="px-5 py-4 text-slate-500 text-xs whitespace-nowrap">
+                          {inq.created_at ? new Date(inq.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}
+                        </td>
+                        <td className="px-5 py-4">
+                          <div className="font-semibold text-[#1e3a5f]">{inq.first_name} {inq.last_name}</div>
+                          <div className="text-slate-400 text-xs">{inq.phone}</div>
+                        </td>
+                        <td className="px-5 py-4 hidden sm:table-cell">
+                          <span className="bg-slate-100 text-slate-600 text-xs font-semibold px-2 py-1 rounded-full">{inq.guest_type}</span>
+                        </td>
+                        <td className="px-5 py-4 hidden md:table-cell text-slate-600">{inq.num_rooms}</td>
+                        <td className="px-5 py-4 hidden md:table-cell text-slate-600 text-xs">{inq.length_of_stay}</td>
+                        <td className="px-5 py-4">
+                          <span className={`text-xs font-bold px-2.5 py-1 rounded-full capitalize ${INQUIRY_STATUS_COLORS[inq.status] ?? 'bg-slate-100 text-slate-600'}`}>{inq.status}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </>}
+
+        {/* ── ACTIVE STAYS TAB ── */}
+        {activeTab === 'stays' && <>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+            {[
+              { label: 'Active', value: activeStays.length, color: 'text-green-600' },
+              { label: 'Checking Out Soon', value: checkingSoon.length, color: 'text-orange-500' },
+              { label: 'Active Revenue', value: `$${thisMonthRevenue.toFixed(0)}`, color: 'text-[#1e3a5f]' },
+              { label: 'Unpaid Commission', value: `$${unpaidCommission.toFixed(0)}`, color: 'text-red-500' },
+            ].map(s => (
+              <div key={s.label} className="bg-white rounded-2xl shadow-sm p-5 text-center">
+                <div className={`font-black text-3xl ${s.color}`}>{s.value}</div>
+                <div className="text-slate-500 text-xs font-semibold uppercase tracking-wider mt-1">{s.label}</div>
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-[#1e3a5f] font-bold text-lg">All Stays</h2>
+            <button onClick={() => { setCreateStayInquiry(null); setShowCreateStay(true) }} className="bg-orange-500 hover:bg-orange-600 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors">
+              + New Stay
+            </button>
+          </div>
+          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+            {!staysLoaded ? (
+              <div className="p-10 text-center text-slate-400">Loading stays...</div>
+            ) : stays.length === 0 ? (
+              <div className="p-10 text-center text-slate-400">No stays yet. Create one above.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-100 text-slate-400 text-xs uppercase tracking-wider">
+                      <th className="text-left px-5 py-3 font-semibold">Guest</th>
+                      <th className="text-left px-5 py-3 font-semibold hidden sm:table-cell">Hotel</th>
+                      <th className="text-left px-5 py-3 font-semibold hidden md:table-cell">Check-in</th>
+                      <th className="text-left px-5 py-3 font-semibold">Checkout</th>
+                      <th className="text-left px-5 py-3 font-semibold hidden lg:table-cell">Total</th>
+                      <th className="text-left px-5 py-3 font-semibold">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stays.map(s => {
+                      const daysLeft = Math.round((new Date(s.expected_checkout).getTime() - new Date(today).getTime()) / 86400000)
+                      const isSoon = daysLeft >= 0 && daysLeft <= 7 && (s.status === 'active' || s.status === 'extended')
+                      const borderColor = s.status === 'active' ? 'border-green-400' : s.status === 'extended' ? 'border-blue-400' : s.status === 'checked_out' ? 'border-slate-300' : 'border-transparent'
+                      return (
+                        <tr key={s.id} onClick={() => setSelectedStay(s)} className={`border-b border-slate-100 last:border-0 border-l-4 cursor-pointer hover:bg-slate-50 transition-colors ${borderColor}`}>
+                          <td className="px-5 py-4">
+                            <div className="font-semibold text-[#1e3a5f]">{s.guest_first_name} {s.guest_last_name}</div>
+                            <div className="text-slate-400 text-xs">{s.guest_phone}</div>
+                          </td>
+                          <td className="px-5 py-4 hidden sm:table-cell text-slate-600 max-w-[140px] truncate">{s.hotel_name}</td>
+                          <td className="px-5 py-4 hidden md:table-cell text-slate-600 whitespace-nowrap">{formatDate(s.checkin_date)}</td>
+                          <td className="px-5 py-4 whitespace-nowrap">
+                            <div className="text-slate-600">{formatDate(s.expected_checkout)}</div>
+                            {isSoon && <div className="text-orange-500 text-xs font-bold">{daysLeft === 0 ? 'Today!' : `${daysLeft}d left`}</div>}
+                          </td>
+                          <td className="px-5 py-4 hidden lg:table-cell">
+                            <div className="text-[#1e3a5f] font-semibold">${s.total_amount.toFixed(0)}</div>
+                            <div className="text-slate-400 text-xs">comm: ${s.commission_amount.toFixed(0)} {s.commission_paid ? '✅' : ''}</div>
+                          </td>
+                          <td className="px-5 py-4">
+                            <span className={`text-xs font-bold px-2.5 py-1 rounded-full capitalize ${STAY_STATUS_COLORS[s.status] ?? 'bg-slate-100 text-slate-600'}`}>{s.status.replace('_', ' ')}</span>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </>}
+
+        {/* ── BILLING TAB ── */}
+        {activeTab === 'billing' && <>
+          <div className="flex items-center gap-4 mb-6">
+            <h2 className="text-[#1e3a5f] font-bold text-lg">Billing</h2>
+            <input
+              type="month"
+              value={billingMonth}
+              onChange={e => setBillingMonth(e.target.value)}
+              className="border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+            />
+          </div>
+          {billingLoading ? (
+            <div className="p-10 text-center text-slate-400">Loading billing data...</div>
+          ) : billingData ? (
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+                {[
+                  { label: 'Total Stays', value: billingData.total_stays, color: 'text-[#1e3a5f]' },
+                  { label: 'Total Revenue', value: `$${billingData.total_revenue.toFixed(0)}`, color: 'text-[#1e3a5f]' },
+                  { label: 'Commission Earned', value: `$${billingData.total_commission.toFixed(0)}`, color: 'text-green-600' },
+                  { label: 'Pending', value: `$${billingData.commission_pending.toFixed(0)}`, color: 'text-orange-500' },
+                ].map(s => (
+                  <div key={s.label} className="bg-white rounded-2xl shadow-sm p-5 text-center">
+                    <div className={`font-black text-3xl ${s.color}`}>{s.value}</div>
+                    <div className="text-slate-500 text-xs font-semibold uppercase tracking-wider mt-1">{s.label}</div>
+                  </div>
+                ))}
+              </div>
+              {billingData.by_hotel.length === 0 ? (
+                <div className="bg-white rounded-2xl shadow-sm p-10 text-center text-slate-400">No stays recorded for {billingMonth}.</div>
+              ) : (
+                <div className="flex flex-col gap-4">
+                  {billingData.by_hotel.map(h => (
+                    <div key={h.hotel_name} className="bg-white rounded-2xl shadow-sm overflow-hidden">
+                      <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                        <div>
+                          <h3 className="text-[#1e3a5f] font-black text-base">{h.hotel_name}</h3>
+                          <p className="text-slate-400 text-xs mt-0.5">{h.total_stays} stays · {h.active_stays} active · {h.completed_stays} completed</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="text-right">
+                            <div className="text-[#1e3a5f] font-black text-lg">${h.total_commission.toFixed(0)}</div>
+                            <div className="text-slate-400 text-xs">commission</div>
+                          </div>
+                          <button
+                            onClick={() => handleSendInvoice(h.hotel_name)}
+                            disabled={invoicingSending === h.hotel_name}
+                            className="bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white font-bold px-3 py-2 rounded-lg text-xs transition-colors"
+                          >
+                            {invoicingSending === h.hotel_name ? '...' : 'Send Invoice'}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-slate-50 text-slate-400 text-xs uppercase tracking-wider bg-slate-50">
+                              <th className="text-left px-5 py-2 font-semibold">Guest</th>
+                              <th className="text-left px-5 py-2 font-semibold hidden md:table-cell">Dates</th>
+                              <th className="text-right px-5 py-2 font-semibold">Revenue</th>
+                              <th className="text-right px-5 py-2 font-semibold">Commission</th>
+                              <th className="text-center px-5 py-2 font-semibold">Paid</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {h.stays.map(s => (
+                              <tr key={s.id} className="border-b border-slate-50 last:border-0">
+                                <td className="px-5 py-3">
+                                  <div className="font-semibold text-[#1e3a5f]">{s.guest_first_name} {s.guest_last_name}</div>
+                                  <div className="text-slate-400 text-xs">{s.nights_total} nights × ${s.rate_per_night}/night</div>
+                                </td>
+                                <td className="px-5 py-3 hidden md:table-cell text-slate-500 text-xs whitespace-nowrap">
+                                  {formatDate(s.checkin_date)} → {formatDate(s.expected_checkout)}
+                                </td>
+                                <td className="px-5 py-3 text-right text-[#1e3a5f] font-semibold">${s.total_amount.toFixed(2)}</td>
+                                <td className="px-5 py-3 text-right text-slate-600">${s.commission_amount.toFixed(2)}</td>
+                                <td className="px-5 py-3 text-center">
+                                  {s.commission_paid
+                                    ? <span className="text-green-600 text-xs font-bold">✅ Paid</span>
+                                    : <span className="text-orange-500 text-xs font-bold">Pending</span>}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
                   ))}
-                </tbody>
-              </table>
-            </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="p-10 text-center text-slate-400">Select a month to view billing data.</div>
           )}
-        </div>
         </>}
       </div>
 
+      {/* Modals */}
       {selectedBooking && (
-        <BookingDetailModal
-          booking={selectedBooking}
-          password={password}
-          onClose={() => setSelectedBooking(null)}
-          onUpdate={handleBookingUpdate}
-        />
+        <BookingDetailModal booking={selectedBooking} password={password} onClose={() => setSelectedBooking(null)} onUpdate={handleBookingUpdate} />
       )}
-
       {selectedInquiry && (
-        <InquiryDetailModal
-          inq={selectedInquiry}
-          password={password}
-          onClose={() => setSelectedInquiry(null)}
-          onUpdate={handleInquiryUpdate}
-        />
+        <InquiryDetailModal inq={selectedInquiry} password={password} onClose={() => setSelectedInquiry(null)} onUpdate={handleInquiryUpdate} onConvertToStay={handleConvertToStay} />
+      )}
+      {selectedStay && (
+        <StayDetailModal stay={selectedStay} password={password} onClose={() => setSelectedStay(null)} onUpdate={handleStayUpdate} />
+      )}
+      {showCreateStay && (
+        <CreateStayModal inquiry={createStayInquiry} password={password} onClose={() => { setShowCreateStay(false); setCreateStayInquiry(null) }} onCreated={handleStayCreated} />
       )}
     </div>
   )

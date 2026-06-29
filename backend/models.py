@@ -93,6 +93,51 @@ class Booking(Base):
     guest = relationship("Guest", back_populates="bookings")
 
 
+class Message(Base):
+    __tablename__ = "messages"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    inquiry_id = Column(UUID(as_uuid=True), ForeignKey("inquiries.id"), nullable=False)
+    sender = Column(String, nullable=False)
+    sender_name = Column(String, nullable=False)
+    message = Column(Text, nullable=False)
+    is_read = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class Stay(Base):
+    __tablename__ = "stays"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    inquiry_id = Column(UUID(as_uuid=True), ForeignKey("inquiries.id"), nullable=True)
+    guest_first_name = Column(String, nullable=False)
+    guest_last_name = Column(String, nullable=False)
+    guest_email = Column(String, nullable=False)
+    guest_phone = Column(String, nullable=False)
+    guest_type = Column(String, nullable=True)
+    hotel_id = Column(UUID(as_uuid=True), ForeignKey("hotels.id"), nullable=True)
+    hotel_name = Column(String, nullable=False)
+    room_number = Column(String, nullable=True)
+    num_rooms = Column(Integer, default=1)
+    checkin_date = Column(Date, nullable=False)
+    expected_checkout = Column(Date, nullable=False)
+    actual_checkout = Column(Date, nullable=True)
+    nights_total = Column(Integer, nullable=False)
+    rate_per_night = Column(Numeric(10, 2), nullable=False)
+    total_amount = Column(Numeric(10, 2), nullable=False)
+    amount_paid = Column(Numeric(10, 2), default=0)
+    balance_due = Column(Numeric(10, 2), nullable=False)
+    commission_rate = Column(Numeric(5, 2), default=10.00)
+    commission_amount = Column(Numeric(10, 2), nullable=False)
+    commission_paid = Column(Boolean, default=False)
+    commission_paid_date = Column(Date, nullable=True)
+    pms_confirmation = Column(String, nullable=True)
+    notes = Column(Text, nullable=True)
+    status = Column(String, default="active")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class Inquiry(Base):
     __tablename__ = "inquiries"
 

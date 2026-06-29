@@ -8,8 +8,8 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from database import get_db
-from models import Inquiry
-from services.email_service import send_inquiry_notification, send_inquiry_auto_reply
+from models import Inquiry, Message
+from services.email_service import send_inquiry_notification, send_inquiry_auto_reply, send_admin_message
 from services.notifications import notify_new_inquiry
 
 logger = logging.getLogger(__name__)
@@ -39,6 +39,24 @@ class InquiryIn(BaseModel):
 class InquiryUpdate(BaseModel):
     status: Optional[str] = None
     notes: Optional[str] = None
+
+
+class MessageIn(BaseModel):
+    sender: str
+    sender_name: str
+    message: str
+
+
+def msg_to_dict(m: Message) -> dict:
+    return {
+        "id": str(m.id),
+        "inquiry_id": str(m.inquiry_id),
+        "sender": m.sender,
+        "sender_name": m.sender_name,
+        "message": m.message,
+        "is_read": m.is_read,
+        "created_at": m.created_at.isoformat() if m.created_at else None,
+    }
 
 
 def inquiry_to_dict(inq: Inquiry) -> dict:
@@ -107,3 +125,47 @@ async def update_inquiry(
     await db.commit()
     await db.refresh(inq)
     return inquiry_to_dict(inq)
+
+
+@router.get("/admin/inquiries/{inquiry_id}/messages")
+async def list_messages(
+    inquiry_id: str,
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(_verify_admin),
+):
+    result = await db.execute(
+        select(Message)
+        .where(Message.inquiry_id == inquiry_id)
+        .order_by(Message.created_at.asc())
+    )
+    return [msg_to_dict(m) for m in result.scalars().all()]
+
+
+@router.post("/admin/inquiries/{inquiry_id}/messages")
+async def send_message(
+    inquiry_id: str,
+    payload: MessageIn,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(_verify_admin),
+):
+    result = await db.execute(select(Inquiry).where(Inquiry.id == inquiry_id))
+    inq = result.scalar_one_or_none()
+    if not inq:
+        raise HTTPException(status_code=404, detail="Inquiry not found")
+
+    msg = Message(
+        id=uuid.uuid4(),
+        inquiry_id=inquiry_id,
+        sender=payload.sender,
+        sender_name=payload.sender_name,
+        message=payload.message,
+    )
+    db.add(msg)
+    await db.commit()
+    await db.refresh(msg)
+
+    if payload.sender == "admin":
+        background_tasks.add_task(send_admin_message, inquiry_to_dict(inq), payload.message)
+
+    return msg_to_dict(msg)

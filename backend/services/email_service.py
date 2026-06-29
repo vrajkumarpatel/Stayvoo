@@ -312,6 +312,103 @@ async def send_inquiry_auto_reply(inq: dict) -> None:
     await _send(to_email, "We received your Stayvoo inquiry!", _base_html("Inquiry Received", body))
 
 
+async def send_admin_message(inq: dict, message_text: str) -> None:
+    to_email = inq.get("email")
+    if not to_email:
+        return
+    first = inq.get("first_name", "there")
+    inq_id = str(inq.get("id", ""))[:8].upper()
+    body = f"""
+    <h2 style="margin:0 0 6px;color:{BRAND_COLOR};font-size:20px;font-weight:900;">Hi {first}!</h2>
+    <p style="margin:0 0 20px;color:#475569;font-size:15px;line-height:1.6;">
+      You have a new message from Stayvoo regarding your inquiry <strong>INQ-{inq_id}</strong>.
+    </p>
+    <div style="background:#f8fafc;border-left:4px solid {ACCENT_COLOR};border-radius:0 10px 10px 0;padding:16px 20px;margin-bottom:24px;">
+      <p style="margin:0;color:#475569;font-size:15px;line-height:1.6;">{message_text}</p>
+    </div>
+    <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:16px;text-align:center;">
+      <p style="margin:0;color:#9a3412;font-size:14px;">
+        Reply to this email or call <strong><a href="tel:{SUPPORT_PHONE}" style="color:{BRAND_COLOR};">{SUPPORT_PHONE}</a></strong>
+      </p>
+      <p style="margin:6px 0 0;color:#9a3412;font-size:13px;">— Stayvoo Team</p>
+    </div>"""
+    await _send(to_email, f"Re: Your Stayvoo Inquiry INQ-{inq_id}", _base_html("Message from Stayvoo", body))
+
+
+async def send_stay_expiry_reminder(stay: dict) -> None:
+    to_email = stay.get("guest_email")
+    if not to_email:
+        return
+    first = stay.get("guest_first_name", "there")
+    hotel_name = stay.get("hotel_name", "your hotel")
+    checkout = stay.get("expected_checkout", "")
+    body = f"""
+    <h2 style="margin:0 0 6px;color:{BRAND_COLOR};font-size:20px;font-weight:900;">Your stay ends in 14 days, {first}</h2>
+    <p style="margin:0 0 20px;color:#475569;font-size:15px;line-height:1.6;">
+      Your extended stay at <strong>{hotel_name}</strong> is scheduled to end on <strong>{checkout}</strong>.
+      If you need to extend your stay, please contact us as soon as possible to check availability.
+    </p>
+    <div style="background:#fff7ed;border:2px solid #fed7aa;border-radius:10px;padding:16px 20px;margin-bottom:20px;">
+      <p style="margin:0;color:{ACCENT_COLOR};font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Expected Checkout</p>
+      <p style="margin:4px 0 0;color:{BRAND_COLOR};font-size:20px;font-weight:900;">{checkout}</p>
+    </div>
+    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:16px;">
+      <p style="margin:0;color:#1d4ed8;font-size:14px;font-weight:600;">Need to extend your stay?</p>
+      <p style="margin:6px 0 0;color:#1e40af;font-size:13px;">
+        Call or text us at <strong><a href="tel:{SUPPORT_PHONE}" style="color:{BRAND_COLOR};">{SUPPORT_PHONE}</a></strong>
+        or reply to this email — we'll check availability and lock in your extension.
+      </p>
+    </div>"""
+    await _send(to_email, f"Your stay at {hotel_name} ends in 14 days", _base_html("Stay Expiry Reminder", body))
+
+
+async def send_hotel_invoice_email(hotel_name: str, hotel_email: str, month: str, billing: dict) -> None:
+    stays_list = billing.get("stays", [])
+    total_revenue = float(billing.get("total_revenue", 0))
+    total_commission = float(billing.get("total_commission", 0))
+    rows = ""
+    for s in stays_list:
+        nights = s.get("nights_total", 0)
+        rate = float(s.get("rate_per_night", 0))
+        amount = float(s.get("total_amount", 0))
+        commission = float(s.get("commission_amount", 0))
+        rows += f"""
+        <tr>
+          <td style="padding:10px 12px;font-size:13px;color:#475569;border:1px solid #e2e8f0;">
+            {s.get("guest_first_name", "")} {s.get("guest_last_name", "")}<br>
+            <span style="color:#94a3b8;font-size:11px;">{s.get("checkin_date", "")} → {s.get("expected_checkout", "")} · {nights} nights × ${rate:.0f}/night</span>
+          </td>
+          <td style="padding:10px 12px;font-size:13px;color:#475569;border:1px solid #e2e8f0;text-align:right;">${amount:.2f}</td>
+          <td style="padding:10px 12px;font-size:13px;color:#475569;border:1px solid #e2e8f0;text-align:right;">${commission:.2f}</td>
+        </tr>"""
+    body = f"""
+    <h2 style="margin:0 0 6px;color:{BRAND_COLOR};font-size:20px;font-weight:900;">Stayvoo Commission Invoice</h2>
+    <p style="margin:0 0 20px;color:#475569;font-size:15px;">{hotel_name} · {month}</p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-bottom:20px;">
+      <tr style="background:#f8fafc;">
+        <td style="padding:10px 12px;font-size:13px;font-weight:700;color:{BRAND_COLOR};border:1px solid #e2e8f0;">Guest</td>
+        <td style="padding:10px 12px;font-size:13px;font-weight:700;color:{BRAND_COLOR};border:1px solid #e2e8f0;text-align:right;">Revenue</td>
+        <td style="padding:10px 12px;font-size:13px;font-weight:700;color:{BRAND_COLOR};border:1px solid #e2e8f0;text-align:right;">Commission (10%)</td>
+      </tr>
+      {rows}
+      <tr style="background:#f0fdf4;">
+        <td style="padding:12px;font-size:15px;font-weight:700;color:{BRAND_COLOR};border:1px solid #e2e8f0;">TOTAL</td>
+        <td style="padding:12px;font-size:15px;font-weight:900;color:{BRAND_COLOR};border:1px solid #e2e8f0;text-align:right;">${total_revenue:.2f}</td>
+        <td style="padding:12px;font-size:15px;font-weight:900;color:{BRAND_COLOR};border:1px solid #e2e8f0;text-align:right;">${total_commission:.2f}</td>
+      </tr>
+    </table>
+    <div style="background:#fff7ed;border:2px solid #fed7aa;border-radius:10px;padding:16px 20px;margin-bottom:16px;">
+      <p style="margin:0;color:#9a3412;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Commission Due</p>
+      <p style="margin:4px 0 0;color:{ACCENT_COLOR};font-size:28px;font-weight:900;">${total_commission:.2f}</p>
+      <p style="margin:4px 0 0;color:#9a3412;font-size:12px;">Please remit payment to Stayvoo within 30 days.</p>
+    </div>
+    <p style="margin:0;color:#94a3b8;font-size:12px;">
+      Questions? Email <a href="mailto:hello@stayvoo.com" style="color:{ACCENT_COLOR};">hello@stayvoo.com</a>
+      or call <strong>{SUPPORT_PHONE}</strong>.
+    </p>"""
+    await _send(hotel_email, f"Stayvoo Commission Invoice — {month}", _base_html("Monthly Invoice", body))
+
+
 async def send_invoice_email(b: dict) -> None:
     guest = b.get("guest") or {}
     to_email = guest.get("email")
