@@ -1,20 +1,46 @@
 import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
+
+interface BookingCard {
+  hotelName: string
+  hotelId: string
+  roomId: string
+  checkin: string
+  checkout: string
+  pricePerNight: number
+  guests: number
+}
 
 interface Message {
   role: 'user' | 'assistant'
   content: string
   ts: string
   initial?: boolean
+  bookingCard?: BookingCard
 }
 
 const GREETING: Message = {
   role: 'assistant',
-  content: "Hi! I'm Stayvo, your hotel assistant 🏨 Looking for a hotel in Waukesha or Brookfield? I can help you find the perfect room and exclusive rates. What brings you to the area?",
+  content: "Hi! I'm Stayvo, your hotel assistant 🏨 I can help you find the perfect hotel and guide you to book directly. What brings you to Waukesha or Brookfield?",
   ts: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
   initial: true,
 }
+
+const BOOKING_KEYWORDS = [
+  'complete your booking',
+  'click the link below',
+  'takes 2 minutes',
+  'you pay at hotel',
+  'no charge today',
+]
+
+const HOTEL_PATTERNS: Array<{ keywords: string[]; nameFragment: string }> = [
+  { keywords: ['choice', '110', 'breakfast', 'cheapest', 'pet'], nameFragment: 'choice' },
+  { keywords: ['brookfield', 'froedtert', 'aurora'], nameFragment: 'brookfield' },
+  { keywords: ['wyndham waukesha', 'waukesha wyndham', '115'], nameFragment: 'waukesha' },
+]
 
 function TypingDots() {
   return (
@@ -30,14 +56,59 @@ function TypingDots() {
   )
 }
 
+function BookingCardUI({ card }: { card: BookingCard }) {
+  const nights = Math.max(1, Math.round(
+    (new Date(card.checkout).getTime() - new Date(card.checkin).getTime()) / 86400000
+  ))
+  const params = new URLSearchParams({
+    hotel_id: card.hotelId,
+    room_id: card.roomId,
+    checkin: card.checkin,
+    checkout: card.checkout,
+  })
+  const formatDate = (d: string) =>
+    new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+
+  return (
+    <div className="bg-white border-2 border-orange-100 rounded-2xl p-4 shadow-sm w-full max-w-[90%] text-sm mt-1">
+      <div className="font-bold text-[#1e3a5f] text-sm mb-2">🏨 {card.hotelName}</div>
+      <div className="flex flex-col gap-1 text-xs text-slate-600 mb-3">
+        <div className="flex justify-between">
+          <span>Check-in</span>
+          <span className="font-semibold text-[#1e3a5f]">{formatDate(card.checkin)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span>Check-out</span>
+          <span className="font-semibold text-[#1e3a5f]">{formatDate(card.checkout)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span>{card.guests} Guest · ${card.pricePerNight}/night</span>
+          {nights > 1 && <span className="font-semibold">${card.pricePerNight * nights} total</span>}
+        </div>
+      </div>
+      <Link
+        to={`/book?${params}`}
+        className="flex items-center justify-center gap-1 bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs py-2.5 rounded-xl transition-colors w-full"
+      >
+        Complete Booking →
+      </Link>
+    </div>
+  )
+}
+
 export default function AIChat() {
   const [open, setOpen] = useState(false)
   const [hasUnread, setHasUnread] = useState(true)
   const [messages, setMessages] = useState<Message[]>([GREETING])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [hotels, setHotels] = useState<any[]>([])
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    fetch(`${BASE}/hotels`).then(r => r.json()).then(setHotels).catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (open) {
@@ -58,6 +129,52 @@ export default function AIChat() {
   const now = () =>
     new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
+  const today = new Date().toISOString().split('T')[0]
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0]
+
+  const detectBookingCard = (responseText: string, priorMessages: Message[]): BookingCard | null => {
+    if (hotels.length === 0) return null
+    const lower = responseText.toLowerCase()
+    const hasBookingIntent = BOOKING_KEYWORDS.some(kw => lower.includes(kw))
+    if (!hasBookingIntent) return null
+
+    // Scan recent conversation for hotel context
+    const contextText = [...priorMessages.slice(-8), { content: responseText }]
+      .map(m => m.content)
+      .join(' ')
+      .toLowerCase()
+
+    let matched = hotels[0]
+    for (const pattern of HOTEL_PATTERNS) {
+      if (pattern.keywords.some(kw => contextText.includes(kw))) {
+        const found = hotels.find(h => h.name.toLowerCase().includes(pattern.nameFragment))
+        if (found) { matched = found; break }
+      }
+    }
+
+    // Extract ISO dates from context
+    const dateMatches = contextText.match(/\d{4}-\d{2}-\d{2}/g) ?? []
+    const checkin = dateMatches[0] ?? today
+    const checkout = dateMatches[1] ?? tomorrow
+
+    // Extract guest count
+    const guestMatch = contextText.match(/(\d+)\s*(guest|person|people|room)/)
+    const guests = guestMatch ? Math.min(parseInt(guestMatch[1]), 10) : 1
+
+    const room = matched?.rooms?.[0]
+    if (!matched || !room) return null
+
+    return {
+      hotelName: matched.name,
+      hotelId: matched.id,
+      roomId: room.id,
+      checkin,
+      checkout,
+      pricePerNight: room.price_per_night,
+      guests,
+    }
+  }
+
   const send = async () => {
     const text = input.trim()
     if (!text || loading) return
@@ -74,8 +191,17 @@ export default function AIChat() {
         body: JSON.stringify({ message: text, conversation_history: buildHistory() }),
       })
       const data = await r.json()
-      const aiMsg: Message = { role: 'assistant', content: data.response, ts: now() }
-      setMessages(prev => [...prev, aiMsg])
+
+      setMessages(prev => {
+        const card = detectBookingCard(data.response, [...prev, userMsg])
+        const aiMsg: Message = {
+          role: 'assistant',
+          content: data.response,
+          ts: now(),
+          bookingCard: card ?? undefined,
+        }
+        return [...prev, aiMsg]
+      })
     } catch {
       setMessages(prev => [...prev, {
         role: 'assistant',
@@ -93,7 +219,6 @@ export default function AIChat() {
 
   return (
     <>
-      {/* Chat window */}
       {open && (
         <div
           className="fixed bottom-24 right-4 sm:right-6 z-50 flex flex-col shadow-2xl rounded-2xl overflow-hidden"
@@ -135,6 +260,7 @@ export default function AIChat() {
                 >
                   {m.content}
                 </div>
+                {m.bookingCard && <BookingCardUI card={m.bookingCard} />}
                 <span className="text-slate-400 text-[10px] px-1">{m.ts}</span>
               </div>
             ))}
@@ -186,12 +312,12 @@ export default function AIChat() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
           </svg>
         ) : (
-          <>
+          <span className="relative">
             💬
             {hasUnread && (
-              <span className="absolute top-1 right-1 w-3.5 h-3.5 bg-red-500 rounded-full border-2 border-white" />
+              <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white" />
             )}
-          </>
+          </span>
         )}
       </button>
     </>
