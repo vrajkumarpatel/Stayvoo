@@ -85,3 +85,25 @@ export async function confirmAdminBooking(id: string, pmsConfirmation: string, p
   }
   return r.json()
 }
+
+export async function cancelAdminBooking(id: string, password: string) {
+  const r = await fetch(`${BASE}/admin/bookings/${id}/cancel`, {
+    method: 'POST',
+    headers: { 'x-admin-password': password },
+  })
+  if (r.status === 401) throw new Error('Invalid password')
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}))
+    throw new Error(err.detail ?? 'Cancel failed')
+  }
+  return r.json()
+}
+
+export async function testAdminEmail(password: string) {
+  const r = await fetch(`${BASE}/admin/test-email`, {
+    method: 'POST',
+    headers: { 'x-admin-password': password },
+  })
+  if (r.status === 401) throw new Error('Invalid password')
+  return r.json()
+}

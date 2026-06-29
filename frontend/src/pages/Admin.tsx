@@ -1,7 +1,17 @@
 import { useEffect, useState } from 'react'
-import { getAdminBookings, confirmAdminBooking } from '../lib/api'
+import { getAdminBookings, confirmAdminBooking, cancelAdminBooking, testAdminEmail } from '../lib/api'
 
 const STORAGE_KEY = 'stayvoo_admin_pw'
+
+const GUEST_TYPE_LABELS: Record<string, string> = {
+  leisure: 'Leisure', business: 'Business', travel_nurse: 'Travel Nurse',
+  construction: 'Construction', corporate: 'Corporate', wedding: 'Wedding', sports_team: 'Sports',
+}
+
+const CARD_BRAND_ICONS: Record<string, string> = {
+  visa: '💳 Visa', mastercard: '💳 Mastercard', amex: '💳 Amex',
+  discover: '💳 Discover', jcb: '💳 JCB', unionpay: '💳 UnionPay',
+}
 
 interface Booking {
   id: string
@@ -11,12 +21,271 @@ interface Booking {
   checkin_date: string
   checkout_date: string
   nights: number
+  room_rate: number
   total_amount: number
-  created_at: string
-  guest: { first_name: string; last_name: string; email: string; phone: string } | null
-  hotel: { name: string } | null
-  room: { name: string } | null
+  special_requests: string | null
+  estimated_arrival: string | null
+  source: string
+  card_last4: string | null
+  card_brand: string | null
   pms_confirmation?: string | null
+  created_at: string
+  guest: {
+    first_name: string
+    last_name: string
+    email: string
+    phone: string
+    guest_type: string
+    company: string | null
+    total_stays: number
+  } | null
+  hotel: { id: string; name: string; brand: string; address: string } | null
+  room: { id: string; name: string; price_per_night: number } | null
+}
+
+function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex justify-between items-start gap-4">
+      <span className="text-slate-400 text-sm flex-shrink-0 w-28">{label}</span>
+      <span className="text-[#1e3a5f] font-semibold text-sm text-right flex-1">{children}</span>
+    </div>
+  )
+}
+
+function SectionHeader({ title }: { title: string }) {
+  return (
+    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2.5 mt-1">{title}</h3>
+  )
+}
+
+interface DetailModalProps {
+  booking: Booking
+  password: string
+  onClose: () => void
+  onUpdate: (b: Booking) => void
+}
+
+function BookingDetailModal({ booking: b, password, onClose, onUpdate }: DetailModalProps) {
+  const [pmsInput, setPmsInput] = useState('')
+  const [confirming, setConfirming] = useState(false)
+  const [confirmError, setConfirmError] = useState('')
+  const [cancelling, setCancelling] = useState(false)
+  const [cancelStep, setCancelStep] = useState(false)
+
+  const isPending = b.status === 'pending'
+  const isConfirmed = b.status === 'confirmed'
+  const isCancelled = b.status === 'cancelled'
+
+  const handleConfirm = async () => {
+    if (!pmsInput.trim()) return
+    setConfirming(true)
+    setConfirmError('')
+    try {
+      const updated = await confirmAdminBooking(b.id, pmsInput.trim(), password)
+      onUpdate(updated)
+    } catch (err: any) {
+      setConfirmError(err.message)
+    } finally {
+      setConfirming(false)
+    }
+  }
+
+  const handleCancel = async () => {
+    if (!cancelStep) { setCancelStep(true); return }
+    setCancelling(true)
+    try {
+      await cancelAdminBooking(b.id, password)
+      onClose()
+    } catch (err: any) {
+      alert(err.message)
+      setCancelling(false)
+      setCancelStep(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg max-h-[95vh] sm:max-h-[90vh] flex flex-col">
+
+        {/* Header */}
+        <div className="bg-[#1e3a5f] px-5 py-4 rounded-t-3xl sm:rounded-t-2xl flex-shrink-0">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <span className="text-white font-mono font-black text-lg tracking-wider leading-none">{b.booking_ref}</span>
+                {isPending && <span className="bg-orange-400/30 text-orange-200 text-xs font-bold px-2.5 py-0.5 rounded-full">Pending</span>}
+                {isConfirmed && <span className="bg-green-400/30 text-green-200 text-xs font-bold px-2.5 py-0.5 rounded-full">Confirmed</span>}
+                {isCancelled && <span className="bg-slate-400/30 text-slate-200 text-xs font-bold px-2.5 py-0.5 rounded-full">Cancelled</span>}
+              </div>
+              <p className="text-white/50 text-xs mt-1.5 leading-relaxed">
+                {b.hotel?.name} · {b.checkin_date} → {b.checkout_date}
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="text-white/50 hover:text-white w-8 h-8 flex items-center justify-center rounded-xl hover:bg-white/10 transition-colors flex-shrink-0"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Scrollable body */}
+        <div className="overflow-y-auto flex-1 px-5 py-5 flex flex-col gap-5">
+
+          {/* Guest Info */}
+          <div>
+            <SectionHeader title="Guest Info" />
+            <div className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-3">
+              <InfoRow label="Full Name">
+                {b.guest?.first_name} {b.guest?.last_name}
+              </InfoRow>
+              <InfoRow label="Email">
+                <a href={`mailto:${b.guest?.email}`} className="text-orange-500 hover:underline break-all">
+                  {b.guest?.email}
+                </a>
+              </InfoRow>
+              <InfoRow label="Phone">
+                <a href={`tel:${b.guest?.phone}`} className="text-orange-500 hover:underline">
+                  {b.guest?.phone}
+                </a>
+              </InfoRow>
+              <InfoRow label="Guest Type">
+                {GUEST_TYPE_LABELS[b.guest_type] ?? b.guest_type}
+              </InfoRow>
+              {b.guest?.company && (
+                <InfoRow label="Company">{b.guest.company}</InfoRow>
+              )}
+              {b.special_requests && (
+                <div className="border-t border-slate-200 pt-3 mt-1">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Special Requests</p>
+                  <p className="text-[#1e3a5f] text-sm leading-relaxed">{b.special_requests}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Booking Info */}
+          <div>
+            <SectionHeader title="Booking Info" />
+            <div className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-3">
+              <InfoRow label="Reference">
+                <span className="font-mono font-bold text-orange-600">{b.booking_ref}</span>
+              </InfoRow>
+              <InfoRow label="Hotel">{b.hotel?.name ?? '—'}</InfoRow>
+              <InfoRow label="Room">{b.room?.name ?? '—'}</InfoRow>
+              <InfoRow label="Check-in">{b.checkin_date}</InfoRow>
+              <InfoRow label="Check-out">{b.checkout_date}</InfoRow>
+              <InfoRow label="Nights">{b.nights} {b.nights === 1 ? 'night' : 'nights'}</InfoRow>
+              <InfoRow label="Est. Arrival">{b.estimated_arrival ?? '—'}</InfoRow>
+              <div className="border-t border-slate-200 pt-3 mt-1 flex justify-between items-center">
+                <span className="text-slate-400 text-sm">${b.room_rate}/night × {b.nights}</span>
+                <span className="text-[#1e3a5f] font-black text-xl">${(b.total_amount ?? 0).toFixed(0)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Payment Info */}
+          <div>
+            <SectionHeader title="Payment Info" />
+            <div className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-3">
+              {b.card_last4 ? (
+                <>
+                  <InfoRow label="Card">
+                    {CARD_BRAND_ICONS[b.card_brand ?? ''] ?? `💳 ${b.card_brand ?? 'Card'}`}
+                  </InfoRow>
+                  <InfoRow label="Last 4">
+                    <span className="font-mono tracking-widest">•••• {b.card_last4}</span>
+                  </InfoRow>
+                  <InfoRow label="Status">
+                    <span className="text-green-600">✅ Guarantee on file</span>
+                  </InfoRow>
+                </>
+              ) : (
+                <p className="text-slate-400 text-sm">No card on file — guest pays at check-in.</p>
+              )}
+            </div>
+          </div>
+
+          {/* PMS Info — only when confirmed */}
+          {isConfirmed && b.pms_confirmation && (
+            <div>
+              <SectionHeader title="PMS Confirmation" />
+              <div className="bg-green-50 border border-green-200 rounded-2xl p-4">
+                <p className="text-green-600 text-xs font-bold uppercase tracking-wider mb-1.5">Confirmation Number</p>
+                <p className="font-mono font-black text-green-700 text-2xl">{b.pms_confirmation}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Actions */}
+          <div>
+            <SectionHeader title="Actions" />
+            <div className="flex flex-col gap-3">
+
+              {isPending && (
+                <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 flex flex-col gap-3">
+                  <div>
+                    <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block mb-1.5">
+                      PMS Confirmation Number *
+                    </label>
+                    <input
+                      autoFocus
+                      placeholder="e.g. WYN-789456"
+                      value={pmsInput}
+                      onChange={e => { setPmsInput(e.target.value); setConfirmError('') }}
+                      onKeyDown={e => { if (e.key === 'Enter' && pmsInput.trim()) handleConfirm() }}
+                      className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+                    />
+                  </div>
+                  {confirmError && (
+                    <p className="text-red-500 text-sm bg-red-50 rounded-xl px-3 py-2 border border-red-200">{confirmError}</p>
+                  )}
+                  <button
+                    onClick={handleConfirm}
+                    disabled={confirming || !pmsInput.trim()}
+                    className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-black py-3.5 rounded-xl text-sm transition-colors"
+                  >
+                    {confirming ? 'Confirming...' : '✅ Confirm Booking'}
+                  </button>
+                </div>
+              )}
+
+              {isConfirmed && (
+                <div className="bg-green-50 border border-green-200 rounded-2xl p-4 flex items-center gap-3">
+                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-green-700 font-bold text-sm">Booking Confirmed</p>
+                    <p className="text-green-600 text-xs mt-0.5">PMS #{b.pms_confirmation}</p>
+                  </div>
+                </div>
+              )}
+
+              {!isCancelled && (
+                <button
+                  onClick={handleCancel}
+                  disabled={cancelling}
+                  className={`w-full font-bold py-3 rounded-xl text-sm transition-all ${
+                    cancelStep
+                      ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-200'
+                      : 'bg-white hover:bg-red-50 text-red-500 border border-red-200'
+                  }`}
+                >
+                  {cancelling ? 'Cancelling...' : cancelStep ? '⚠ Confirm Cancel — This cannot be undone' : 'Cancel Booking'}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export default function Admin() {
@@ -25,11 +294,9 @@ export default function Admin() {
   const [loginError, setLoginError] = useState('')
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(false)
-
-  const [confirmTarget, setConfirmTarget] = useState<Booking | null>(null)
-  const [pmsInput, setPmsInput] = useState('')
-  const [confirming, setConfirming] = useState(false)
-  const [confirmError, setConfirmError] = useState('')
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
+  const [emailTestResult, setEmailTestResult] = useState<string | null>(null)
+  const [testingEmail, setTestingEmail] = useState(false)
 
   const today = new Date().toISOString().split('T')[0]
 
@@ -48,7 +315,6 @@ export default function Admin() {
     }
   }
 
-  // Auto-login from localStorage
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY)
     if (saved) {
@@ -74,22 +340,27 @@ export default function Admin() {
   const handleLogout = () => {
     setPassword('')
     setBookings([])
+    setSelectedBooking(null)
     localStorage.removeItem(STORAGE_KEY)
   }
 
-  const handleConfirm = async () => {
-    if (!confirmTarget || !pmsInput.trim()) return
-    setConfirming(true)
-    setConfirmError('')
+  const handleBookingUpdate = (updated: Booking) => {
+    setBookings(bs => bs.map(b => b.id === updated.id ? updated : b))
+    setSelectedBooking(updated)
+  }
+
+  const handleTestEmail = async () => {
+    setTestingEmail(true)
+    setEmailTestResult(null)
     try {
-      const updated = await confirmAdminBooking(confirmTarget.id, pmsInput.trim(), password)
-      setBookings(bs => bs.map(b => b.id === updated.id ? updated : b))
-      setConfirmTarget(null)
-      setPmsInput('')
+      const result = await testAdminEmail(password)
+      setEmailTestResult(result.status === 'sent'
+        ? `✅ Sent to ${result.to}`
+        : `❌ ${result.issue}`)
     } catch (err: any) {
-      setConfirmError(err.message)
+      setEmailTestResult(`❌ ${err.message}`)
     } finally {
-      setConfirming(false)
+      setTestingEmail(false)
     }
   }
 
@@ -101,11 +372,6 @@ export default function Admin() {
   const formatDate = (s: string) => {
     if (!s) return '—'
     return new Date(s + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-  }
-
-  const GUEST_TYPE_LABELS: Record<string, string> = {
-    leisure: 'Leisure', business: 'Business', travel_nurse: 'Travel Nurse',
-    construction: 'Construction', corporate: 'Corporate', wedding: 'Wedding', sports_team: 'Sports',
   }
 
   if (!password) {
@@ -143,27 +409,41 @@ export default function Admin() {
 
   return (
     <div className="min-h-screen bg-slate-50 pt-16">
-      {/* Dashboard header */}
       <div className="bg-[#1e3a5f] px-4 py-5">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div>
-            <h1 className="text-white font-black text-xl">Stayvoo Admin Dashboard</h1>
-            <p className="text-white/50 text-xs mt-0.5">Manage bookings and confirmations</p>
+            <h1 className="text-white font-black text-xl">Stayvoo Admin</h1>
+            <p className="text-white/50 text-xs mt-0.5">Click any booking to view details</p>
           </div>
-          <button
-            onClick={handleLogout}
-            className="bg-white/10 hover:bg-white/20 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
-          >
-            Logout
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleTestEmail}
+              disabled={testingEmail}
+              title="Test email service"
+              className="bg-white/10 hover:bg-white/20 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors"
+            >
+              {testingEmail ? '...' : '📧 Test Email'}
+            </button>
+            <button
+              onClick={handleLogout}
+              className="bg-white/10 hover:bg-white/20 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+            >
+              Logout
+            </button>
+          </div>
         </div>
+        {emailTestResult && (
+          <div className="max-w-7xl mx-auto mt-2">
+            <p className="text-white/80 text-xs bg-white/10 rounded-lg px-3 py-2 font-mono">{emailTestResult}</p>
+          </div>
+        )}
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
           {[
-            { label: 'Total Bookings', value: total, color: 'text-[#1e3a5f]' },
+            { label: 'Total', value: total, color: 'text-[#1e3a5f]' },
             { label: 'Pending', value: pending, color: 'text-orange-500' },
             { label: 'Confirmed', value: confirmed, color: 'text-green-600' },
             { label: 'Today', value: todayCount, color: 'text-[#1e3a5f]' },
@@ -175,7 +455,6 @@ export default function Admin() {
           ))}
         </div>
 
-        {/* Reload button */}
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-[#1e3a5f] font-bold text-lg">Bookings</h2>
           <button
@@ -187,7 +466,6 @@ export default function Admin() {
           </button>
         </div>
 
-        {/* Table */}
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
           {loading && bookings.length === 0 ? (
             <div className="p-10 text-center text-slate-400">Loading bookings...</div>
@@ -204,20 +482,23 @@ export default function Admin() {
                     <th className="text-left px-5 py-3 font-semibold hidden lg:table-cell">Dates</th>
                     <th className="text-left px-5 py-3 font-semibold hidden sm:table-cell">Type</th>
                     <th className="text-left px-5 py-3 font-semibold">Status</th>
-                    <th className="text-left px-5 py-3 font-semibold">Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {bookings.map(b => {
                     const isPending = b.status === 'pending'
                     const isConfirmed = b.status === 'confirmed'
-                    const rowClass = isPending
-                      ? 'bg-orange-50 border-l-4 border-orange-400'
+                    const borderColor = isPending
+                      ? 'border-orange-400 bg-orange-50'
                       : isConfirmed
-                      ? 'bg-green-50 border-l-4 border-green-400'
-                      : 'border-l-4 border-transparent'
+                      ? 'border-green-400 bg-green-50'
+                      : 'border-transparent'
                     return (
-                      <tr key={b.id} className={`border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors ${rowClass}`}>
+                      <tr
+                        key={b.id}
+                        onClick={() => setSelectedBooking(b)}
+                        className={`border-b border-slate-100 last:border-0 border-l-4 cursor-pointer hover:bg-slate-50 transition-colors ${borderColor}`}
+                      >
                         <td className="px-5 py-4">
                           <span className="font-mono font-bold text-[#1e3a5f] text-xs">{b.booking_ref}</span>
                         </td>
@@ -255,16 +536,6 @@ export default function Admin() {
                             <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2.5 py-1 rounded-full capitalize">{b.status}</span>
                           )}
                         </td>
-                        <td className="px-5 py-4">
-                          {isPending && (
-                            <button
-                              onClick={() => { setConfirmTarget(b); setPmsInput(''); setConfirmError('') }}
-                              className="bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
-                            >
-                              Confirm
-                            </button>
-                          )}
-                        </td>
                       </tr>
                     )
                   })}
@@ -275,69 +546,13 @@ export default function Admin() {
         </div>
       </div>
 
-      {/* Confirm modal */}
-      {confirmTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-            <div className="bg-[#1e3a5f] px-6 py-5 rounded-t-2xl flex items-center justify-between">
-              <h2 className="text-white font-bold text-lg">Confirm Booking</h2>
-              <button onClick={() => setConfirmTarget(null)} className="text-white/60 hover:text-white text-xl">✕</button>
-            </div>
-            <div className="p-6">
-              {/* Booking summary */}
-              <div className="bg-slate-50 rounded-xl p-4 mb-5 text-sm flex flex-col gap-2">
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Guest</span>
-                  <span className="font-semibold text-[#1e3a5f]">{confirmTarget.guest?.first_name} {confirmTarget.guest?.last_name}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Hotel</span>
-                  <span className="font-semibold text-[#1e3a5f] text-right max-w-[55%]">{confirmTarget.hotel?.name}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Dates</span>
-                  <span className="font-semibold text-[#1e3a5f]">{confirmTarget.checkin_date} → {confirmTarget.checkout_date}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Reference</span>
-                  <span className="font-mono font-bold text-orange-600">{confirmTarget.booking_ref}</span>
-                </div>
-              </div>
-
-              <div className="mb-5">
-                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block mb-1.5">PMS Confirmation Number *</label>
-                <input
-                  autoFocus
-                  required
-                  placeholder="e.g. WYN-789456"
-                  value={pmsInput}
-                  onChange={e => setPmsInput(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-orange-400"
-                />
-              </div>
-
-              {confirmError && (
-                <p className="text-red-500 text-sm bg-red-50 rounded-lg px-3 py-2 mb-4">{confirmError}</p>
-              )}
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setConfirmTarget(null)}
-                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 rounded-xl text-sm transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleConfirm}
-                  disabled={confirming || !pmsInput.trim()}
-                  className="flex-1 bg-green-500 hover:bg-green-600 disabled:opacity-60 text-white font-bold py-3 rounded-xl text-sm transition-colors"
-                >
-                  {confirming ? 'Confirming...' : '✅ Confirm Booking'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+      {selectedBooking && (
+        <BookingDetailModal
+          booking={selectedBooking}
+          password={password}
+          onClose={() => setSelectedBooking(null)}
+          onUpdate={handleBookingUpdate}
+        />
       )}
     </div>
   )

@@ -1,11 +1,12 @@
 import os
+import logging
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Header
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from database import get_db
-from models import Booking
+from models import Booking, Room
 from routers.bookings import booking_to_dict
 from services.notifications import (
     notify_guest_confirmed,
@@ -19,6 +20,7 @@ from services.email_service import (
     send_invoice_email,
 )
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 
@@ -61,6 +63,16 @@ async def list_bookings(
     return [booking_to_dict(b) for b in result.scalars().all()]
 
 
+@router.get("/bookings/{booking_id}")
+async def get_booking(
+    booking_id: str,
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(_verify_admin),
+):
+    booking = await _load_booking(booking_id, db)
+    return booking_to_dict(booking)
+
+
 class ConfirmPayload(BaseModel):
     pms_confirmation: str
 
@@ -85,6 +97,29 @@ async def confirm_booking(
     background_tasks.add_task(send_booking_confirmed, booking_dict)
 
     return booking_dict
+
+
+@router.post("/bookings/{booking_id}/cancel")
+async def cancel_booking(
+    booking_id: str,
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(_verify_admin),
+):
+    booking = await _load_booking(booking_id, db)
+    if booking.status == "cancelled":
+        raise HTTPException(status_code=400, detail="Booking is already cancelled")
+
+    # Re-credit availability
+    room_result = await db.execute(select(Room).where(Room.id == booking.room_id))
+    room = room_result.scalar_one_or_none()
+    if room:
+        room.available_count += 1
+
+    booking.status = "cancelled"
+    await db.commit()
+
+    booking = await _load_booking(booking_id, db)
+    return booking_to_dict(booking)
 
 
 @router.post("/bookings/{booking_id}/send-pre-arrival")
@@ -114,3 +149,40 @@ async def send_post_stay(
     background_tasks.add_task(send_post_stay_email, booking_dict)
     background_tasks.add_task(send_invoice_email, booking_dict)
     return {"sent": True, "booking_ref": booking_dict["booking_ref"]}
+
+
+@router.post("/test-email")
+async def test_email(_: None = Depends(_verify_admin)):
+    """Diagnostic endpoint — sends a test email and returns SMTP result directly."""
+    import aiosmtplib
+    from email.mime.text import MIMEText
+
+    smtp_user = os.getenv("GMAIL_USER")
+    smtp_pass = os.getenv("GMAIL_APP_PASSWORD")
+    smtp_host = os.getenv("SMTP_HOST", "mail.privateemail.com")
+    smtp_port = int(os.getenv("SMTP_PORT", "587"))
+
+    if not smtp_user:
+        return {"status": "error", "issue": "GMAIL_USER is not set in Railway environment variables"}
+    if not smtp_pass:
+        return {"status": "error", "issue": "GMAIL_APP_PASSWORD is not set in Railway environment variables"}
+
+    msg = MIMEText("Test email from Stayvoo — SMTP is working correctly!", "plain")
+    msg["Subject"] = "Stayvoo Email Test"
+    msg["From"] = f"Stayvoo <{smtp_user}>"
+    msg["To"] = "vp431030@gmail.com"
+
+    try:
+        await aiosmtplib.send(
+            msg,
+            hostname=smtp_host,
+            port=smtp_port,
+            username=smtp_user,
+            password=smtp_pass,
+            start_tls=True,
+        )
+        logger.info("Test email sent from %s via %s", smtp_user, smtp_host)
+        return {"status": "sent", "to": "vp431030@gmail.com", "from": smtp_user, "via": smtp_host}
+    except Exception as e:
+        logger.error("Test email failed: %s", e)
+        return {"status": "error", "issue": str(e), "smtp_user": smtp_user, "smtp_host": smtp_host}

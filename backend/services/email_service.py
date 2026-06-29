@@ -81,23 +81,25 @@ def _ref_badge(ref: str) -> str:
 
 
 async def _send(to_email: str, subject: str, html: str) -> None:
-    gmail_user = os.getenv("GMAIL_USER")
-    gmail_pass = os.getenv("GMAIL_APP_PASSWORD")
-    if not gmail_user or not gmail_pass:
-        logger.warning("Gmail credentials not set — skipping email to %s", to_email)
+    smtp_user = os.getenv("GMAIL_USER")
+    smtp_pass = os.getenv("GMAIL_APP_PASSWORD")
+    if not smtp_user or not smtp_pass:
+        logger.warning("SMTP credentials not set — skipping email to %s", to_email)
         return
+    smtp_host = os.getenv("SMTP_HOST", "mail.privateemail.com")
+    smtp_port = int(os.getenv("SMTP_PORT", "587"))
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
-    msg["From"] = f"{FROM_NAME} <{gmail_user}>"
+    msg["From"] = f"{FROM_NAME} <{smtp_user}>"
     msg["To"] = to_email
     msg.attach(MIMEText(html, "html"))
     try:
         await aiosmtplib.send(
             msg,
-            hostname="smtp.gmail.com",
-            port=587,
-            username=gmail_user,
-            password=gmail_pass,
+            hostname=smtp_host,
+            port=smtp_port,
+            username=smtp_user,
+            password=smtp_pass,
             start_tls=True,
         )
         logger.info("Email sent to %s: %s", to_email, subject)
