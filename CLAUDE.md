@@ -109,7 +109,7 @@ backend/
 ## Email Service
 - Provider: SendGrid HTTP API (`services/email_service.py`)
 - FROM: `hello@stayvoo.com` (Stayvoo) — domain authenticated, goes to inbox
-- 5 email functions: `send_booking_received`, `send_booking_confirmed`, `send_pre_arrival_email`, `send_post_stay_email`, `send_invoice_email`
+- 8 email functions: `send_booking_received`, `send_booking_confirmed`, `send_pre_arrival_email`, `send_post_stay_email`, `send_invoice_email`, `send_admin_message`, `send_stay_expiry_reminder`, `send_hotel_invoice_email`
 - Test endpoint: `GET /admin/test-email` (admin-only)
 - Env vars: `SENDGRID_API_KEY`, `SENDGRID_FROM_EMAIL=hello@stayvoo.com`
 
@@ -121,3 +121,4 @@ backend/
 - **Session 6 (2026-06-29):** Complete — AI chat widget (Stayvo): `backend/services/ai_chat.py` (Groq llama-3.3-70b-versatile, system prompt), `backend/routers/chat.py` (POST /chat), `frontend/src/components/AIChat.tsx` (fixed bottom-right widget, typing indicator, conversation history, unread dot).
 - **Session 7 (2026-06-29):** Complete — FULLY LIVE. SendGrid email service (5 HTML emails, domain authenticated, inbox delivery), Stripe SetupIntent card guarantee, APScheduler daily jobs (9AM pre-arrival, 10AM post-stay), admin booking detail modal (clickable rows, full guest/booking/payment/PMS/action sections, cancel + confirm flow), Railway backend, Vercel frontend, stayvoo.com live.
 - **Session 8 (2026-06-29):** Complete — Two-tier booking model. Inquiry model + `/inquiries` table in DB. `POST /inquiries` (saves, fires 3 notifications: internal email, guest auto-reply, SMS). `GET|PUT /admin/inquiries`. Admin panel Inquiries tab (stats, table, detail modal with editable status/notes). ExclusiveHotels page rewritten with inquiry form (9 fields). Home page: two-button hotel cards (Extended Stay Quote + Book Short Stay), two-path section. SearchResults: 7+ night extended stay banner. Navbar: dropdown under Exclusive Hotels. `/groups` page for weddings/sports teams.
+- **Session 9 (2026-06-29):** Complete — Messaging system + Stay tracking + Billing. `messages` table + `GET|POST /admin/inquiries/{id}/messages` (admin sends email to guest). `stays` table + full CRUD + checkout + billing endpoints. 3 new email functions. 5 APScheduler jobs total (14-day expiry reminder at 9:05AM, checkout-today alert at 9:10AM, monthly invoices 1st-of-month 8AM). Admin panel: 4 tabs (Bookings, Inquiries, Active Stays, Billing). InquiryDetailModal: Messages tab (chat thread, reply → emails guest) + Convert to Stay button. StayDetailModal with edit/billing/commission/extend/checkout. Billing tab: month selector, summary cards, hotel table, Send Invoice button.
