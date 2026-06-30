@@ -365,6 +365,179 @@ export async function updateAdminBooking(
   return r.json()
 }
 
+export async function createReservation(data: {
+  hotel_id: string
+  room_id: string
+  guest: {
+    first_name: string
+    last_name: string
+    email: string
+    phone: string
+    guest_type: string
+    company?: string
+    notes?: string
+  }
+  checkin_date: string
+  checkout_date: string
+  special_requests?: string
+  estimated_arrival?: string
+  source?: string
+  stripe_payment_method_id?: string
+}) {
+  const r = await fetch(`${BASE}/reservations`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ source: 'website', ...data }),
+  })
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}))
+    throw new Error(err.detail ?? 'Reservation failed')
+  }
+  return r.json()
+}
+
+export async function getReservation(ref: string) {
+  const r = await fetch(`${BASE}/reservations/${ref}`)
+  if (!r.ok) throw new Error('Reservation not found')
+  return r.json()
+}
+
+export async function getAdminReservations(
+  password: string,
+  params?: { date?: string; search?: string; status?: string }
+) {
+  const q = new URLSearchParams()
+  if (params?.date) q.set('date_str', params.date)
+  if (params?.search) q.set('search', params.search)
+  if (params?.status) q.set('status', params.status)
+  const r = await fetch(`${BASE}/admin/reservations?${q}`, {
+    headers: { 'x-admin-password': password },
+  })
+  if (r.status === 401) throw new Error('Invalid password')
+  if (!r.ok) throw new Error('Failed to fetch reservations')
+  return r.json()
+}
+
+export async function confirmAdminReservation(id: string, pmsConfirmation: string, password: string) {
+  const r = await fetch(`${BASE}/admin/reservations/${id}/confirm`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'x-admin-password': password },
+    body: JSON.stringify({ pms_confirmation: pmsConfirmation }),
+  })
+  if (r.status === 401) throw new Error('Invalid password')
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}))
+    throw new Error(err.detail ?? 'Confirm failed')
+  }
+  return r.json()
+}
+
+export async function cancelAdminReservation(id: string, password: string) {
+  const r = await fetch(`${BASE}/admin/reservations/${id}/cancel`, {
+    method: 'PUT',
+    headers: { 'x-admin-password': password },
+  })
+  if (r.status === 401) throw new Error('Invalid password')
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}))
+    throw new Error(err.detail ?? 'Cancel failed')
+  }
+  return r.json()
+}
+
+export async function checkinAdminReservation(id: string, password: string) {
+  const r = await fetch(`${BASE}/admin/reservations/${id}/checkin`, {
+    method: 'POST',
+    headers: { 'x-admin-password': password },
+  })
+  if (r.status === 401) throw new Error('Invalid password')
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}))
+    throw new Error(err.detail ?? 'Check-in failed')
+  }
+  return r.json()
+}
+
+export async function checkoutAdminReservation(id: string, password: string) {
+  const r = await fetch(`${BASE}/admin/reservations/${id}/checkout`, {
+    method: 'POST',
+    headers: { 'x-admin-password': password },
+  })
+  if (r.status === 401) throw new Error('Invalid password')
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}))
+    throw new Error(err.detail ?? 'Check-out failed')
+  }
+  return r.json()
+}
+
+export async function updateAdminReservation(
+  id: string,
+  data: {
+    checkin_date?: string
+    checkout_date?: string
+    rate_per_night?: number
+    special_requests?: string
+    guest_phone?: string
+    guest_email?: string
+  },
+  password: string
+) {
+  const r = await fetch(`${BASE}/admin/reservations/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'x-admin-password': password },
+    body: JSON.stringify(data),
+  })
+  if (r.status === 401) throw new Error('Invalid password')
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}))
+    throw new Error(err.detail ?? 'Update failed')
+  }
+  return r.json()
+}
+
+export async function getAdminReservationMessages(id: string, password: string) {
+  const r = await fetch(`${BASE}/admin/reservations/${id}/messages`, {
+    headers: { 'x-admin-password': password },
+  })
+  if (r.status === 401) throw new Error('Invalid password')
+  if (!r.ok) throw new Error('Failed to fetch messages')
+  return r.json()
+}
+
+export async function sendAdminReservationMessage(id: string, message: string, password: string) {
+  const r = await fetch(`${BASE}/admin/reservations/${id}/messages`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-admin-password': password },
+    body: JSON.stringify({ message }),
+  })
+  if (r.status === 401) throw new Error('Invalid password')
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}))
+    throw new Error((err as any).detail ?? 'Failed to send message')
+  }
+  return r.json()
+}
+
+export async function getMyStayReservationMessages(token: string, reservationId: string) {
+  const r = await fetch(`${BASE}/my-stay/${token}/reservations/${reservationId}/messages`)
+  if (!r.ok) throw new Error('Failed to fetch messages')
+  return r.json()
+}
+
+export async function sendMyStayReservationMessage(token: string, reservationId: string, message: string) {
+  const r = await fetch(`${BASE}/my-stay/${token}/reservations/${reservationId}/messages`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message }),
+  })
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}))
+    throw new Error((err as any).detail ?? 'Failed to send message')
+  }
+  return r.json()
+}
+
 export async function sendHotelInvoice(hotelName: string, month: string, password: string) {
   const r = await fetch(`${BASE}/admin/billing/invoice/${month}`, {
     method: 'POST',

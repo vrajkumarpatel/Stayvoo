@@ -4,12 +4,12 @@ from contextlib import asynccontextmanager
 from datetime import date, timedelta
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from database import setup_db, Base, get_db
-from models import Hotel, Room, Booking, Stay
-from routers import hotels, bookings, admin, search, chat, inquiries, stays, guests
+from models import Hotel, Room, Booking, Stay, CommissionRate, Reservation, ReservationMessage
+from routers import hotels, bookings, admin, search, chat, inquiries, stays, guests, reservations
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +76,117 @@ SEED_HOTELS = [
         ],
     },
 ]
+
+
+async def _seed_commission_rates(session):
+    result = await session.execute(
+        select(CommissionRate).where(CommissionRate.hotel_source == "exclusive")
+    )
+    if result.scalar_one_or_none():
+        return
+    session.add(CommissionRate(
+        hotel_source="exclusive",
+        default_rate=10.00,
+        notes="Negotiated direct rate with partner hotels",
+    ))
+    await session.commit()
+
+
+async def _migrate_bookings_to_reservations(session):
+    """One-time idempotent migration: copy bookings → reservations if reservations is empty."""
+    from sqlalchemy.orm import selectinload as _sil
+    from decimal import Decimal as _D
+
+    res_count = await session.execute(select(func.count()).select_from(Reservation))
+    if (res_count.scalar() or 0) > 0:
+        return
+
+    bk_count = await session.execute(select(func.count()).select_from(Booking))
+    if (bk_count.scalar() or 0) == 0:
+        return
+
+    cr_result = await session.execute(
+        select(CommissionRate).where(CommissionRate.hotel_source == "exclusive")
+    )
+    cr = cr_result.scalar_one_or_none()
+    commission_rate = _D(str(cr.default_rate)) if cr else _D("10.00")
+    commission_note = (cr.notes if cr else None) or "exclusive"
+
+    bookings_result = await session.execute(
+        select(Booking).options(
+            _sil(Booking.guest),
+            _sil(Booking.hotel),
+            _sil(Booking.room),
+        ).order_by(Booking.created_at)
+    )
+    all_bookings = bookings_result.scalars().all()
+
+    STATUS_MAP = {
+        "pending": "pending",
+        "confirmed": "confirmed",
+        "cancelled": "cancelled",
+        "completed": "checked_out",
+    }
+
+    migrated = 0
+    for b in all_bookings:
+        hotel_name = b.hotel.name if b.hotel else "Unknown Hotel"
+        hotel_address = b.hotel.address if b.hotel else None
+        room_name = b.room.name if b.room else "Standard Room"
+        guest_first = b.guest.first_name if b.guest else ""
+        guest_last = b.guest.last_name if b.guest else ""
+        guest_email = b.guest.email if b.guest else ""
+        guest_phone = b.guest.phone if b.guest else ""
+
+        total = _D(str(b.total_amount))
+        comm_amt = (total * commission_rate / _D("100")).quantize(_D("0.01"))
+
+        r = Reservation(
+            reservation_ref=b.booking_ref,
+            guest_id=b.guest_id,
+            hotel_source="exclusive",
+            hotel_source_id=b.hotel_id,
+            room_source_id=b.room_id,
+            hotel_name_snapshot=hotel_name,
+            hotel_address_snapshot=hotel_address,
+            room_type_snapshot=room_name,
+            guest_first_name=guest_first,
+            guest_last_name=guest_last,
+            guest_email=guest_email,
+            guest_phone=guest_phone,
+            guest_type=b.guest_type,
+            checkin_date=b.checkin_date,
+            checkout_date=b.checkout_date,
+            nights=b.nights,
+            rate_per_night=_D(str(b.room_rate)),
+            total_amount=total,
+            amount_paid=_D("0"),
+            balance_due=total,
+            commission_rate=commission_rate,
+            commission_amount=comm_amt,
+            commission_source_note=commission_note,
+            special_requests=b.special_requests,
+            estimated_arrival=b.estimated_arrival,
+            pms_confirmation=b.pms_confirmation,
+            tier=b.tier,
+            source=b.source,
+            stripe_payment_method_id=b.stripe_payment_method_id,
+            card_last4=b.card_last4,
+            card_brand=b.card_brand,
+            status=STATUS_MAP.get(b.status or "pending", "pending"),
+            created_at=b.created_at,
+            last_modified_at=b.last_modified_at,
+            last_modified_by=b.last_modified_by,
+        )
+        if b.status == "confirmed":
+            r.confirmed_at = b.created_at
+        if b.status == "cancelled":
+            r.cancelled_at = b.last_modified_at or b.created_at
+        session.add(r)
+        migrated += 1
+
+    await session.commit()
+    logger.info("Migration complete: %d bookings → reservations", migrated)
 
 
 async def seed_hotels(session):
@@ -258,6 +369,7 @@ async def _run_column_migrations(conn) -> None:
         "ALTER TABLE stays ADD COLUMN IF NOT EXISTS guest_id UUID REFERENCES guests(id)",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS last_modified_at TIMESTAMP",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS last_modified_by VARCHAR",
+        "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS reservation_id UUID REFERENCES reservations(id)",
     ]
     for stmt in stmts:
         try:
@@ -277,6 +389,8 @@ async def lifespan(app: FastAPI):
     from database import _AsyncSessionLocal
     async with _AsyncSessionLocal() as session:
         await seed_hotels(session)
+        await _seed_commission_rates(session)
+        await _migrate_bookings_to_reservations(session)
 
     scheduler = AsyncIOScheduler()
     scheduler.add_job(_daily_pre_arrival_job, "cron", hour=9, minute=0)
@@ -314,6 +428,7 @@ app.add_middleware(
 
 app.include_router(hotels.router)
 app.include_router(bookings.router)
+app.include_router(reservations.router)
 app.include_router(admin.router)
 app.include_router(search.router)
 app.include_router(chat.router)

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate, Link } from 'react-router-dom'
 import { loadStripe } from '@stripe/stripe-js'
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js'
-import { getHotel, createBooking, checkGuest } from '../lib/api'
+import { getHotel, createReservation, checkGuest } from '../lib/api'
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string | undefined
 const stripePromise = PUBLISHABLE_KEY ? loadStripe(PUBLISHABLE_KEY) : null
@@ -80,7 +80,7 @@ function BookingFormInner({ hotel, room, checkin, checkout, total }: InnerProps)
 
       if (stripePromise && stripe && elements) {
         // Step 1: Create setup intent
-        const siRes = await fetch(`${BASE}/bookings/setup-intent`, { method: 'POST' })
+        const siRes = await fetch(`${BASE}/reservations/setup-intent`, { method: 'POST' })
         const { client_secret } = await siRes.json()
 
         if (client_secret) {
@@ -105,8 +105,8 @@ function BookingFormInner({ hotel, room, checkin, checkout, total }: InnerProps)
         }
       }
 
-      // Step 3: Create booking
-      const b = await createBooking({
+      // Step 3: Create reservation
+      const res = await createReservation({
         hotel_id: hotel.id,
         room_id: room.id ?? room.room_id,
         guest: {
@@ -123,7 +123,7 @@ function BookingFormInner({ hotel, room, checkin, checkout, total }: InnerProps)
         source: 'website',
         stripe_payment_method_id: stripePaymentMethodId,
       })
-      navigate(`/confirmation?ref=${b.booking_ref}`)
+      navigate(`/confirmation?ref=${res.reservation_ref}`)
     } catch (err: any) {
       setFormError(err.message)
     } finally {

@@ -522,6 +522,133 @@ async def send_guest_message_alert(
     await _send(to_email, f"Guest Message — {guest_name}", _base_html("Guest Message", body))
 
 
+def _res_summary_rows(r: dict) -> str:
+    rows = [
+        ("Hotel", r.get("hotel_name_snapshot", "—")),
+        ("Room", r.get("room_type_snapshot", "—")),
+        ("Check-in", r.get("checkin_date", "—")),
+        ("Check-out", r.get("checkout_date", "—")),
+        ("Nights", str(r.get("nights", "—"))),
+        ("Total", f"${float(r.get('total_amount', 0)):.0f} (due at hotel)"),
+    ]
+    html = ""
+    for label, value in rows:
+        html += f"""
+        <tr>
+          <td style="padding:8px 0;color:#64748b;font-size:14px;border-bottom:1px solid #f1f5f9;width:40%;">{label}</td>
+          <td style="padding:8px 0;color:{BRAND_COLOR};font-size:14px;font-weight:600;border-bottom:1px solid #f1f5f9;">{value}</td>
+        </tr>"""
+    return html
+
+
+async def send_reservation_received(r: dict) -> None:
+    to_email = r.get("guest_email")
+    if not to_email:
+        return
+    first = r.get("guest_first_name", "there")
+    ref = r.get("reservation_ref", "")
+    portal_url = r.get("portal_url")
+    portal_block = ""
+    if portal_url:
+        portal_block = f"""
+    <div style="margin-top:16px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:16px;text-align:center;">
+      <p style="margin:0 0 10px;color:#1d4ed8;font-size:14px;font-weight:600;">Track your reservation anytime</p>
+      <a href="{portal_url}" style="display:inline-block;background:{BRAND_COLOR};color:#fff;font-size:14px;font-weight:700;text-decoration:none;padding:10px 24px;border-radius:8px;">
+        View My Reservations →
+      </a>
+    </div>"""
+    body = f"""
+    <h2 style="margin:0 0 6px;color:{BRAND_COLOR};font-size:20px;font-weight:900;">Hi {first}, we got your request!</h2>
+    <p style="margin:0 0 20px;color:#475569;font-size:15px;line-height:1.6;">
+      Your booking request has been received. We're personally contacting the hotel right now
+      to secure your exact room and any special requests.
+    </p>
+    {_ref_badge(ref)}
+    <h3 style="margin:24px 0 8px;color:{BRAND_COLOR};font-size:15px;">Booking Details</h3>
+    <table width="100%" cellpadding="0" cellspacing="0">
+      {_res_summary_rows(r)}
+    </table>
+    <div style="margin-top:24px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px;">
+      <p style="margin:0;color:#15803d;font-size:14px;font-weight:600;">
+        ✅ Expect a confirmation text within 30 minutes.
+      </p>
+      <p style="margin:6px 0 0;color:#166534;font-size:13px;">
+        Questions? Call or text us at <strong>{SUPPORT_PHONE}</strong>
+      </p>
+    </div>
+    {portal_block}"""
+    await _send(to_email, f"Booking Request Received — {ref}", _base_html("Booking Received", body))
+
+
+async def send_reservation_confirmed(r: dict) -> None:
+    to_email = r.get("guest_email")
+    if not to_email:
+        return
+    first = r.get("guest_first_name", "there")
+    ref = r.get("reservation_ref", "")
+    pms = r.get("pms_confirmation") or "—"
+    hotel_name = r.get("hotel_name_snapshot", "Hotel")
+    portal_url = r.get("portal_url")
+    portal_block = ""
+    if portal_url:
+        portal_block = f"""
+    <div style="margin-top:16px;text-align:center;">
+      <a href="{portal_url}" style="display:inline-block;background:{ACCENT_COLOR};color:#fff;font-size:14px;font-weight:700;text-decoration:none;padding:12px 28px;border-radius:8px;">
+        View My Reservations →
+      </a>
+      <p style="margin:6px 0 0;color:#94a3b8;font-size:11px;">Bookmark this link — it's your personal stay portal</p>
+    </div>"""
+    body = f"""
+    <h2 style="margin:0 0 6px;color:{BRAND_COLOR};font-size:20px;font-weight:900;">You're confirmed, {first}!</h2>
+    <p style="margin:0 0 20px;color:#475569;font-size:15px;line-height:1.6;">
+      Your reservation at <strong>{hotel_name}</strong> has been confirmed directly with the hotel.
+    </p>
+    {_ref_badge(ref)}
+    <div style="margin:16px 0;background:#fff7ed;border:2px solid #fed7aa;border-radius:10px;padding:14px 20px;">
+      <p style="margin:0;color:#9a3412;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Hotel Confirmation Number</p>
+      <p style="margin:4px 0 0;color:{ACCENT_COLOR};font-size:22px;font-weight:900;">{pms}</p>
+    </div>
+    <h3 style="margin:24px 0 8px;color:{BRAND_COLOR};font-size:15px;">Stay Details</h3>
+    <table width="100%" cellpadding="0" cellspacing="0">
+      {_res_summary_rows(r)}
+    </table>
+    <div style="margin-top:24px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:16px;">
+      <p style="margin:0;color:#1d4ed8;font-size:14px;font-weight:600;">🎁 Your welcome kit will be waiting at the front desk.</p>
+      <p style="margin:6px 0 0;color:#1e40af;font-size:13px;">
+        Need anything before you arrive? Call <strong>{SUPPORT_PHONE}</strong>
+      </p>
+    </div>
+    {portal_block}"""
+    await _send(to_email, f"Confirmed! Your Stay at {hotel_name} — {ref}", _base_html("Booking Confirmed", body))
+
+
+async def send_reservation_cancelled(r: dict) -> None:
+    to_email = r.get("guest_email")
+    if not to_email:
+        return
+    first = r.get("guest_first_name", "there")
+    ref = r.get("reservation_ref", "")
+    hotel_name = r.get("hotel_name_snapshot", "Hotel")
+    body = f"""
+    <h2 style="margin:0 0 6px;color:{BRAND_COLOR};font-size:20px;font-weight:900;">Reservation Cancelled — {ref}</h2>
+    <p style="margin:0 0 20px;color:#475569;font-size:15px;line-height:1.6;">
+      Hi {first}, your reservation at <strong>{hotel_name}</strong> has been cancelled.
+      No charge was made to your card.
+    </p>
+    <h3 style="margin:24px 0 8px;color:{BRAND_COLOR};font-size:15px;">Cancelled Reservation</h3>
+    <table width="100%" cellpadding="0" cellspacing="0">
+      {_res_summary_rows(r)}
+    </table>
+    <div style="margin-top:24px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px;">
+      <p style="margin:0;color:#15803d;font-size:14px;font-weight:600;">✅ No charge was made to your card.</p>
+      <p style="margin:6px 0 0;color:#166534;font-size:13px;">
+        Want to rebook? Visit <a href="https://stayvoo.com" style="color:{ACCENT_COLOR};">stayvoo.com</a>
+        or call <strong>{SUPPORT_PHONE}</strong>.
+      </p>
+    </div>"""
+    await _send(to_email, f"Reservation Cancelled — {ref} | {hotel_name}", _base_html("Reservation Cancelled", body))
+
+
 async def send_invoice_email(b: dict) -> None:
     guest = b.get("guest") or {}
     to_email = guest.get("email")

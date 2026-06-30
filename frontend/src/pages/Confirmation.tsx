@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
-import { getBooking } from '../lib/api'
+import { getReservation } from '../lib/api'
 
 const STEPS = [
   {
@@ -43,15 +43,15 @@ export default function Confirmation() {
   const [searchParams] = useSearchParams()
   const ref = searchParams.get('ref') ?? ''
 
-  const [booking, setBooking] = useState<any>(null)
+  const [reservation, setReservation] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!ref) { setError('No booking reference found.'); setLoading(false); return }
-    getBooking(ref)
-      .then(setBooking)
-      .catch(() => setError('Booking not found'))
+    getReservation(ref)
+      .then(setReservation)
+      .catch(() => setError('Reservation not found'))
       .finally(() => setLoading(false))
   }, [ref])
 
@@ -74,60 +74,61 @@ export default function Confirmation() {
     </div>
   )
 
+  const r = reservation
+
   return (
     <div className="min-h-screen bg-slate-50 pt-16">
       <div className="max-w-2xl mx-auto px-4 py-14">
 
-        {/* Checkmark + heading */}
         <div className="text-center mb-8">
           <Checkmark />
           <h1 className="text-[#1e3a5f] font-black text-3xl mt-6">Booking Received!</h1>
           <p className="text-slate-500 mt-2">We're on it. Expect a confirmation text within 30 minutes.</p>
         </div>
 
-        {/* Booking reference */}
         <div className="bg-white rounded-2xl shadow-sm p-6 mb-6 text-center">
           <p className="text-slate-500 text-sm mb-2">Your Reference Number</p>
           <div className="inline-block bg-orange-50 border-2 border-orange-200 rounded-2xl px-8 py-4">
-            <span className="text-orange-600 font-black text-3xl tracking-wide">{booking.booking_ref}</span>
+            <span className="text-orange-600 font-black text-3xl tracking-wide">{r.reservation_ref}</span>
           </div>
           <p className="text-slate-400 text-xs mt-3">Save this — you'll need it to check your booking status</p>
         </div>
 
-        {/* Summary card */}
-        {booking.hotel && booking.room && (
+        {r.hotel_name_snapshot && (
           <div className="bg-white rounded-2xl shadow-sm p-6 mb-8">
             <h2 className="text-[#1e3a5f] font-bold text-base mb-4">Booking Summary</h2>
             <div className="flex flex-col gap-3 text-sm">
               <div className="flex justify-between">
                 <span className="text-slate-500">Hotel</span>
-                <span className="text-[#1e3a5f] font-semibold text-right max-w-[55%]">{booking.hotel.name}</span>
+                <span className="text-[#1e3a5f] font-semibold text-right max-w-[55%]">{r.hotel_name_snapshot}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Room</span>
-                <span className="text-[#1e3a5f] font-semibold">{booking.room.name}</span>
-              </div>
+              {r.room_type_snapshot && (
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Room</span>
+                  <span className="text-[#1e3a5f] font-semibold">{r.room_type_snapshot}</span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-slate-500">Check-in</span>
-                <span className="text-[#1e3a5f] font-semibold">{booking.checkin_date}</span>
+                <span className="text-[#1e3a5f] font-semibold">{r.checkin_date}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Check-out</span>
-                <span className="text-[#1e3a5f] font-semibold">{booking.checkout_date}</span>
+                <span className="text-[#1e3a5f] font-semibold">{r.checkout_date}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Nights</span>
-                <span className="text-[#1e3a5f] font-semibold">{booking.nights}</span>
+                <span className="text-[#1e3a5f] font-semibold">{r.nights}</span>
               </div>
               <div className="border-t border-slate-100 pt-3 flex justify-between">
                 <span className="text-slate-500 font-semibold">Total (due at hotel)</span>
-                <span className="text-[#1e3a5f] font-black text-lg">${booking.total_amount?.toFixed(0)}</span>
+                <span className="text-[#1e3a5f] font-black text-lg">${r.total_amount?.toFixed(0)}</span>
               </div>
-              {booking.card_last4 && (
+              {r.card_last4 && (
                 <div className="flex justify-between text-sm pt-1">
                   <span className="text-slate-500">Card guarantee</span>
                   <span className="text-[#1e3a5f] font-semibold capitalize">
-                    {booking.card_brand} •••• {booking.card_last4}
+                    {r.card_brand} •••• {r.card_last4}
                   </span>
                 </div>
               )}
@@ -135,7 +136,6 @@ export default function Confirmation() {
           </div>
         )}
 
-        {/* Steps */}
         <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
           <h2 className="text-[#1e3a5f] font-black text-lg mb-6">What happens in the next 30 minutes</h2>
           <div className="flex flex-col gap-6">
@@ -150,19 +150,16 @@ export default function Confirmation() {
                     <h3 className={`font-bold text-sm ${step.done ? 'text-green-700' : 'text-[#1e3a5f]'}`}>
                       {step.title}
                     </h3>
-                    {step.done && (
-                      <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-0.5 rounded-full">Active</span>
-                    )}
-                    {!step.done && (
-                      <span className="bg-slate-100 text-slate-500 text-xs font-bold px-2 py-0.5 rounded-full">Pending</span>
-                    )}
+                    {step.done
+                      ? <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-0.5 rounded-full">Active</span>
+                      : <span className="bg-slate-100 text-slate-500 text-xs font-bold px-2 py-0.5 rounded-full">Pending</span>
+                    }
                   </div>
                   <p className="text-slate-500 text-sm mt-1 leading-relaxed">{step.desc}</p>
                 </div>
               </div>
             ))}
           </div>
-
           <div className="mt-6 bg-slate-50 rounded-xl p-4 text-xs text-slate-500 leading-relaxed">
             <strong className="text-slate-700">Why 30 minutes?</strong> We personally negotiate with our partner hotels to
             ensure you get the best available room, any upgrades, and your special requests fulfilled. This personal touch
@@ -170,11 +167,10 @@ export default function Confirmation() {
           </div>
         </div>
 
-        {/* Buttons */}
         <div className="flex flex-col sm:flex-row gap-3">
           <a
-            href={`data:text/calendar;charset=utf-8,BEGIN:VCALENDAR%0AVERSION:2.0%0ABEGIN:VEVENT%0ASUMMARY:Hotel Stay - ${encodeURIComponent(booking.hotel?.name ?? '')}%0ADTSTART:${(booking.checkin_date ?? '').replace(/-/g, '')}%0ADTEND:${(booking.checkout_date ?? '').replace(/-/g, '')}%0ADESCRIPTION:Booking Ref: ${booking.booking_ref}%0AEND:VEVENT%0AEND:VCALENDAR`}
-            download={`stayvoo-${booking.booking_ref}.ics`}
+            href={`data:text/calendar;charset=utf-8,BEGIN:VCALENDAR%0AVERSION:2.0%0ABEGIN:VEVENT%0ASUMMARY:Hotel Stay - ${encodeURIComponent(r.hotel_name_snapshot ?? '')}%0ADTSTART:${(r.checkin_date ?? '').replace(/-/g, '')}%0ADTEND:${(r.checkout_date ?? '').replace(/-/g, '')}%0ADESCRIPTION:Booking Ref: ${r.reservation_ref}%0AEND:VEVENT%0AEND:VCALENDAR`}
+            download={`stayvoo-${r.reservation_ref}.ics`}
             className="flex-1 flex items-center justify-center gap-2 bg-[#1e3a5f] hover:bg-[#162d4a] text-white font-bold py-3.5 px-6 rounded-xl text-sm transition-colors text-center"
           >
             📅 Add to Calendar

@@ -177,6 +177,7 @@ class Inquiry(Base):
     status = Column(String, default="new")
     notes = Column(Text, nullable=True)
     guest_id = Column(UUID(as_uuid=True), ForeignKey("guests.id"), nullable=True)
+    reservation_id = Column(UUID(as_uuid=True), ForeignKey("reservations.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
@@ -191,3 +192,84 @@ class Commission(Base):
     commission_amount = Column(Numeric(10, 2), default=0)
     status = Column(String, default="pending")
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class CommissionRate(Base):
+    __tablename__ = "commission_rates"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    hotel_source = Column(String, unique=True, nullable=False)
+    default_rate = Column(Numeric(5, 2), nullable=False, default=10.00)
+    notes = Column(String, nullable=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class Reservation(Base):
+    __tablename__ = "reservations"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    reservation_ref = Column(String, unique=True, nullable=False)
+    guest_id = Column(UUID(as_uuid=True), ForeignKey("guests.id"), nullable=True)
+
+    hotel_source = Column(String, default="exclusive")
+    hotel_source_id = Column(UUID(as_uuid=True), ForeignKey("hotels.id"), nullable=True)
+    room_source_id = Column(UUID(as_uuid=True), ForeignKey("rooms.id"), nullable=True)
+    hotel_name_snapshot = Column(String, nullable=False)
+    hotel_address_snapshot = Column(String, nullable=True)
+    room_type_snapshot = Column(String, nullable=True)
+
+    guest_first_name = Column(String, nullable=False)
+    guest_last_name = Column(String, nullable=False)
+    guest_email = Column(String, nullable=False)
+    guest_phone = Column(String, nullable=True)
+    guest_type = Column(String, nullable=True)
+
+    checkin_date = Column(Date, nullable=False)
+    checkout_date = Column(Date, nullable=False)
+    nights = Column(Integer, nullable=False)
+    rate_per_night = Column(Numeric(10, 2), nullable=False)
+    total_amount = Column(Numeric(10, 2), nullable=False)
+    amount_paid = Column(Numeric(10, 2), default=0)
+    balance_due = Column(Numeric(10, 2), nullable=False)
+
+    commission_rate = Column(Numeric(5, 2), nullable=False)
+    commission_amount = Column(Numeric(10, 2), nullable=False)
+    commission_paid = Column(Boolean, default=False)
+    commission_source_note = Column(String, nullable=True)
+
+    special_requests = Column(Text, nullable=True)
+    estimated_arrival = Column(String, nullable=True)
+    pms_confirmation = Column(String, nullable=True)
+    tier = Column(Integer, default=1)
+    source = Column(String, default="website")
+
+    stripe_payment_method_id = Column(String, nullable=True)
+    card_last4 = Column(String, nullable=True)
+    card_brand = Column(String, nullable=True)
+
+    # pending → confirmed → checked_in → checked_out | cancelled
+    status = Column(String, default="pending")
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+    confirmed_at = Column(DateTime, nullable=True)
+    cancelled_at = Column(DateTime, nullable=True)
+    checked_out_at = Column(DateTime, nullable=True)
+    last_modified_at = Column(DateTime, nullable=True)
+    last_modified_by = Column(String, nullable=True)
+
+    guest = relationship("Guest", foreign_keys=[guest_id])
+    messages = relationship("ReservationMessage", back_populates="reservation", cascade="all, delete-orphan")
+
+
+class ReservationMessage(Base):
+    __tablename__ = "reservation_messages"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    reservation_id = Column(UUID(as_uuid=True), ForeignKey("reservations.id"), nullable=False)
+    sender = Column(String, nullable=False)
+    sender_name = Column(String, nullable=False)
+    message = Column(Text, nullable=False)
+    is_read = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    reservation = relationship("Reservation", back_populates="messages")

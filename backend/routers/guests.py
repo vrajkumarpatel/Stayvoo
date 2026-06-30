@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
 from sqlalchemy.orm import selectinload
 from database import get_db
-from models import Guest, Booking, Stay, Inquiry, StayMessage
+from models import Guest, Booking, Stay, Inquiry, StayMessage, Reservation, ReservationMessage
 from services.guests import issue_new_token, extend_token
 
 logger = logging.getLogger(__name__)
@@ -79,20 +79,12 @@ async def get_my_stay(token: str, db: AsyncSession = Depends(get_db)):
     extend_token(guest)
     await db.commit()
 
-    bookings_result = await db.execute(
-        select(Booking)
-        .where(Booking.guest_id == guest.id)
-        .options(selectinload(Booking.hotel), selectinload(Booking.room))
-        .order_by(Booking.created_at.desc())
+    res_result = await db.execute(
+        select(Reservation)
+        .where(Reservation.guest_id == guest.id)
+        .order_by(Reservation.created_at.desc())
     )
-    bookings = bookings_result.scalars().all()
-
-    stays_result = await db.execute(
-        select(Stay)
-        .where(Stay.guest_id == guest.id)
-        .order_by(Stay.created_at.desc())
-    )
-    stays = stays_result.scalars().all()
+    reservations = res_result.scalars().all()
 
     inquiries_result = await db.execute(
         select(Inquiry)
@@ -101,7 +93,7 @@ async def get_my_stay(token: str, db: AsyncSession = Depends(get_db)):
     )
     inquiries = inquiries_result.scalars().all()
 
-    total_nights = sum(b.nights for b in bookings if b.status in ("confirmed", "completed"))
+    total_nights = sum(r.nights for r in reservations if r.status in ("confirmed", "checked_in", "checked_out"))
 
     return {
         "token": token,
@@ -114,11 +106,10 @@ async def get_my_stay(token: str, db: AsyncSession = Depends(get_db)):
             "total_stays": guest.total_stays,
             "member_since": guest.created_at.strftime("%B %Y") if guest.created_at else "—",
         },
-        "bookings": [_booking_mini(b) for b in bookings],
-        "stays": [_stay_mini(s) for s in stays],
+        "reservations": [_reservation_mini(r) for r in reservations],
         "inquiries": [_inquiry_mini(i) for i in inquiries],
         "stats": {
-            "total_bookings": len(bookings),
+            "total_reservations": len(reservations),
             "total_nights": total_nights,
             "total_inquiries": len(inquiries),
         },
@@ -223,6 +214,90 @@ async def send_my_stay_message(
     return _msg_dict(msg)
 
 
+@router.get("/my-stay/{token}/reservations/{reservation_id}/messages")
+async def get_reservation_messages(
+    token: str,
+    reservation_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(Guest).where(Guest.access_token == token))
+    guest = result.scalar_one_or_none()
+    _validate_token(guest)
+
+    msgs_result = await db.execute(
+        select(ReservationMessage)
+        .where(ReservationMessage.reservation_id == _uuid.UUID(reservation_id))
+        .order_by(ReservationMessage.created_at.asc())
+    )
+    msgs = msgs_result.scalars().all()
+
+    await db.execute(
+        ReservationMessage.__table__.update()
+        .where(
+            ReservationMessage.reservation_id == _uuid.UUID(reservation_id),
+            ReservationMessage.sender == "admin",
+        )
+        .values(is_read=True)
+    )
+    await db.commit()
+
+    return [_resmsg_dict(m) for m in msgs]
+
+
+@router.post("/my-stay/{token}/reservations/{reservation_id}/messages")
+async def send_reservation_message(
+    token: str,
+    reservation_id: str,
+    payload: MsgPayload,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(Guest).where(Guest.access_token == token))
+    guest = result.scalar_one_or_none()
+    _validate_token(guest)
+
+    res_result = await db.execute(
+        select(Reservation).where(Reservation.id == _uuid.UUID(reservation_id))
+    )
+    reservation = res_result.scalar_one_or_none()
+    if not reservation:
+        raise HTTPException(status_code=404, detail="Reservation not found")
+
+    msg = ReservationMessage(
+        id=_uuid.uuid4(),
+        reservation_id=_uuid.UUID(reservation_id),
+        sender="guest",
+        sender_name=f"{guest.first_name} {guest.last_name}",
+        message=payload.message,
+    )
+    db.add(msg)
+    await db.commit()
+    await db.refresh(msg)
+
+    from services.email_service import send_guest_message_alert
+    background_tasks.add_task(
+        send_guest_message_alert,
+        f"{guest.first_name} {guest.last_name}",
+        guest.email,
+        payload.message,
+        "reservation",
+        reservation_id,
+    )
+    return _resmsg_dict(msg)
+
+
+def _resmsg_dict(m: ReservationMessage) -> dict:
+    return {
+        "id": str(m.id),
+        "reservation_id": str(m.reservation_id),
+        "sender": m.sender,
+        "sender_name": m.sender_name,
+        "message": m.message,
+        "is_read": m.is_read,
+        "created_at": m.created_at.isoformat() if m.created_at else None,
+    }
+
+
 def _record_filter(record_type: str, record_id: str):
     if record_type == "booking":
         return StayMessage.booking_id == record_id
@@ -243,6 +318,26 @@ def _msg_dict(m: StayMessage) -> dict:
         "message": m.message,
         "is_read": m.is_read,
         "created_at": m.created_at.isoformat() if m.created_at else None,
+    }
+
+
+def _reservation_mini(r: Reservation) -> dict:
+    return {
+        "id": str(r.id),
+        "reservation_ref": r.reservation_ref,
+        "status": r.status,
+        "hotel_source": r.hotel_source,
+        "hotel_name_snapshot": r.hotel_name_snapshot,
+        "room_type_snapshot": r.room_type_snapshot,
+        "checkin_date": r.checkin_date.isoformat() if r.checkin_date else None,
+        "checkout_date": r.checkout_date.isoformat() if r.checkout_date else None,
+        "nights": r.nights,
+        "rate_per_night": float(r.rate_per_night),
+        "total_amount": float(r.total_amount),
+        "pms_confirmation": r.pms_confirmation,
+        "card_last4": r.card_last4,
+        "card_brand": r.card_brand,
+        "created_at": r.created_at.isoformat() if r.created_at else None,
     }
 
 

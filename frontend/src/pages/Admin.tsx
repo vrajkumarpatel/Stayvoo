@@ -5,6 +5,9 @@ import {
   getAdminStays, createAdminStay, updateAdminStay, checkoutAdminStay,
   getAdminBilling, sendHotelInvoice,
   getAdminBookingMessages, sendAdminBookingMessage, updateAdminBooking,
+  getAdminReservations, confirmAdminReservation, cancelAdminReservation,
+  checkinAdminReservation, checkoutAdminReservation, updateAdminReservation,
+  getAdminReservationMessages, sendAdminReservationMessage,
 } from '../lib/api'
 
 const STORAGE_KEY = 'stayvoo_admin_pw'
@@ -69,6 +72,20 @@ interface Stay {
   commission_rate: number; commission_amount: number; commission_paid: boolean
   commission_paid_date: string | null; pms_confirmation: string | null; notes: string | null
   status: string; created_at: string | null; updated_at: string | null
+}
+
+interface Reservation {
+  id: string; reservation_ref: string; status: string; guest_type: string | null
+  hotel_source: string; hotel_name_snapshot: string; hotel_address_snapshot: string | null
+  room_type_snapshot: string | null; guest_first_name: string; guest_last_name: string
+  guest_email: string; guest_phone: string | null; checkin_date: string; checkout_date: string
+  nights: number; rate_per_night: number; total_amount: number; commission_rate: number
+  commission_amount: number; commission_paid: boolean; pms_confirmation: string | null
+  special_requests: string | null; estimated_arrival: string | null; card_last4: string | null
+  card_brand: string | null; source: string; created_at: string | null
+  confirmed_at: string | null; cancelled_at: string | null; checked_out_at: string | null
+  last_modified_at: string | null; last_modified_by: string | null
+  guest: { first_name: string; last_name: string; email: string; phone: string; guest_type: string | null; company: string | null; total_stays: number } | null
 }
 
 interface BillingHotel {
@@ -950,6 +967,343 @@ function CheckoutStayModal({ onClose, onConfirm }: {
   )
 }
 
+const RES_STATUS_COLORS: Record<string, string> = {
+  pending: 'bg-orange-100 text-orange-700',
+  confirmed: 'bg-blue-100 text-blue-700',
+  checked_in: 'bg-green-100 text-green-700',
+  checked_out: 'bg-slate-100 text-slate-600',
+  cancelled: 'bg-red-100 text-red-600',
+}
+
+function ReservationDetailModal({ res: r, password, onClose, onUpdate }: {
+  res: Reservation; password: string; onClose: () => void; onUpdate: (r: Reservation) => void
+}) {
+  const [innerTab, setInnerTab] = useState<'details' | 'messages' | 'edit' | 'history'>('details')
+  const [pmsInput, setPmsInput] = useState('')
+  const [confirming, setConfirming] = useState(false)
+  const [confirmError, setConfirmError] = useState('')
+  const [actionLoading, setActionLoading] = useState(false)
+  const [cancelStep, setCancelStep] = useState(false)
+
+  const [messages, setMessages] = useState<any[]>([])
+  const [msgsLoaded, setMsgsLoaded] = useState(false)
+  const [reply, setReply] = useState('')
+  const [sending, setSending] = useState(false)
+
+  const [editForm, setEditForm] = useState({
+    checkin_date: r.checkin_date,
+    checkout_date: r.checkout_date,
+    rate_per_night: String(r.rate_per_night),
+    special_requests: r.special_requests ?? '',
+    guest_phone: r.guest_phone ?? '',
+    guest_email: r.guest_email,
+  })
+  const [editSaving, setEditSaving] = useState(false)
+  const [editSaved, setEditSaved] = useState(false)
+  const [editError, setEditError] = useState('')
+
+  const isPending = r.status === 'pending'
+  const isConfirmed = r.status === 'confirmed'
+  const isCheckedIn = r.status === 'checked_in'
+  const isCancelled = r.status === 'cancelled'
+  const isCheckedOut = r.status === 'checked_out'
+  const canEdit = !isCancelled && !isCheckedOut
+
+  const fmtTs = (ts: string | null | undefined) => {
+    if (!ts) return '—'
+    return new Date(ts).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+  }
+
+  const handleConfirm = async () => {
+    if (!pmsInput.trim()) return
+    setConfirming(true); setConfirmError('')
+    try {
+      const updated = await confirmAdminReservation(r.id, pmsInput.trim(), password)
+      onUpdate(updated)
+    } catch (err: any) { setConfirmError(err.message) }
+    finally { setConfirming(false) }
+  }
+
+  const handleCheckin = async () => {
+    setActionLoading(true)
+    try { onUpdate(await checkinAdminReservation(r.id, password)) }
+    catch (err: any) { alert(err.message) }
+    finally { setActionLoading(false) }
+  }
+
+  const handleCheckout = async () => {
+    setActionLoading(true)
+    try { onUpdate(await checkoutAdminReservation(r.id, password)) }
+    catch (err: any) { alert(err.message) }
+    finally { setActionLoading(false) }
+  }
+
+  const handleCancel = async () => {
+    if (!cancelStep) { setCancelStep(true); return }
+    setActionLoading(true)
+    try { await cancelAdminReservation(r.id, password); onClose() }
+    catch (err: any) { alert(err.message); setCancelStep(false) }
+    finally { setActionLoading(false) }
+  }
+
+  const loadMessages = async () => {
+    try { setMessages(await getAdminReservationMessages(r.id, password)) }
+    catch {}
+    setMsgsLoaded(true)
+  }
+
+  useEffect(() => {
+    if (innerTab === 'messages' && !msgsLoaded) loadMessages()
+  }, [innerTab])
+
+  const handleSend = async () => {
+    if (!reply.trim()) return
+    setSending(true)
+    try {
+      const msg = await sendAdminReservationMessage(r.id, reply.trim(), password)
+      setMessages(m => [...m, msg]); setReply('')
+    } catch (err: any) { alert(err.message) }
+    finally { setSending(false) }
+  }
+
+  const handleEdit = async (e: React.FormEvent) => {
+    e.preventDefault(); setEditSaving(true); setEditError('')
+    try {
+      const payload: Record<string, any> = {}
+      if (editForm.checkin_date !== r.checkin_date) payload.checkin_date = editForm.checkin_date
+      if (editForm.checkout_date !== r.checkout_date) payload.checkout_date = editForm.checkout_date
+      const rate = parseFloat(editForm.rate_per_night)
+      if (!isNaN(rate) && rate !== r.rate_per_night) payload.rate_per_night = rate
+      payload.special_requests = editForm.special_requests
+      if (editForm.guest_phone !== (r.guest_phone ?? '')) payload.guest_phone = editForm.guest_phone
+      if (editForm.guest_email !== r.guest_email) payload.guest_email = editForm.guest_email
+      onUpdate(await updateAdminReservation(r.id, payload, password))
+      setEditSaved(true); setTimeout(() => setEditSaved(false), 2000)
+    } catch (err: any) { setEditError(err.message) }
+    finally { setEditSaving(false) }
+  }
+
+  const tabs = [
+    { key: 'details', label: 'Details' },
+    { key: 'messages', label: 'Messages' },
+    ...(canEdit ? [{ key: 'edit', label: 'Edit' }] : []),
+    { key: 'history', label: 'History' },
+  ] as const
+
+  return (
+    <ModalShell onClose={onClose}>
+      <ModalHeader
+        onClose={onClose}
+        title={<>
+          <span className="text-white font-mono font-black text-lg tracking-wider leading-none">{r.reservation_ref}</span>
+          <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full capitalize ${RES_STATUS_COLORS[r.status] ?? 'bg-slate-100 text-slate-600'}`}>{r.status.replace('_', ' ')}</span>
+          <span className="bg-orange-500/30 text-orange-200 text-xs font-bold px-2 py-0.5 rounded-full">Exclusive</span>
+        </>}
+        sub={`${r.hotel_name_snapshot} · ${r.checkin_date} → ${r.checkout_date}`}
+      />
+
+      <div className="flex gap-0 border-b border-slate-100 flex-shrink-0 px-5">
+        {tabs.map(t => (
+          <button key={t.key} onClick={() => setInnerTab(t.key as any)} className={`py-3 px-4 text-sm font-bold capitalize border-b-2 transition-colors ${innerTab === t.key ? 'border-orange-500 text-orange-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* DETAILS TAB */}
+      {innerTab === 'details' && (
+        <div className="overflow-y-auto flex-1 px-5 py-5 flex flex-col gap-5">
+          <div>
+            <SectionHeader title="Guest Info" />
+            <div className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-3">
+              <InfoRow label="Name">{r.guest_first_name} {r.guest_last_name}</InfoRow>
+              <InfoRow label="Email"><a href={`mailto:${r.guest_email}`} className="text-orange-500 hover:underline break-all">{r.guest_email}</a></InfoRow>
+              <InfoRow label="Phone"><a href={`tel:${r.guest_phone}`} className="text-orange-500 hover:underline">{r.guest_phone ?? '—'}</a></InfoRow>
+              {r.guest_type && <InfoRow label="Type">{GUEST_TYPE_LABELS[r.guest_type] ?? r.guest_type}</InfoRow>}
+              {r.guest?.company && <InfoRow label="Company">{r.guest.company}</InfoRow>}
+              {r.special_requests && (
+                <div className="border-t border-slate-200 pt-3 mt-1">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Special Requests</p>
+                  <p className="text-[#1e3a5f] text-sm leading-relaxed">{r.special_requests}</p>
+                </div>
+              )}
+            </div>
+          </div>
+          <div>
+            <SectionHeader title="Reservation Info" />
+            <div className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-3">
+              <InfoRow label="Hotel">{r.hotel_name_snapshot}</InfoRow>
+              {r.hotel_address_snapshot && <InfoRow label="Address">{r.hotel_address_snapshot}</InfoRow>}
+              <InfoRow label="Room">{r.room_type_snapshot ?? '—'}</InfoRow>
+              <InfoRow label="Check-in">{r.checkin_date}</InfoRow>
+              <InfoRow label="Check-out">{r.checkout_date}</InfoRow>
+              <InfoRow label="Nights">{r.nights}</InfoRow>
+              {r.estimated_arrival && <InfoRow label="Est. Arrival">{r.estimated_arrival}</InfoRow>}
+              <div className="border-t border-slate-200 pt-3 mt-1 flex justify-between items-center">
+                <span className="text-slate-400 text-sm">${r.rate_per_night}/night × {r.nights}</span>
+                <span className="text-[#1e3a5f] font-black text-xl">${(r.total_amount ?? 0).toFixed(0)}</span>
+              </div>
+              <div className="flex justify-between text-xs text-slate-400">
+                <span>Commission ({r.commission_rate}%)</span>
+                <span>${r.commission_amount.toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
+          {r.card_last4 && (
+            <div>
+              <SectionHeader title="Card Guarantee" />
+              <div className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-3">
+                <InfoRow label="Card">{CARD_BRAND_ICONS[r.card_brand ?? ''] ?? `💳 ${r.card_brand ?? 'Card'}`}</InfoRow>
+                <InfoRow label="Last 4"><span className="font-mono tracking-widest">•••• {r.card_last4}</span></InfoRow>
+                <InfoRow label="Status"><span className="text-green-600">✅ On file</span></InfoRow>
+              </div>
+            </div>
+          )}
+          {isConfirmed && r.pms_confirmation && (
+            <div>
+              <SectionHeader title="PMS Confirmation" />
+              <div className="bg-green-50 border border-green-200 rounded-2xl p-4">
+                <p className="text-green-600 text-xs font-bold uppercase tracking-wider mb-1.5">Confirmation Number</p>
+                <p className="font-mono font-black text-green-700 text-2xl">{r.pms_confirmation}</p>
+              </div>
+            </div>
+          )}
+          <div>
+            <SectionHeader title="Actions" />
+            <div className="flex flex-col gap-3">
+              {isPending && (
+                <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 flex flex-col gap-3">
+                  <div>
+                    <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block mb-1.5">PMS Confirmation Number *</label>
+                    <input autoFocus placeholder="e.g. WYN-789456" value={pmsInput}
+                      onChange={e => { setPmsInput(e.target.value); setConfirmError('') }}
+                      onKeyDown={e => { if (e.key === 'Enter' && pmsInput.trim()) handleConfirm() }}
+                      className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+                    />
+                  </div>
+                  {confirmError && <p className="text-red-500 text-sm bg-red-50 rounded-xl px-3 py-2 border border-red-200">{confirmError}</p>}
+                  <button onClick={handleConfirm} disabled={confirming || !pmsInput.trim()} className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-black py-3.5 rounded-xl text-sm transition-colors">
+                    {confirming ? 'Confirming...' : '✅ Confirm Reservation'}
+                  </button>
+                </div>
+              )}
+              {isConfirmed && (
+                <button onClick={handleCheckin} disabled={actionLoading} className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white font-bold py-3 rounded-xl text-sm transition-colors">
+                  {actionLoading ? '...' : '🛬 Check In Guest'}
+                </button>
+              )}
+              {isCheckedIn && (
+                <button onClick={handleCheckout} disabled={actionLoading} className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-bold py-3 rounded-xl text-sm transition-colors">
+                  {actionLoading ? '...' : '🛫 Check Out Guest'}
+                </button>
+              )}
+              {!isCancelled && !isCheckedOut && (
+                <button onClick={handleCancel} disabled={actionLoading} className={`w-full font-bold py-3 rounded-xl text-sm transition-all ${cancelStep ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-200' : 'bg-white hover:bg-red-50 text-red-500 border border-red-200'}`}>
+                  {actionLoading ? 'Cancelling...' : cancelStep ? '⚠ Confirm Cancel — Guest will be emailed' : 'Cancel Reservation'}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MESSAGES TAB */}
+      {innerTab === 'messages' && (
+        <div className="flex flex-col flex-1" style={{ minHeight: 0 }}>
+          <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-3">
+            {!msgsLoaded ? (
+              <div className="text-center text-slate-400 text-sm py-8">Loading messages...</div>
+            ) : messages.length === 0 ? (
+              <div className="text-center text-slate-400 text-sm py-8">No messages yet. Send the first reply below.</div>
+            ) : messages.map((m: any) => (
+              <div key={m.id} className={`flex ${m.sender === 'admin' ? 'justify-end' : 'justify-start'}`}>
+                <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${m.sender === 'admin' ? 'bg-orange-500 text-white rounded-br-sm' : 'bg-slate-100 text-[#1e3a5f] rounded-bl-sm'}`}>
+                  <p className="text-sm leading-relaxed">{m.message}</p>
+                  <p className={`text-xs mt-1.5 ${m.sender === 'admin' ? 'text-orange-100' : 'text-slate-400'}`}>{m.sender_name} · {fmtTs(m.created_at)}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="border-t border-slate-100 px-5 py-4 flex gap-2 flex-shrink-0">
+            <textarea rows={2} value={reply} onChange={e => setReply(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
+              placeholder="Type a reply... (Enter to send)"
+              className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-orange-400"
+            />
+            <button onClick={handleSend} disabled={sending || !reply.trim()} className="bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white font-bold px-4 rounded-xl text-sm transition-colors">
+              {sending ? '...' : 'Send'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT TAB */}
+      {innerTab === 'edit' && canEdit && (
+        <form onSubmit={handleEdit} className="overflow-y-auto flex-1 px-5 py-5 flex flex-col gap-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Check-in</label>
+              <input type="date" value={editForm.checkin_date} onChange={e => setEditForm(f => ({ ...f, checkin_date: e.target.value }))} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white" />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Check-out</label>
+              <input type="date" value={editForm.checkout_date} min={editForm.checkin_date} onChange={e => setEditForm(f => ({ ...f, checkout_date: e.target.value }))} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white" />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Rate per Night ($)</label>
+            <input type="number" min="1" step="0.01" value={editForm.rate_per_night} onChange={e => setEditForm(f => ({ ...f, rate_per_night: e.target.value }))} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white" />
+          </div>
+          <div>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Special Requests</label>
+            <textarea rows={2} value={editForm.special_requests} onChange={e => setEditForm(f => ({ ...f, special_requests: e.target.value }))} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-orange-400" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Guest Phone</label>
+              <input type="tel" value={editForm.guest_phone} onChange={e => setEditForm(f => ({ ...f, guest_phone: e.target.value }))} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white" />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Guest Email</label>
+              <input type="email" value={editForm.guest_email} onChange={e => setEditForm(f => ({ ...f, guest_email: e.target.value }))} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white" />
+            </div>
+          </div>
+          {editError && <p className="text-red-500 text-sm bg-red-50 rounded-xl px-3 py-2 border border-red-200">{editError}</p>}
+          <p className="text-slate-400 text-xs">Saving recalculates nights, total, and commission. Guest receives an update email.</p>
+          <button type="submit" disabled={editSaving} className="w-full bg-[#1e3a5f] hover:bg-[#162d4a] disabled:opacity-60 text-white font-black py-3.5 rounded-xl text-sm transition-colors">
+            {editSaving ? 'Saving...' : editSaved ? '✅ Saved! Guest notified.' : 'Save Changes'}
+          </button>
+        </form>
+      )}
+
+      {/* HISTORY TAB */}
+      {innerTab === 'history' && (
+        <div className="overflow-y-auto flex-1 px-5 py-5 flex flex-col gap-3">
+          <SectionHeader title="Timeline" />
+          {[
+            { label: 'Created', ts: r.created_at, color: 'bg-slate-200' },
+            { label: 'Confirmed', ts: r.confirmed_at, color: 'bg-blue-200' },
+            { label: 'Cancelled', ts: r.cancelled_at, color: 'bg-red-200' },
+            { label: 'Checked Out', ts: r.checked_out_at, color: 'bg-green-200' },
+            { label: 'Last Modified', ts: r.last_modified_at, color: 'bg-orange-200', by: r.last_modified_by },
+          ].filter(e => e.ts).map((e, i) => (
+            <div key={i} className="flex items-start gap-3">
+              <div className={`w-3 h-3 rounded-full mt-1 flex-shrink-0 ${e.color}`} />
+              <div>
+                <p className="text-[#1e3a5f] font-semibold text-sm">{e.label}</p>
+                <p className="text-slate-400 text-xs">{fmtTs(e.ts)}{e.by ? ` · by ${e.by}` : ''}</p>
+              </div>
+            </div>
+          ))}
+          {!r.confirmed_at && !r.cancelled_at && !r.checked_out_at && (
+            <p className="text-slate-400 text-sm text-center py-4">No status changes yet.</p>
+          )}
+        </div>
+      )}
+    </ModalShell>
+  )
+}
+
 export default function Admin() {
   const [password, setPassword] = useState('')
   const [inputPw, setInputPw] = useState('')
@@ -957,9 +1311,16 @@ export default function Admin() {
   const [bookings, setBookings] = useState<Booking[]>([])
   const [inquiries, setInquiries] = useState<Inquiry[]>([])
   const [stays, setStays] = useState<Stay[]>([])
+  const [reservations, setReservations] = useState<Reservation[]>([])
+  const [resGrouped, setResGrouped] = useState<any>(null)
+  const [resNavDate, setResNavDate] = useState(() => new Date().toISOString().split('T')[0])
+  const [resSearch, setResSearch] = useState('')
+  const [resStatusFilter, setResStatusFilter] = useState('all')
+  const [resLoaded, setResLoaded] = useState(false)
   const [loading, setLoading] = useState(false)
   const [staysLoaded, setStaysLoaded] = useState(false)
-  const [activeTab, setActiveTab] = useState<'bookings' | 'inquiries' | 'stays' | 'billing'>('bookings')
+  const [activeTab, setActiveTab] = useState<'reservations' | 'bookings' | 'inquiries' | 'stays' | 'billing'>('reservations')
+  const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null)
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
   const [selectedInquiry, setSelectedInquiry] = useState<Inquiry | null>(null)
   const [selectedStay, setSelectedStay] = useState<Stay | null>(null)
@@ -1012,12 +1373,36 @@ export default function Admin() {
     finally { setBillingLoading(false) }
   }
 
+  const loadReservations = async (pw: string, params?: { date?: string; search?: string; status?: string }) => {
+    try {
+      const data = await getAdminReservations(pw, params)
+      if (data.mode === 'grouped') {
+        setResGrouped(data)
+        setReservations([
+          ...data.new_requests,
+          ...data.arrivals,
+          ...data.departures,
+          ...data.in_house,
+        ])
+      } else {
+        setResGrouped(null)
+        setReservations(data.reservations ?? [])
+      }
+      setResLoaded(true)
+    } catch { setResLoaded(true) }
+  }
+
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY)
     if (saved) {
       loadData(saved).then(ok => {
-        if (ok) { setPassword(saved); loadStays(saved) }
-        else localStorage.removeItem(STORAGE_KEY)
+        if (ok) {
+          setPassword(saved)
+          loadStays(saved)
+          loadReservations(saved, { date: new Date().toISOString().split('T')[0] })
+        } else {
+          localStorage.removeItem(STORAGE_KEY)
+        }
       })
     }
   }, [])
@@ -1038,6 +1423,7 @@ export default function Admin() {
       setPassword(inputPw)
       localStorage.setItem(STORAGE_KEY, inputPw)
       loadStays(inputPw)
+      loadReservations(inputPw, { date: new Date().toISOString().split('T')[0] })
     } else {
       setLoginError('Incorrect password')
     }
@@ -1045,9 +1431,26 @@ export default function Admin() {
 
   const handleLogout = () => {
     setPassword(''); setBookings([]); setInquiries([]); setStays([])
+    setReservations([]); setResGrouped(null); setResLoaded(false)
     setSelectedBooking(null); setSelectedInquiry(null); setSelectedStay(null)
+    setSelectedReservation(null)
     setBillingData(null); setStaysLoaded(false)
     localStorage.removeItem(STORAGE_KEY)
+  }
+
+  const handleReservationUpdate = (updated: Reservation) => {
+    setReservations(rs => rs.map(r => r.id === updated.id ? updated : r))
+    if (resGrouped) {
+      const update = (arr: any[]) => arr.map(r => r.id === updated.id ? updated : r)
+      setResGrouped((g: any) => ({
+        ...g,
+        new_requests: update(g.new_requests ?? []),
+        arrivals: update(g.arrivals ?? []),
+        departures: update(g.departures ?? []),
+        in_house: update(g.in_house ?? []),
+      }))
+    }
+    setSelectedReservation(updated)
   }
 
   const handleInquiryUpdate = (updated: Inquiry) => {
@@ -1190,7 +1593,8 @@ export default function Admin() {
         {/* Tabs */}
         <div className="flex gap-2 mb-6 flex-wrap">
           {([
-            { key: 'bookings', label: 'Bookings', badge: total > 0 ? String(total) : undefined },
+            { key: 'reservations', label: 'Reservations', badge: reservations.filter(r => r.status === 'pending').length > 0 ? `${reservations.filter(r => r.status === 'pending').length} new` : undefined },
+            { key: 'bookings', label: 'Bookings (Legacy)', badge: total > 0 ? String(total) : undefined },
             { key: 'inquiries', label: 'Inquiries', badge: inqNew > 0 ? `${inqNew} new` : undefined },
             { key: 'stays', label: 'Active Stays', badge: activeStays.length > 0 ? String(activeStays.length) : undefined },
             { key: 'billing', label: 'Billing', badge: undefined },
@@ -1204,10 +1608,140 @@ export default function Admin() {
               {t.badge && <span className="ml-1.5 bg-orange-500 text-white text-xs px-1.5 py-0.5 rounded-full">{t.badge}</span>}
             </button>
           ))}
-          <button onClick={() => { loadData(password); loadStays(password) }} disabled={loading} className="ml-auto text-sm text-[#1e3a5f] hover:text-orange-500 font-semibold transition-colors">
+          <button onClick={() => { loadData(password); loadStays(password); loadReservations(password, { date: resNavDate }) }} disabled={loading} className="ml-auto text-sm text-[#1e3a5f] hover:text-orange-500 font-semibold transition-colors">
             {loading ? 'Loading...' : '↻ Refresh'}
           </button>
         </div>
+
+        {/* ── RESERVATIONS TAB ── */}
+        {activeTab === 'reservations' && (() => {
+          const fmtD = (s: string) => new Date(s + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+
+          const navigateDate = (delta: number) => {
+            const d = new Date(resNavDate + 'T00:00:00')
+            d.setDate(d.getDate() + delta)
+            const nd = d.toISOString().split('T')[0]
+            setResNavDate(nd)
+            setResSearch('')
+            setResStatusFilter('all')
+            loadReservations(password, { date: nd })
+          }
+
+          const handleSearch = (q: string) => {
+            setResSearch(q)
+            if (q.length > 1) {
+              loadReservations(password, { search: q })
+            } else if (!q) {
+              loadReservations(password, { date: resNavDate })
+            }
+          }
+
+          const handleStatusFilter = (s: string) => {
+            setResStatusFilter(s)
+            if (s !== 'all') {
+              loadReservations(password, { status: s })
+            } else {
+              loadReservations(password, { date: resNavDate })
+            }
+          }
+
+          const isSearchMode = resSearch.length > 1 || resStatusFilter !== 'all'
+
+          const ResRow = ({ res }: { res: Reservation }) => (
+            <div onClick={() => setSelectedReservation(res)} className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors border border-transparent hover:border-slate-200">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[#1e3a5f] font-bold text-sm">{res.guest_first_name} {res.guest_last_name}</span>
+                  <span className="bg-orange-100 text-orange-700 text-xs font-bold px-1.5 py-0.5 rounded">Exclusive</span>
+                  <span className={`text-xs font-bold px-1.5 py-0.5 rounded capitalize ${RES_STATUS_COLORS[res.status] ?? 'bg-slate-100 text-slate-600'}`}>{res.status.replace('_', ' ')}</span>
+                </div>
+                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                  <span className="text-slate-500 text-xs">{res.hotel_name_snapshot}</span>
+                  <span className="text-slate-300 text-xs">·</span>
+                  <span className="text-slate-500 text-xs">{res.checkin_date} → {res.checkout_date}</span>
+                </div>
+              </div>
+              <div className="text-right flex-shrink-0">
+                <div className="text-[#1e3a5f] font-bold text-sm">${res.total_amount.toFixed(0)}</div>
+                <div className="text-slate-400 text-xs font-mono">{res.reservation_ref}</div>
+              </div>
+            </div>
+          )
+
+          const Section = ({ title, icon, items, empty }: { title: string; icon: string; items: any[]; empty: string }) => (
+            <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+              <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2">
+                <span className="text-lg">{icon}</span>
+                <h3 className="text-[#1e3a5f] font-black text-sm">{title}</h3>
+                <span className="ml-auto text-xs text-slate-400 font-semibold">{items.length} total</span>
+              </div>
+              <div className="px-2 py-2">
+                {items.length === 0 ? (
+                  <p className="text-slate-400 text-sm text-center py-4">{empty}</p>
+                ) : items.map((r: Reservation) => <ResRow key={r.id} res={r} />)}
+              </div>
+            </div>
+          )
+
+          return <>
+            {/* Date Navigator */}
+            <div className="bg-white rounded-2xl shadow-sm p-4 mb-4">
+              <div className="flex items-center gap-2 flex-wrap">
+                <button onClick={() => navigateDate(-1)} className="p-2 rounded-lg hover:bg-slate-100 text-slate-600 font-bold text-sm transition-colors">← Prev</button>
+                <div className="flex-1 text-center">
+                  <p className="text-[#1e3a5f] font-black text-base">{fmtD(resNavDate)}</p>
+                  {resNavDate !== today && (
+                    <button onClick={() => { setResNavDate(today); loadReservations(password, { date: today }) }} className="text-orange-500 text-xs font-semibold hover:underline">Jump to Today</button>
+                  )}
+                </div>
+                <button onClick={() => navigateDate(1)} className="p-2 rounded-lg hover:bg-slate-100 text-slate-600 font-bold text-sm transition-colors">Next →</button>
+                <input type="date" value={resNavDate} onChange={e => {
+                  setResNavDate(e.target.value)
+                  loadReservations(password, { date: e.target.value })
+                }} className="border border-slate-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+              </div>
+            </div>
+
+            {/* Search + status filter */}
+            <div className="flex flex-col sm:flex-row gap-3 mb-4">
+              <input type="text" placeholder="Search by name, email, ref, or hotel..." value={resSearch}
+                onChange={e => handleSearch(e.target.value)}
+                className="flex-1 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+              />
+              <div className="flex gap-1 flex-wrap">
+                {(['all', 'pending', 'confirmed', 'checked_in', 'checked_out', 'cancelled'] as const).map(f => (
+                  <button key={f} onClick={() => handleStatusFilter(f)}
+                    className={`px-3 py-2 rounded-lg text-xs font-bold transition-colors capitalize ${resStatusFilter === f ? 'bg-[#1e3a5f] text-white' : 'bg-white text-slate-500 hover:bg-slate-100 border border-slate-200'}`}
+                  >
+                    {f.replace('_', ' ')}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {!resLoaded ? (
+              <div className="bg-white rounded-2xl shadow-sm p-10 text-center text-slate-400">Loading reservations...</div>
+            ) : isSearchMode ? (
+              <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+                <div className="px-5 py-3 border-b border-slate-100">
+                  <h3 className="text-[#1e3a5f] font-black text-sm">{reservations.length} result{reservations.length !== 1 ? 's' : ''}</h3>
+                </div>
+                <div className="px-2 py-2">
+                  {reservations.length === 0 ? (
+                    <p className="text-slate-400 text-sm text-center py-4">No reservations found.</p>
+                  ) : reservations.map((r: Reservation) => <ResRow key={r.id} res={r} />)}
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-4">
+                <Section title="New Requests" icon="🟢" items={resGrouped?.new_requests ?? []} empty="No pending requests." />
+                <Section title={`Arrivals on ${resNavDate}`} icon="🛬" items={resGrouped?.arrivals ?? []} empty="No arrivals today." />
+                <Section title={`Departures on ${resNavDate}`} icon="🛫" items={resGrouped?.departures ?? []} empty="No departures today." />
+                <Section title="Currently In House" icon="🏨" items={resGrouped?.in_house ?? []} empty="Nobody checked in right now." />
+              </div>
+            )}
+          </>
+        })()}
 
         {/* ── BOOKINGS TAB ── */}
         {activeTab === 'bookings' && <>
@@ -1534,6 +2068,9 @@ export default function Admin() {
       </div>
 
       {/* Modals */}
+      {selectedReservation && (
+        <ReservationDetailModal res={selectedReservation} password={password} onClose={() => setSelectedReservation(null)} onUpdate={handleReservationUpdate} />
+      )}
       {selectedBooking && (
         <BookingDetailModal booking={selectedBooking} password={password} onClose={() => setSelectedBooking(null)} onUpdate={handleBookingUpdate} />
       )}

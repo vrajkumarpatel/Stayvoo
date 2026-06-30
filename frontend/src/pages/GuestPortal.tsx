@@ -1,54 +1,55 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { getMyStay, getMyStayMessages, sendMyStayMessage } from '../lib/api'
+import { getMyStay, getMyStayReservationMessages, sendMyStayReservationMessage, getMyStayMessages, sendMyStayMessage } from '../lib/api'
 
 const STATUS_COLORS: Record<string, string> = {
-  confirmed: 'bg-green-100 text-green-700',
   pending: 'bg-amber-100 text-amber-700',
+  confirmed: 'bg-green-100 text-green-700',
+  checked_in: 'bg-blue-100 text-blue-700',
+  checked_out: 'bg-slate-100 text-slate-600',
   cancelled: 'bg-red-100 text-red-600',
-  completed: 'bg-slate-100 text-slate-600',
-  active: 'bg-blue-100 text-blue-700',
-  upcoming: 'bg-purple-100 text-purple-700',
   new: 'bg-orange-100 text-orange-700',
+  contacted: 'bg-blue-100 text-blue-700',
   quoted: 'bg-teal-100 text-teal-700',
   booked: 'bg-green-100 text-green-700',
   closed: 'bg-slate-100 text-slate-600',
 }
 
+const STATUS_LABELS: Record<string, string> = {
+  pending: 'Pending',
+  confirmed: 'Confirmed',
+  checked_in: 'Checked In',
+  checked_out: 'Checked Out',
+  cancelled: 'Cancelled',
+}
+
 function StatusBadge({ status }: { status: string }) {
   const cls = STATUS_COLORS[status] ?? 'bg-slate-100 text-slate-600'
+  const label = STATUS_LABELS[status] ?? status
   return (
-    <span className={`inline-block text-xs font-bold px-2.5 py-1 rounded-full uppercase tracking-wide ${cls}`}>
-      {status}
+    <span className={`inline-block text-xs font-bold px-2.5 py-1 rounded-full ${cls}`}>
+      {label}
     </span>
   )
 }
 
-function MessageThread({
-  token,
-  recordType,
-  recordId,
-}: {
-  token: string
-  recordType: string
-  recordId: string
-}) {
+function ReservationMessageThread({ token, reservationId }: { token: string; reservationId: string }) {
   const [msgs, setMsgs] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
 
   useEffect(() => {
-    getMyStayMessages(token, recordType, recordId)
+    getMyStayReservationMessages(token, reservationId)
       .then(setMsgs)
       .finally(() => setLoading(false))
-  }, [token, recordType, recordId])
+  }, [token, reservationId])
 
   const send = async () => {
     if (!text.trim() || sending) return
     setSending(true)
     try {
-      const msg = await sendMyStayMessage(token, recordType, recordId, text.trim())
+      const msg = await sendMyStayReservationMessage(token, reservationId, text.trim())
       setMsgs(prev => [...prev, msg])
       setText('')
     } catch {
@@ -68,22 +69,14 @@ function MessageThread({
           </p>
         )}
         {msgs.map(m => (
-          <div
-            key={m.id}
-            className={`flex flex-col ${m.sender === 'guest' ? 'items-end' : 'items-start'}`}
-          >
-            <div
-              className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-relaxed ${
-                m.sender === 'guest'
-                  ? 'bg-orange-500 text-white rounded-br-sm'
-                  : 'bg-slate-100 text-slate-700 rounded-bl-sm'
-              }`}
-            >
+          <div key={m.id} className={`flex flex-col ${m.sender === 'guest' ? 'items-end' : 'items-start'}`}>
+            <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-relaxed ${
+              m.sender === 'guest' ? 'bg-orange-500 text-white rounded-br-sm' : 'bg-slate-100 text-slate-700 rounded-bl-sm'
+            }`}>
               {m.message}
             </div>
             <span className="text-[10px] text-slate-400 mt-0.5 px-1">
-              {m.sender_name} ·{' '}
-              {new Date(m.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              {m.sender_name} · {new Date(m.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
             </span>
           </div>
         ))}
@@ -108,58 +101,130 @@ function MessageThread({
   )
 }
 
-function BookingCard({ booking, token }: { booking: any; token: string }) {
-  const [showMsgs, setShowMsgs] = useState(false)
-  const today = new Date().toISOString().split('T')[0]
-  const checkin = booking.checkin_date
+function InquiryMessageThread({ token, inquiryId }: { token: string; inquiryId: string }) {
+  const [msgs, setMsgs] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [text, setText] = useState('')
+  const [sending, setSending] = useState(false)
 
-  const displayStatus =
-    booking.status === 'confirmed' && checkin > today
-      ? 'upcoming'
-      : booking.status
+  useEffect(() => {
+    getMyStayMessages(token, 'inquiry', inquiryId)
+      .then(setMsgs)
+      .finally(() => setLoading(false))
+  }, [token, inquiryId])
+
+  const send = async () => {
+    if (!text.trim() || sending) return
+    setSending(true)
+    try {
+      const msg = await sendMyStayMessage(token, 'inquiry', inquiryId, text.trim())
+      setMsgs(prev => [...prev, msg])
+      setText('')
+    } catch {
+    } finally {
+      setSending(false)
+    }
+  }
+
+  if (loading) return <div className="py-4 text-center text-slate-400 text-sm">Loading messages...</div>
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+    <div className="mt-3 border-t border-slate-100 pt-3">
+      <div className="max-h-48 overflow-y-auto flex flex-col gap-2 mb-3">
+        {msgs.length === 0 && (
+          <p className="text-slate-400 text-xs text-center py-3">No messages yet.</p>
+        )}
+        {msgs.map(m => (
+          <div key={m.id} className={`flex flex-col ${m.sender === 'guest' ? 'items-end' : 'items-start'}`}>
+            <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-relaxed ${
+              m.sender === 'guest' ? 'bg-orange-500 text-white rounded-br-sm' : 'bg-slate-100 text-slate-700 rounded-bl-sm'
+            }`}>
+              {m.message}
+            </div>
+            <span className="text-[10px] text-slate-400 mt-0.5 px-1">
+              {m.sender_name} · {new Date(m.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            </span>
+          </div>
+        ))}
+      </div>
+      <div className="flex gap-2">
+        <input
+          value={text}
+          onChange={e => setText(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send()}
+          placeholder="Message Stayvoo team..."
+          className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+        />
+        <button
+          onClick={send}
+          disabled={sending || !text.trim()}
+          className="bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white rounded-xl px-4 py-2 text-sm font-bold transition-colors"
+        >
+          {sending ? '...' : 'Send'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function ReservationCard({ reservation: r, token }: { reservation: any; token: string }) {
+  const [showMsgs, setShowMsgs] = useState(false)
+
+  const isActive = r.status === 'checked_in'
+  const isCheckedOut = r.status === 'checked_out'
+
+  return (
+    <div className={`bg-white rounded-2xl shadow-sm border overflow-hidden ${
+      isActive ? 'border-blue-200' : 'border-slate-100'
+    }`}>
+      {isActive && (
+        <div className="bg-blue-500 px-5 py-1.5 text-white text-xs font-bold flex items-center gap-1.5">
+          <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
+          Currently Checked In
+        </div>
+      )}
       <div className="px-5 pt-4 pb-3">
         <div className="flex items-start justify-between gap-3 flex-wrap mb-3">
           <div>
-            <p className="text-[#1e3a5f] font-black text-base leading-tight">{booking.hotel_name}</p>
-            <p className="text-slate-400 text-xs mt-0.5">{booking.room_name}</p>
+            <p className="text-[#1e3a5f] font-black text-base leading-tight">{r.hotel_name_snapshot}</p>
+            {r.room_type_snapshot && (
+              <p className="text-slate-400 text-xs mt-0.5">{r.room_type_snapshot}</p>
+            )}
           </div>
-          <StatusBadge status={displayStatus} />
+          <StatusBadge status={r.status} />
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs mb-3">
           <div>
             <p className="text-slate-400 font-semibold uppercase tracking-wide">Check-in</p>
-            <p className="text-[#1e3a5f] font-bold">{booking.checkin_date}</p>
+            <p className="text-[#1e3a5f] font-bold">{r.checkin_date}</p>
           </div>
           <div>
             <p className="text-slate-400 font-semibold uppercase tracking-wide">Check-out</p>
-            <p className="text-[#1e3a5f] font-bold">{booking.checkout_date}</p>
+            <p className="text-[#1e3a5f] font-bold">{r.checkout_date}</p>
           </div>
           <div>
             <p className="text-slate-400 font-semibold uppercase tracking-wide">Nights</p>
-            <p className="text-[#1e3a5f] font-bold">{booking.nights}</p>
+            <p className="text-[#1e3a5f] font-bold">{r.nights}</p>
           </div>
           <div>
             <p className="text-slate-400 font-semibold uppercase tracking-wide">Total</p>
-            <p className="text-[#1e3a5f] font-bold">${Number(booking.total_amount).toFixed(0)}</p>
+            <p className="text-[#1e3a5f] font-bold">${Number(r.total_amount).toFixed(0)}</p>
           </div>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-slate-400 text-xs font-mono bg-slate-50 px-2 py-1 rounded-lg">
-            {booking.booking_ref}
+            {r.reservation_ref}
           </span>
-          {booking.pms_confirmation && (
+          {r.pms_confirmation && (
             <span className="text-slate-400 text-xs">
-              Hotel conf: <strong className="text-orange-500">{booking.pms_confirmation}</strong>
+              Hotel conf: <strong className="text-orange-500">{r.pms_confirmation}</strong>
             </span>
           )}
-          {booking.card_last4 && (
+          {r.card_last4 && (
             <span className="text-slate-400 text-xs">
-              Card: ···· {booking.card_last4}
+              Card: ···· {r.card_last4}
             </span>
           )}
         </div>
@@ -168,26 +233,23 @@ function BookingCard({ booking, token }: { booking: any; token: string }) {
       <div className="border-t border-slate-100 px-5 py-2.5 bg-slate-50 flex items-center gap-3 flex-wrap">
         <button
           onClick={() => setShowMsgs(v => !v)}
-          className="text-[#1e3a5f] text-xs font-bold hover:text-orange-500 transition-colors flex items-center gap-1"
+          className="text-[#1e3a5f] text-xs font-bold hover:text-orange-500 transition-colors"
         >
           💬 {showMsgs ? 'Hide Messages' : 'Messages'}
         </button>
-        {booking.status !== 'cancelled' && (
-          <Link
-            to={`/hotels/${booking.hotel_id}`}
-            className="text-orange-500 text-xs font-bold hover:text-orange-600 transition-colors"
-          >
+        {isCheckedOut && (
+          <Link to="/search" className="text-orange-500 text-xs font-bold hover:text-orange-600 transition-colors">
             Book Again →
           </Link>
         )}
         <p className="text-slate-300 text-xs ml-auto">
-          Booked {new Date(booking.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+          {new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
         </p>
       </div>
 
       {showMsgs && (
         <div className="px-5 pb-4">
-          <MessageThread token={token} recordType="booking" recordId={booking.id} />
+          <ReservationMessageThread token={token} reservationId={r.id} />
         </div>
       )}
     </div>
@@ -228,7 +290,7 @@ function InquiryCard({ inquiry, token }: { inquiry: any; token: string }) {
       <div className="border-t border-slate-100 px-5 py-2.5 bg-slate-50 flex items-center gap-3">
         <button
           onClick={() => setShowMsgs(v => !v)}
-          className="text-[#1e3a5f] text-xs font-bold hover:text-orange-500 transition-colors flex items-center gap-1"
+          className="text-[#1e3a5f] text-xs font-bold hover:text-orange-500 transition-colors"
         >
           💬 {showMsgs ? 'Hide Messages' : 'Messages'}
         </button>
@@ -239,7 +301,7 @@ function InquiryCard({ inquiry, token }: { inquiry: any; token: string }) {
 
       {showMsgs && (
         <div className="px-5 pb-4">
-          <MessageThread token={token} recordType="inquiry" recordId={inquiry.id} />
+          <InquiryMessageThread token={token} inquiryId={inquiry.id} />
         </div>
       )}
     </div>
@@ -289,33 +351,28 @@ export default function GuestPortal() {
     </div>
   )
 
-  const { guest, bookings, inquiries, stats } = data
-  const hasBookings = bookings.length > 0
-  const hasInquiries = inquiries.length > 0
+  const { guest, reservations, inquiries, stats } = data
+  const hasReservations = reservations?.length > 0
+  const hasInquiries = inquiries?.length > 0
 
   return (
     <div className="min-h-screen bg-slate-50 pt-16">
-      {/* Header */}
       <div className="bg-[#1e3a5f] py-8 px-4">
         <div className="max-w-3xl mx-auto">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
               <p className="text-orange-400 text-xs font-bold uppercase tracking-widest mb-1">Guest Portal</p>
-              <h1 className="text-white font-black text-2xl">
-                Welcome, {guest.first_name}!
-              </h1>
+              <h1 className="text-white font-black text-2xl">Welcome, {guest.first_name}!</h1>
               <p className="text-white/50 text-sm mt-0.5">{guest.email}</p>
             </div>
-            <div className="flex items-center gap-3">
-              <span className="bg-white/10 text-white/70 text-xs px-3 py-1.5 rounded-full">
-                Member since {guest.member_since}
-              </span>
-            </div>
+            <span className="bg-white/10 text-white/70 text-xs px-3 py-1.5 rounded-full">
+              Member since {guest.member_since}
+            </span>
           </div>
 
           <div className="flex gap-6 mt-6">
             {[
-              ['Bookings', stats.total_bookings],
+              ['Reservations', stats.total_reservations],
               ['Nights', stats.total_nights],
               ['Inquiries', stats.total_inquiries],
             ].map(([label, val]) => (
@@ -329,22 +386,20 @@ export default function GuestPortal() {
       </div>
 
       <div className="max-w-3xl mx-auto px-4 py-8">
-        {/* Bookings section */}
-        {hasBookings && (
+        {hasReservations && (
           <section className="mb-8">
             <h2 className="text-[#1e3a5f] font-black text-lg mb-4 flex items-center gap-2">
-              🏨 My Bookings
-              <span className="text-slate-400 text-sm font-normal">({bookings.length})</span>
+              🏨 My Reservations
+              <span className="text-slate-400 text-sm font-normal">({reservations.length})</span>
             </h2>
             <div className="flex flex-col gap-4">
-              {bookings.map((b: any) => (
-                <BookingCard key={b.id} booking={b} token={token!} />
+              {reservations.map((r: any) => (
+                <ReservationCard key={r.id} reservation={r} token={token!} />
               ))}
             </div>
           </section>
         )}
 
-        {/* Inquiries section */}
         {hasInquiries && (
           <section className="mb-8">
             <h2 className="text-[#1e3a5f] font-black text-lg mb-4 flex items-center gap-2">
@@ -359,40 +414,26 @@ export default function GuestPortal() {
           </section>
         )}
 
-        {/* Empty state */}
-        {!hasBookings && !hasInquiries && (
+        {!hasReservations && !hasInquiries && (
           <div className="text-center py-16">
             <div className="text-6xl mb-4">🏨</div>
             <h2 className="text-[#1e3a5f] font-black text-xl mb-2">No reservations yet</h2>
-            <p className="text-slate-500 text-sm mb-6">
-              Start by browsing our exclusive partner hotels.
-            </p>
+            <p className="text-slate-500 text-sm mb-6">Start by browsing our exclusive partner hotels.</p>
             <div className="flex gap-3 justify-center">
-              <Link
-                to="/search"
-                className="bg-[#1e3a5f] hover:bg-[#162d4a] text-white font-bold px-6 py-3 rounded-xl text-sm transition-colors"
-              >
+              <Link to="/search" className="bg-[#1e3a5f] hover:bg-[#162d4a] text-white font-bold px-6 py-3 rounded-xl text-sm transition-colors">
                 Search Hotels →
               </Link>
-              <Link
-                to="/exclusive"
-                className="bg-orange-500 hover:bg-orange-600 text-white font-bold px-6 py-3 rounded-xl text-sm transition-colors"
-              >
+              <Link to="/exclusive" className="bg-orange-500 hover:bg-orange-600 text-white font-bold px-6 py-3 rounded-xl text-sm transition-colors">
                 Get Extended Rate →
               </Link>
             </div>
           </div>
         )}
 
-        {/* Footer actions */}
         <div className="border-t border-slate-200 pt-6 mt-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm">
           <div className="flex gap-4">
-            <Link to="/search" className="text-[#1e3a5f] font-semibold hover:text-orange-500 transition-colors">
-              Search Hotels
-            </Link>
-            <Link to="/exclusive" className="text-[#1e3a5f] font-semibold hover:text-orange-500 transition-colors">
-              Get a Quote
-            </Link>
+            <Link to="/search" className="text-[#1e3a5f] font-semibold hover:text-orange-500 transition-colors">Search Hotels</Link>
+            <Link to="/exclusive" className="text-[#1e3a5f] font-semibold hover:text-orange-500 transition-colors">Get a Quote</Link>
           </div>
           <a href="tel:+18883528151" className="text-slate-400 text-xs hover:text-slate-600">
             Need help? Call +1 (888) 352-8151
