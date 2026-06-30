@@ -109,6 +109,16 @@ async def send_booking_received(b: dict) -> None:
         return
     first = guest.get("first_name", "there")
     ref = b.get("booking_ref", "")
+    portal_url = b.get("portal_url")
+    portal_block = ""
+    if portal_url:
+        portal_block = f"""
+    <div style="margin-top:16px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:16px;text-align:center;">
+      <p style="margin:0 0 10px;color:#1d4ed8;font-size:14px;font-weight:600;">Track your reservation anytime</p>
+      <a href="{portal_url}" style="display:inline-block;background:{BRAND_COLOR};color:#fff;font-size:14px;font-weight:700;text-decoration:none;padding:10px 24px;border-radius:8px;">
+        View My Reservations →
+      </a>
+    </div>"""
     body = f"""
     <h2 style="margin:0 0 6px;color:{BRAND_COLOR};font-size:20px;font-weight:900;">Hi {first}, we got your request!</h2>
     <p style="margin:0 0 20px;color:#475569;font-size:15px;line-height:1.6;">
@@ -127,7 +137,8 @@ async def send_booking_received(b: dict) -> None:
       <p style="margin:6px 0 0;color:#166534;font-size:13px;">
         Questions? Call or text us at <strong>{SUPPORT_PHONE}</strong>
       </p>
-    </div>"""
+    </div>
+    {portal_block}"""
     await _send(to_email, f"Booking Request Received — {ref}", _base_html("Booking Received", body))
 
 
@@ -140,6 +151,16 @@ async def send_booking_confirmed(b: dict) -> None:
     ref = b.get("booking_ref", "")
     pms = b.get("pms_confirmation") or "—"
     hotel = b.get("hotel") or {}
+    portal_url = b.get("portal_url")
+    portal_block = ""
+    if portal_url:
+        portal_block = f"""
+    <div style="margin-top:16px;text-align:center;">
+      <a href="{portal_url}" style="display:inline-block;background:{ACCENT_COLOR};color:#fff;font-size:14px;font-weight:700;text-decoration:none;padding:12px 28px;border-radius:8px;">
+        View My Reservations →
+      </a>
+      <p style="margin:6px 0 0;color:#94a3b8;font-size:11px;">Bookmark this link — it's your personal stay portal</p>
+    </div>"""
     body = f"""
     <h2 style="margin:0 0 6px;color:{BRAND_COLOR};font-size:20px;font-weight:900;">You're confirmed, {first}!</h2>
     <p style="margin:0 0 20px;color:#475569;font-size:15px;line-height:1.6;">
@@ -159,7 +180,8 @@ async def send_booking_confirmed(b: dict) -> None:
       <p style="margin:6px 0 0;color:#1e40af;font-size:13px;">
         Need anything before you arrive? Call <strong>{SUPPORT_PHONE}</strong>
       </p>
-    </div>"""
+    </div>
+    {portal_block}"""
     await _send(to_email, f"Confirmed! Your Stay at {hotel.get('name', 'Hotel')} — {ref}", _base_html("Booking Confirmed", body))
 
 
@@ -309,6 +331,13 @@ async def send_inquiry_auto_reply(inq: dict) -> None:
       </p>
       <p style="margin:6px 0 0;color:#166534;font-size:13px;">We look forward to hosting you! — Stayvoo Team</p>
     </div>"""
+    portal_url = inq.get("portal_url")
+    if portal_url:
+        body += f"""
+    <div style="margin-top:16px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:16px;text-align:center;">
+      <p style="margin:0 0 10px;color:#1d4ed8;font-size:14px;font-weight:600;">Track your inquiry anytime</p>
+      <a href="{portal_url}" style="display:inline-block;background:{BRAND_COLOR};color:#fff;font-size:14px;font-weight:700;text-decoration:none;padding:10px 24px;border-radius:8px;">View My Reservations →</a>
+    </div>"""
     await _send(to_email, "We received your Stayvoo inquiry!", _base_html("Inquiry Received", body))
 
 
@@ -407,6 +436,90 @@ async def send_hotel_invoice_email(hotel_name: str, hotel_email: str, month: str
       or call <strong>{SUPPORT_PHONE}</strong>.
     </p>"""
     await _send(hotel_email, f"Stayvoo Commission Invoice — {month}", _base_html("Monthly Invoice", body))
+
+
+async def send_guest_login_email(guest: dict, portal_url: str) -> None:
+    to_email = guest.get("email")
+    if not to_email:
+        return
+    first = guest.get("first_name", "there")
+    body = f"""
+    <h2 style="margin:0 0 6px;color:{BRAND_COLOR};font-size:20px;font-weight:900;">Hi {first}!</h2>
+    <p style="margin:0 0 20px;color:#475569;font-size:15px;line-height:1.6;">
+      Here's your personal link to view all your Stayvoo reservations. Click the button below to access your guest portal.
+    </p>
+    <div style="text-align:center;margin:24px 0;">
+      <a href="{portal_url}" style="display:inline-block;background:{ACCENT_COLOR};color:#fff;font-size:16px;font-weight:900;text-decoration:none;padding:14px 32px;border-radius:10px;">
+        View My Reservations →
+      </a>
+    </div>
+    <div style="background:#f8fafc;border-radius:10px;padding:14px 20px;margin-bottom:16px;">
+      <p style="margin:0;color:#94a3b8;font-size:12px;">
+        This link is valid for 30 days. If you didn't request this email, you can safely ignore it.
+      </p>
+    </div>
+    <p style="margin:0;color:#64748b;font-size:13px;">
+      Questions? Call or text <strong>{SUPPORT_PHONE}</strong>
+    </p>"""
+    await _send(to_email, "Your Stayvoo Reservations Portal Link", _base_html("Guest Portal", body))
+
+
+async def send_stay_message_to_guest(
+    to_email: str,
+    first_name: str,
+    message_text: str,
+    hotel_name: str,
+    portal_url: str,
+) -> None:
+    if not to_email:
+        return
+    body = f"""
+    <h2 style="margin:0 0 6px;color:{BRAND_COLOR};font-size:20px;font-weight:900;">Hi {first_name}!</h2>
+    <p style="margin:0 0 20px;color:#475569;font-size:15px;line-height:1.6;">
+      You have a new message from Stayvoo regarding your stay at <strong>{hotel_name}</strong>.
+    </p>
+    <div style="background:#f8fafc;border-left:4px solid {ACCENT_COLOR};border-radius:0 10px 10px 0;padding:16px 20px;margin-bottom:24px;">
+      <p style="margin:0;color:#475569;font-size:15px;line-height:1.6;">{message_text}</p>
+    </div>
+    <div style="text-align:center;">
+      <a href="{portal_url}" style="display:inline-block;background:{BRAND_COLOR};color:#fff;font-size:14px;font-weight:700;text-decoration:none;padding:10px 24px;border-radius:8px;">
+        Reply in My Portal →
+      </a>
+    </div>
+    <div style="margin-top:16px;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:14px;text-align:center;">
+      <p style="margin:0;color:#9a3412;font-size:13px;">
+        Or call us at <strong><a href="tel:{SUPPORT_PHONE}" style="color:{BRAND_COLOR};">{SUPPORT_PHONE}</a></strong>
+      </p>
+    </div>"""
+    await _send(to_email, f"Message from Stayvoo — {hotel_name}", _base_html("Message from Stayvoo", body))
+
+
+async def send_guest_message_alert(
+    guest_name: str,
+    guest_email: str,
+    message_text: str,
+    record_type: str,
+    record_id: str,
+) -> None:
+    to_email = os.getenv("SENDGRID_FROM_EMAIL", "hello@stayvoo.com")
+    short_id = record_id[:8].upper() if record_id else "—"
+    body = f"""
+    <h2 style="margin:0 0 16px;color:{BRAND_COLOR};font-size:20px;font-weight:900;">
+      Guest Message Received
+    </h2>
+    <div style="background:#fff7ed;border:2px solid #fed7aa;border-radius:10px;padding:14px 20px;margin-bottom:16px;">
+      <p style="margin:0;color:{ACCENT_COLOR};font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">
+        From: {guest_name} ({guest_email})
+      </p>
+      <p style="margin:4px 0 0;color:#9a3412;font-size:12px;">{record_type.upper()} — {short_id}</p>
+    </div>
+    <div style="background:#f8fafc;border-left:4px solid {BRAND_COLOR};border-radius:0 10px 10px 0;padding:16px 20px;margin-bottom:16px;">
+      <p style="margin:0;color:#1e293b;font-size:15px;line-height:1.6;">{message_text}</p>
+    </div>
+    <p style="margin:0;color:#64748b;font-size:13px;">
+      Reply via the admin panel: <a href="https://stayvoo.com/admin" style="color:{ACCENT_COLOR};">stayvoo.com/admin</a>
+    </p>"""
+    await _send(to_email, f"Guest Message — {guest_name}", _base_html("Guest Message", body))
 
 
 async def send_invoice_email(b: dict) -> None:

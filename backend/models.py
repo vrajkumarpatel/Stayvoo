@@ -57,6 +57,8 @@ class Guest(Base):
     company = Column(String, nullable=True)
     total_stays = Column(Integer, default=0)
     notes = Column(Text, nullable=True)
+    access_token = Column(String, unique=True, nullable=True, index=True)
+    token_expires_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     bookings = relationship("Booking", back_populates="guest")
@@ -105,11 +107,28 @@ class Message(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class StayMessage(Base):
+    __tablename__ = "stay_messages"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    stay_id = Column(UUID(as_uuid=True), ForeignKey("stays.id"), nullable=True)
+    booking_id = Column(UUID(as_uuid=True), ForeignKey("bookings.id"), nullable=True)
+    inquiry_id = Column(UUID(as_uuid=True), ForeignKey("inquiries.id"), nullable=True)
+    guest_id = Column(UUID(as_uuid=True), ForeignKey("guests.id"), nullable=True)
+    sender = Column(String, nullable=False)
+    sender_name = Column(String, nullable=False)
+    message = Column(Text, nullable=False)
+    is_read = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 class Stay(Base):
     __tablename__ = "stays"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     inquiry_id = Column(UUID(as_uuid=True), ForeignKey("inquiries.id"), nullable=True)
+    booking_id = Column(UUID(as_uuid=True), ForeignKey("bookings.id"), nullable=True)
+    guest_id = Column(UUID(as_uuid=True), ForeignKey("guests.id"), nullable=True)
     guest_first_name = Column(String, nullable=False)
     guest_last_name = Column(String, nullable=False)
     guest_email = Column(String, nullable=False)
@@ -155,6 +174,7 @@ class Inquiry(Base):
     source = Column(String, default="website")
     status = Column(String, default="new")
     notes = Column(Text, nullable=True)
+    guest_id = Column(UUID(as_uuid=True), ForeignKey("guests.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 

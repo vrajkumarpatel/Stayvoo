@@ -9,6 +9,7 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 from database import get_db
 from models import Hotel, Room, Guest, Booking
+from services.guests import get_or_create_guest
 from services.notifications import notify_new_booking, notify_guest_received
 from services.email_service import send_booking_received
 
@@ -147,22 +148,19 @@ async def create_booking(
     if payload.checkout_date <= payload.checkin_date:
         raise HTTPException(status_code=400, detail="Checkout must be after checkin")
 
-    guest_result = await db.execute(
-        select(Guest).where(Guest.email == payload.guest.email)
+    guest = await get_or_create_guest(
+        db,
+        payload.guest.email,
+        payload.guest.first_name,
+        payload.guest.last_name,
+        payload.guest.phone or "",
     )
-    guest = guest_result.scalar_one_or_none()
-    if not guest:
-        guest = Guest(
-            first_name=payload.guest.first_name,
-            last_name=payload.guest.last_name,
-            email=payload.guest.email,
-            phone=payload.guest.phone,
-            guest_type=payload.guest.guest_type,
-            company=payload.guest.company,
-            notes=payload.guest.notes,
-        )
-        db.add(guest)
-        await db.flush()
+    if payload.guest.guest_type:
+        guest.guest_type = payload.guest.guest_type
+    if payload.guest.company and not guest.company:
+        guest.company = payload.guest.company
+    if payload.guest.notes and not guest.notes:
+        guest.notes = payload.guest.notes
 
     nights = (payload.checkout_date - payload.checkin_date).days
     room_rate = Decimal(str(room.price_per_night))
@@ -223,6 +221,8 @@ async def create_booking(
     )
     booking = result.scalar_one()
     booking_dict = booking_to_dict(booking)
+    if booking.guest and booking.guest.access_token:
+        booking_dict["portal_url"] = f"https://stayvoo.com/my-stay/{booking.guest.access_token}"
 
     background_tasks.add_task(notify_new_booking, booking_dict)
     background_tasks.add_task(notify_guest_received, booking_dict)

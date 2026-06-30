@@ -9,7 +9,7 @@ from sqlalchemy.orm import selectinload
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from database import setup_db, Base, get_db
 from models import Hotel, Room, Booking, Stay
-from routers import hotels, bookings, admin, search, chat, inquiries, stays
+from routers import hotels, bookings, admin, search, chat, inquiries, stays, guests
 
 logger = logging.getLogger(__name__)
 
@@ -247,12 +247,30 @@ async def _monthly_hotel_invoice_job():
     logger.info("Monthly invoice job complete for %s", month_str)
 
 
+async def _run_column_migrations(conn) -> None:
+    """Add columns that SQLAlchemy create_all won't add to existing tables."""
+    from sqlalchemy import text
+    stmts = [
+        "ALTER TABLE guests ADD COLUMN IF NOT EXISTS access_token VARCHAR UNIQUE",
+        "ALTER TABLE guests ADD COLUMN IF NOT EXISTS token_expires_at TIMESTAMP",
+        "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS guest_id UUID REFERENCES guests(id)",
+        "ALTER TABLE stays ADD COLUMN IF NOT EXISTS booking_id UUID REFERENCES bookings(id)",
+        "ALTER TABLE stays ADD COLUMN IF NOT EXISTS guest_id UUID REFERENCES guests(id)",
+    ]
+    for stmt in stmts:
+        try:
+            await conn.execute(text(stmt))
+        except Exception as exc:
+            logger.debug("Migration skipped (%s): %s", stmt[:60], exc)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     engine = setup_db()
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await _run_column_migrations(conn)
 
     from database import _AsyncSessionLocal
     async with _AsyncSessionLocal() as session:
@@ -299,6 +317,7 @@ app.include_router(search.router)
 app.include_router(chat.router)
 app.include_router(inquiries.router)
 app.include_router(stays.router)
+app.include_router(guests.router)
 
 
 @app.get("/")

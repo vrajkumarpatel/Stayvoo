@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useLocation, Link } from 'react-router-dom'
 import HotelCard from '../components/HotelCard'
-import { getHotels, createInquiry } from '../lib/api'
+import { getHotels, createInquiry, checkGuest } from '../lib/api'
 
 const GUEST_TYPES = [
   { value: 'Travel Nurse', label: 'Travel Nurse' },
@@ -226,7 +226,29 @@ export default function ExclusiveHotels() {
                   {/* Row 2: Contact */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <Field label="Email" required>
-                      <input required type="email" value={form.email} onChange={set('email')} placeholder="jane@email.com" className={inputCls} />
+                      <input
+                        required
+                        type="email"
+                        value={form.email}
+                        onChange={set('email')}
+                        onBlur={async (e) => {
+                          const email = e.target.value.trim()
+                          if (!email.includes('@')) return
+                          try {
+                            const data = await checkGuest(email)
+                            if (data.exists) {
+                              setForm(f => ({
+                                ...f,
+                                first_name: f.first_name || data.first_name,
+                                last_name: f.last_name || data.last_name,
+                                phone: f.phone || data.phone,
+                              }))
+                            }
+                          } catch {}
+                        }}
+                        placeholder="jane@email.com"
+                        className={inputCls}
+                      />
                     </Field>
                     <Field label="Phone" required>
                       <input required type="tel" value={form.phone} onChange={set('phone')} placeholder="+1 (xxx) xxx-xxxx" className={inputCls} />

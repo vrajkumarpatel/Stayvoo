@@ -74,6 +74,8 @@ export default function Navbar() {
 
             <Link to="/search" className={`text-sm font-medium transition-colors ${active('/search')}`}>Search</Link>
 
+            <Link to="/my-reservations" className={`text-sm font-medium transition-colors ${active('/my-reservations')}`}>My Reservations</Link>
+
             <a
               href={PHONE_HREF}
               className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
@@ -110,6 +112,7 @@ export default function Navbar() {
               { to: '/exclusive', label: 'Extended Stay Quote' },
               { to: '/exclusive#inquiry-form', label: 'Group Booking' },
               { to: '/search', label: 'Search Hotels' },
+              { to: '/my-reservations', label: 'My Reservations' },
             ].map(({ to, label }) => (
               <Link
                 key={label}

@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from database import get_db
 from models import Inquiry, Message
+from services.guests import get_or_create_guest
 from services.email_service import send_inquiry_notification, send_inquiry_auto_reply, send_admin_message
 from services.notifications import notify_new_inquiry
 
@@ -106,12 +107,16 @@ async def create_inquiry(
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ):
-    inq = Inquiry(id=uuid.uuid4(), **payload.model_dump())
+    guest = await get_or_create_guest(db, payload.email, payload.first_name, payload.last_name, payload.phone)
+
+    inq = Inquiry(id=uuid.uuid4(), guest_id=guest.id, **payload.model_dump())
     db.add(inq)
     await db.commit()
     await db.refresh(inq)
 
     inq_dict = inquiry_to_dict(inq)
+    if guest.access_token:
+        inq_dict["portal_url"] = f"https://stayvoo.com/my-stay/{guest.access_token}"
     background_tasks.add_task(send_inquiry_notification, inq_dict)
     background_tasks.add_task(send_inquiry_auto_reply, inq_dict)
     background_tasks.add_task(notify_new_inquiry, inq_dict)

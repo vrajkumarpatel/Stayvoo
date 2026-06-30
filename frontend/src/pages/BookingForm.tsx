@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate, Link } from 'react-router-dom'
 import { loadStripe } from '@stripe/stripe-js'
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js'
-import { getHotel, createBooking } from '../lib/api'
+import { getHotel, createBooking, checkGuest } from '../lib/api'
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string | undefined
 const stripePromise = PUBLISHABLE_KEY ? loadStripe(PUBLISHABLE_KEY) : null
@@ -166,6 +166,21 @@ function BookingFormInner({ hotel, room, checkin, checkout, total }: InnerProps)
           placeholder="jane@example.com"
           value={form.email}
           onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+          onBlur={async (e) => {
+            const email = e.target.value.trim()
+            if (!email.includes('@')) return
+            try {
+              const data = await checkGuest(email)
+              if (data.exists) {
+                setForm(f => ({
+                  ...f,
+                  firstName: f.firstName || data.first_name,
+                  lastName: f.lastName || data.last_name,
+                  phone: f.phone || data.phone,
+                }))
+              }
+            } catch {}
+          }}
           className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
         />
       </div>

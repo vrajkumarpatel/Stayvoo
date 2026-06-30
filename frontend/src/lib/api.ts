@@ -246,6 +246,77 @@ export async function getAdminBilling(month: string, password: string) {
   return r.json()
 }
 
+export async function getStayMessages(stayId: string, password: string) {
+  const r = await fetch(`${BASE}/admin/stays/${stayId}/messages`, {
+    headers: { 'x-admin-password': password },
+  })
+  if (r.status === 401) throw new Error('Invalid password')
+  if (!r.ok) throw new Error('Failed to fetch stay messages')
+  return r.json()
+}
+
+export async function sendStayMessage(stayId: string, message: string, password: string) {
+  const r = await fetch(`${BASE}/admin/stays/${stayId}/messages`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-admin-password': password },
+    body: JSON.stringify({ message }),
+  })
+  if (r.status === 401) throw new Error('Invalid password')
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}))
+    throw new Error((err as any).detail ?? 'Failed to send message')
+  }
+  return r.json()
+}
+
+export async function guestLogin(email: string) {
+  const r = await fetch(`${BASE}/guests/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  })
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}))
+    throw new Error((err as any).detail ?? 'Login failed')
+  }
+  return r.json()
+}
+
+export async function checkGuest(email: string) {
+  const r = await fetch(`${BASE}/guests/check?email=${encodeURIComponent(email)}`)
+  if (!r.ok) return { exists: false }
+  return r.json()
+}
+
+export async function getMyStay(token: string) {
+  const r = await fetch(`${BASE}/my-stay/${token}`)
+  if (r.status === 401) {
+    const err = await r.json().catch(() => ({}))
+    throw new Error((err as any).detail ?? 'Invalid or expired link')
+  }
+  if (!r.ok) throw new Error('Failed to load portal')
+  return r.json()
+}
+
+export async function getMyStayMessages(token: string, recordType: string, recordId: string) {
+  const r = await fetch(`${BASE}/my-stay/${token}/messages/${recordType}/${recordId}`)
+  if (!r.ok) throw new Error('Failed to fetch messages')
+  return r.json()
+}
+
+export async function sendMyStayMessage(token: string, recordType: string, recordId: string, message: string) {
+  const r = await fetch(`${BASE}/my-stay/${token}/messages/${recordType}/${recordId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message }),
+  })
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}))
+    throw new Error((err as any).detail ?? 'Failed to send message')
+  }
+  return r.json()
+}
+
 export async function sendHotelInvoice(hotelName: string, month: string, password: string) {
   const r = await fetch(`${BASE}/admin/billing/invoice/${month}`, {
     method: 'POST',
