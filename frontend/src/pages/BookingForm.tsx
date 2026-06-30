@@ -222,14 +222,19 @@ function BookingFormInner({ hotel, room, checkin, checkout, total }: InnerProps)
       {/* Card guarantee — only shown when Stripe is configured */}
       {stripePromise && (
         <div className="border border-slate-200 rounded-xl overflow-hidden">
-          <div className="bg-slate-50 px-4 py-2.5 border-b border-slate-200 flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Card Guarantee</span>
-            <div className="flex items-center gap-1.5 text-slate-400">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
-              <span className="text-xs">Secured by Stripe</span>
+          <div className="bg-slate-50 px-4 py-3 border-b border-slate-200">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-sm font-bold text-[#1e3a5f]">Hold Your Room — No Charge Today</span>
+              <div className="flex items-center gap-1.5 text-slate-400">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                <span className="text-xs">Secured by Stripe</span>
+              </div>
             </div>
+            <p className="text-slate-500 text-xs leading-relaxed">
+              We save your card details to hold your room reservation. Your card will <strong>not be charged now</strong> — you pay the hotel directly at check-in. Card is only used if you no-show without cancelling (hotel policy).
+            </p>
           </div>
           <div className="px-4 py-3">
             <CardElement
@@ -237,10 +242,9 @@ function BookingFormInner({ hotel, room, checkin, checkout, total }: InnerProps)
               onChange={e => setCardComplete(e.complete)}
             />
           </div>
-          <div className="bg-amber-50 border-t border-amber-100 px-4 py-2.5">
-            <p className="text-amber-700 text-xs font-semibold">
-              🔒 Your card is held to guarantee your reservation. You are <strong>not charged today</strong> — payment is due at hotel check-in.
-            </p>
+          <div className="bg-green-50 border-t border-green-100 px-4 py-2.5 flex items-center gap-2">
+            <span className="text-green-600 text-sm font-bold">✅ 100% Free to Reserve</span>
+            <span className="text-green-600 text-xs">— No charge until check-in</span>
           </div>
         </div>
       )}

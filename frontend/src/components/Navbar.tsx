@@ -103,17 +103,30 @@ export default function Navbar() {
 
         {/* Mobile menu */}
         {open && (
-          <div className="md:hidden border-t border-white/10 py-4 flex flex-col gap-3">
-            <Link to="/" onClick={() => setOpen(false)} className={`text-sm font-medium py-1 ${active('/')}`}>Home</Link>
-            <Link to="/exclusive" onClick={() => setOpen(false)} className={`text-sm font-medium py-1 ${active('/exclusive')}`}>Extended Stay Quote</Link>
-            <Link to="/exclusive#inquiry-form" onClick={() => setOpen(false)} className="text-sm font-medium py-1 text-white/80 hover:text-white">Group Booking</Link>
-            <Link to="/search" onClick={() => setOpen(false)} className={`text-sm font-medium py-1 ${active('/search')}`}>Search Hotels</Link>
+          <div className="md:hidden border-t border-white/10 py-4 flex flex-col gap-1">
+            {[
+              { to: '/', label: 'Home' },
+              { to: '/exclusive', label: 'Exclusive Hotels' },
+              { to: '/exclusive', label: 'Extended Stay Quote' },
+              { to: '/exclusive#inquiry-form', label: 'Group Booking' },
+              { to: '/search', label: 'Search Hotels' },
+            ].map(({ to, label }) => (
+              <Link
+                key={label}
+                to={to}
+                onClick={() => setOpen(false)}
+                className="text-sm font-medium py-2.5 px-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+              >
+                {label}
+              </Link>
+            ))}
             <a
               href={PHONE_HREF}
-              className="mt-2 flex items-center justify-center gap-2 bg-orange-500 text-white text-sm font-semibold px-4 py-2.5 rounded-lg"
+              onClick={() => setOpen(false)}
+              className="mt-2 flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold px-4 py-3 rounded-xl transition-colors"
             >
               <span>📞</span>
-              <span>{PHONE}</span>
+              <span>Call Us: {PHONE}</span>
             </a>
           </div>
         )}

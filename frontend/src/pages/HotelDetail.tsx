@@ -17,8 +17,11 @@ export default function HotelDetail() {
   const { id } = useParams<{ id: string }>()
   const [searchParams] = useSearchParams()
 
-  const checkin = searchParams.get('checkin') ?? undefined
-  const checkout = searchParams.get('checkout') ?? undefined
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0]
+  const dayAfter = new Date(Date.now() + 172800000).toISOString().split('T')[0]
+
+  const [checkin, setCheckin] = useState(searchParams.get('checkin') ?? tomorrow)
+  const [checkout, setCheckout] = useState(searchParams.get('checkout') ?? dayAfter)
 
   const [hotel, setHotel] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -140,14 +143,39 @@ export default function HotelDetail() {
 
             {/* Rooms */}
             <div>
-              <h2 className="text-[#1e3a5f] font-black text-2xl mb-5">
-                Available Rooms
-                {checkin && checkout && (
-                  <span className="text-sm font-normal text-slate-500 ml-3">
-                    {checkin} → {checkout}
-                  </span>
-                )}
-              </h2>
+              <div className="flex items-center justify-between flex-wrap gap-3 mb-5">
+                <h2 className="text-[#1e3a5f] font-black text-2xl">Available Rooms</h2>
+                <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-sm">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-slate-400 text-xs font-semibold uppercase tracking-wider">In</span>
+                    <input
+                      type="date"
+                      value={checkin}
+                      min={tomorrow}
+                      onChange={e => {
+                        setCheckin(e.target.value)
+                        if (e.target.value >= checkout) {
+                          const d = new Date(e.target.value)
+                          d.setDate(d.getDate() + 1)
+                          setCheckout(d.toISOString().split('T')[0])
+                        }
+                      }}
+                      className="text-sm text-[#1e3a5f] font-semibold border-none outline-none bg-transparent cursor-pointer"
+                    />
+                  </div>
+                  <span className="text-slate-300">→</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Out</span>
+                    <input
+                      type="date"
+                      value={checkout}
+                      min={checkin}
+                      onChange={e => setCheckout(e.target.value)}
+                      className="text-sm text-[#1e3a5f] font-semibold border-none outline-none bg-transparent cursor-pointer"
+                    />
+                  </div>
+                </div>
+              </div>
               {hotel.rooms?.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   {hotel.rooms.map((room: any) => (

@@ -9,6 +9,9 @@ import BookingForm from './pages/BookingForm'
 import Confirmation from './pages/Confirmation'
 import Admin from './pages/Admin'
 import GroupBooking from './pages/GroupBooking'
+import Privacy from './pages/Privacy'
+import Terms from './pages/Terms'
+import About from './pages/About'
 
 export default function App() {
   return (
@@ -23,6 +26,9 @@ export default function App() {
         <Route path="/book" element={<BookingForm />} />
         <Route path="/confirmation" element={<Confirmation />} />
         <Route path="/admin" element={<Admin />} />
+        <Route path="/privacy" element={<Privacy />} />
+        <Route path="/terms" element={<Terms />} />
+        <Route path="/about" element={<About />} />
       </Routes>
       <AIChat />
     </BrowserRouter>

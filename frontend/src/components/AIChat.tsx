@@ -17,6 +17,25 @@ interface Message {
   bookingCard?: BookingCard
 }
 
+interface GroupFlow {
+  step: 1 | 2 | 3 | 4
+  name: string
+  email: string
+  rooms: string
+}
+
+function isGroupInquiry(text: string): boolean {
+  const lower = text.toLowerCase()
+  const roomMatch = lower.match(/(\d+)\s*rooms?/)
+  if (roomMatch && parseInt(roomMatch[1]) >= 5) return true
+  return (
+    /construction crew|construction team|construction workers/.test(lower) ||
+    /\bgroup\b/.test(lower) ||
+    /travel nurse agenc/.test(lower) ||
+    /corporate team/.test(lower)
+  )
+}
+
 const GREETING_TEXT =
   `Hi! I'm Stayvo 🏨\nHotels in Waukesha from $110/night.\nWhich works for you?\n\n• Choice Hotels — $110/night\n• Wyndham Waukesha — $115/night\n• Wyndham Brookfield — $120/night\n\nOr ask me anything!`
 
@@ -79,6 +98,7 @@ export default function AIChat() {
   const [loading, setLoading] = useState(false)
   const [hotels, setHotels] = useState<any[]>([])
   const [quickRepliesVisible, setQuickRepliesVisible] = useState(true)
+  const [groupFlow, setGroupFlow] = useState<GroupFlow | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -105,6 +125,76 @@ export default function AIChat() {
   const now = () =>
     new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
+  const addAIMessage = (content: string) => {
+    setMessages(prev => [...prev, { role: 'assistant', content, ts: now() }])
+  }
+
+  const triggerGroupFlow = () => {
+    setLoading(true)
+    setTimeout(() => {
+      addAIMessage(
+        "I can help with that group booking! Let me get a few quick details to get you the best rate.\n\nWhat is your name?"
+      )
+      setGroupFlow({ step: 1, name: '', email: '', rooms: '' })
+      setLoading(false)
+    }, 600)
+  }
+
+  const handleGroupStep = async (answer: string) => {
+    if (!groupFlow) return
+    if (groupFlow.step === 1) {
+      setGroupFlow(g => g ? { ...g, name: answer, step: 2 } : null)
+      setTimeout(() => addAIMessage('Best email to reach you?'), 400)
+    } else if (groupFlow.step === 2) {
+      setGroupFlow(g => g ? { ...g, email: answer, step: 3 } : null)
+      setTimeout(() => addAIMessage('How many rooms do you need?'), 400)
+    } else if (groupFlow.step === 3) {
+      setGroupFlow(g => g ? { ...g, rooms: answer, step: 4 } : null)
+      setTimeout(() => addAIMessage('When do you need them?'), 400)
+    } else if (groupFlow.step === 4) {
+      const { name, email, rooms } = groupFlow
+      setGroupFlow(null)
+      await submitGroupInquiry(name, email, rooms, answer)
+    }
+  }
+
+  const submitGroupInquiry = async (name: string, email: string, rooms: string, dates: string) => {
+    setLoading(true)
+    try {
+      const parts = name.trim().split(' ')
+      const firstName = parts[0]
+      const lastName = parts.slice(1).join(' ') || '.'
+      const numRoomsMatch = rooms.match(/\d+/)
+      const numRooms = numRoomsMatch ? parseInt(numRoomsMatch[0]) : 1
+      const res = await fetch(`${BASE}/inquiries`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          first_name: firstName,
+          last_name: lastName,
+          email: email.trim(),
+          phone: 'via AI chat',
+          guest_type: 'group',
+          num_rooms: numRooms,
+          length_of_stay: dates,
+          source: 'ai_chat',
+        }),
+      })
+      if (!res.ok) throw new Error('Failed')
+      const data = await res.json()
+      const ref = data.id ? `INQ-${data.id.substring(0, 8).toUpperCase()}` : 'INQ-XXXXXXXX'
+      addAIMessage(
+        `Perfect! We will contact you within 2 hours with availability and group pricing.\n\nReference: ${ref}`
+      )
+    } catch {
+      addAIMessage(
+        "We've received your group request! Call or text +18883528151 for immediate assistance."
+      )
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const resolveHotelId = (hotelName: string): string => {
     const pattern = HOTEL_NAME_PATTERNS[hotelName]
     if (!pattern) return ''
@@ -120,6 +210,19 @@ export default function AIChat() {
 
     const userMsg: Message = { role: 'user', content: trimmed, ts: now() }
     setMessages(prev => [...prev, userMsg])
+
+    // Route to active group flow
+    if (groupFlow !== null) {
+      await handleGroupStep(trimmed)
+      return
+    }
+
+    // Detect new group inquiry
+    if (isGroupInquiry(trimmed)) {
+      triggerGroupFlow()
+      return
+    }
+
     setLoading(true)
 
     try {

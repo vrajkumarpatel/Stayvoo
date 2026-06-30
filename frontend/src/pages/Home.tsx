@@ -215,9 +215,27 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-[#0f2240] text-white/50 text-center py-8 text-sm">
-        <p>© 2026 Stayvoo. All rights reserved.</p>
-        <p className="mt-1">Serving Waukesha & Brookfield, Wisconsin</p>
+      <footer className="bg-[#0f2240] text-white/50 py-10 text-sm">
+        <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="text-center sm:text-left">
+            <p className="text-white/80 font-bold">Stayvoo</p>
+            <p className="mt-0.5">Serving Waukesha & Brookfield, Wisconsin</p>
+            <p className="mt-0.5">© 2026 Stayvoo. All rights reserved.</p>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
+            <a href="/about" className="hover:text-white transition-colors">About</a>
+            <a href="/privacy" className="hover:text-white transition-colors">Privacy Policy</a>
+            <a href="/terms" className="hover:text-white transition-colors">Terms of Service</a>
+            <a
+              href="https://wa.me/18883528151"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-green-400 hover:text-green-300 font-semibold transition-colors"
+            >
+              💬 WhatsApp
+            </a>
+          </div>
+        </div>
       </footer>
     </div>
   )

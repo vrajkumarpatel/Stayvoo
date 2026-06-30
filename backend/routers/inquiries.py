@@ -1,10 +1,11 @@
 import os
+import re
 import uuid
 import logging
-from datetime import date
-from typing import Optional
+from datetime import date, timedelta
+from typing import Optional, Union
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from database import get_db
@@ -26,14 +27,34 @@ class InquiryIn(BaseModel):
     first_name: str
     last_name: str
     email: str
-    phone: str
-    guest_type: str
+    phone: str = "Not provided"
+    guest_type: str = "group"
     hotel_preference: Optional[str] = None
-    num_rooms: int
-    length_of_stay: str
-    start_date: date
+    num_rooms: Union[int, str] = 1
+    length_of_stay: str = "TBD"
+    start_date: Optional[Union[date, str]] = None
     special_requirements: Optional[str] = None
     source: Optional[str] = "website"
+
+    @field_validator('num_rooms', mode='before')
+    @classmethod
+    def coerce_num_rooms(cls, v):
+        if isinstance(v, str):
+            m = re.search(r'\d+', v)
+            return int(m.group()) if m else 1
+        return v
+
+    @field_validator('start_date', mode='before')
+    @classmethod
+    def coerce_start_date(cls, v):
+        if v is None:
+            return date.today() + timedelta(days=14)
+        if isinstance(v, str):
+            try:
+                return date.fromisoformat(v)
+            except ValueError:
+                return date.today() + timedelta(days=14)
+        return v
 
 
 class InquiryUpdate(BaseModel):

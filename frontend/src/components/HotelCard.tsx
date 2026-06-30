@@ -67,12 +67,15 @@ export default function HotelCard({ hotel, large = false, twoButton = false }: P
             ⭐ Exclusive Partner
           </div>
         )}
-        {hotel.rating && (
+        {hotel.rating && hotel.review_count && hotel.review_count > 0 ? (
           <div className="absolute top-3 right-3 bg-black/50 text-white text-xs font-semibold px-2 py-1 rounded-full">
-            ★ {hotel.rating.toFixed(1)}
-            {hotel.review_count ? <span className="text-white/70"> ({hotel.review_count})</span> : null}
+            ★ {hotel.rating.toFixed(1)} <span className="text-white/70">({hotel.review_count})</span>
           </div>
-        )}
+        ) : hotel.exclusive ? (
+          <div className="absolute top-3 right-3 bg-white/90 text-[#1e3a5f] text-xs font-bold px-2.5 py-1 rounded-full shadow-sm">
+            ✨ New
+          </div>
+        ) : null}
       </div>
 
       {/* Content */}
