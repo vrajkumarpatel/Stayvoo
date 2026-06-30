@@ -88,6 +88,8 @@ class Booking(Base):
     stripe_payment_method_id = Column(String, nullable=True)
     card_last4 = Column(String, nullable=True)
     card_brand = Column(String, nullable=True)
+    last_modified_at = Column(DateTime, nullable=True)
+    last_modified_by = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     hotel = relationship("Hotel", back_populates="bookings")

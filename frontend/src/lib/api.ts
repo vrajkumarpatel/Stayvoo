@@ -317,6 +317,54 @@ export async function sendMyStayMessage(token: string, recordType: string, recor
   return r.json()
 }
 
+export async function getAdminBookingMessages(bookingId: string, password: string) {
+  const r = await fetch(`${BASE}/admin/bookings/${bookingId}/messages`, {
+    headers: { 'x-admin-password': password },
+  })
+  if (r.status === 401) throw new Error('Invalid password')
+  if (!r.ok) throw new Error('Failed to fetch messages')
+  return r.json()
+}
+
+export async function sendAdminBookingMessage(bookingId: string, message: string, password: string) {
+  const r = await fetch(`${BASE}/admin/bookings/${bookingId}/messages`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-admin-password': password },
+    body: JSON.stringify({ message }),
+  })
+  if (r.status === 401) throw new Error('Invalid password')
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}))
+    throw new Error((err as any).detail ?? 'Failed to send message')
+  }
+  return r.json()
+}
+
+export async function updateAdminBooking(
+  id: string,
+  data: {
+    checkin_date?: string
+    checkout_date?: string
+    rate_per_night?: number
+    special_requests?: string
+    guest_phone?: string
+    guest_email?: string
+  },
+  password: string
+) {
+  const r = await fetch(`${BASE}/admin/bookings/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'x-admin-password': password },
+    body: JSON.stringify(data),
+  })
+  if (r.status === 401) throw new Error('Invalid password')
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}))
+    throw new Error((err as any).detail ?? 'Update failed')
+  }
+  return r.json()
+}
+
 export async function sendHotelInvoice(hotelName: string, month: string, password: string) {
   const r = await fetch(`${BASE}/admin/billing/invoice/${month}`, {
     method: 'POST',

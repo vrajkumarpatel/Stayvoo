@@ -4,6 +4,7 @@ import {
   getAdminInquiries, updateAdminInquiry, getInquiryMessages, sendInquiryMessage,
   getAdminStays, createAdminStay, updateAdminStay, checkoutAdminStay,
   getAdminBilling, sendHotelInvoice,
+  getAdminBookingMessages, sendAdminBookingMessage, updateAdminBooking,
 } from '../lib/api'
 
 const STORAGE_KEY = 'stayvoo_admin_pw'
@@ -29,6 +30,7 @@ const INQUIRY_STATUS_COLORS: Record<string, string> = {
 const INQUIRY_STATUSES = ['new', 'contacted', 'quoted', 'booked', 'closed']
 
 const STAY_STATUS_COLORS: Record<string, string> = {
+  upcoming: 'bg-purple-100 text-purple-700',
   active: 'bg-green-100 text-green-700',
   extended: 'bg-blue-100 text-blue-700',
   checked_out: 'bg-slate-100 text-slate-600',
@@ -40,6 +42,7 @@ interface Booking {
   room_rate: number; total_amount: number; special_requests: string | null
   estimated_arrival: string | null; source: string; card_last4: string | null
   card_brand: string | null; pms_confirmation?: string | null; created_at: string
+  last_modified_at?: string | null; last_modified_by?: string | null
   guest: { first_name: string; last_name: string; email: string; phone: string; guest_type: string; company: string | null; total_stays: number } | null
   hotel: { id: string; name: string; brand: string; address: string } | null
   room: { id: string; name: string; price_per_night: number } | null
@@ -123,11 +126,31 @@ function ModalHeader({ title, sub, onClose }: { title: React.ReactNode; sub?: st
 function BookingDetailModal({ booking: b, password, onClose, onUpdate }: {
   booking: Booking; password: string; onClose: () => void; onUpdate: (b: Booking) => void
 }) {
+  const [innerTab, setInnerTab] = useState<'details' | 'messages' | 'edit'>('details')
   const [pmsInput, setPmsInput] = useState('')
   const [confirming, setConfirming] = useState(false)
   const [confirmError, setConfirmError] = useState('')
   const [cancelling, setCancelling] = useState(false)
   const [cancelStep, setCancelStep] = useState(false)
+
+  // Messages tab state
+  const [messages, setMessages] = useState<any[]>([])
+  const [msgsLoaded, setMsgsLoaded] = useState(false)
+  const [reply, setReply] = useState('')
+  const [sending, setSending] = useState(false)
+
+  // Edit tab state
+  const [editForm, setEditForm] = useState({
+    checkin_date: b.checkin_date,
+    checkout_date: b.checkout_date,
+    rate_per_night: String(b.room_rate),
+    special_requests: b.special_requests ?? '',
+    guest_phone: b.guest?.phone ?? '',
+    guest_email: b.guest?.email ?? '',
+  })
+  const [editSaving, setEditSaving] = useState(false)
+  const [editSaved, setEditSaved] = useState(false)
+  const [editError, setEditError] = useState('')
 
   const isPending = b.status === 'pending'
   const isConfirmed = b.status === 'confirmed'
@@ -160,6 +183,67 @@ function BookingDetailModal({ booking: b, password, onClose, onUpdate }: {
     }
   }
 
+  const loadMessages = async () => {
+    try {
+      const data = await getAdminBookingMessages(b.id, password)
+      setMessages(data)
+    } catch {}
+    setMsgsLoaded(true)
+  }
+
+  useEffect(() => {
+    if (innerTab === 'messages' && !msgsLoaded) loadMessages()
+  }, [innerTab])
+
+  const handleSend = async () => {
+    if (!reply.trim()) return
+    setSending(true)
+    try {
+      const msg = await sendAdminBookingMessage(b.id, reply.trim(), password)
+      setMessages(m => [...m, msg])
+      setReply('')
+    } catch (err: any) {
+      alert(err.message)
+    } finally {
+      setSending(false)
+    }
+  }
+
+  const handleEdit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setEditSaving(true)
+    setEditError('')
+    try {
+      const payload: Record<string, any> = {}
+      if (editForm.checkin_date !== b.checkin_date) payload.checkin_date = editForm.checkin_date
+      if (editForm.checkout_date !== b.checkout_date) payload.checkout_date = editForm.checkout_date
+      const rate = parseFloat(editForm.rate_per_night)
+      if (!isNaN(rate) && rate !== b.room_rate) payload.rate_per_night = rate
+      payload.special_requests = editForm.special_requests
+      if (editForm.guest_phone !== (b.guest?.phone ?? '')) payload.guest_phone = editForm.guest_phone
+      if (editForm.guest_email !== (b.guest?.email ?? '')) payload.guest_email = editForm.guest_email
+      const updated = await updateAdminBooking(b.id, payload, password)
+      onUpdate(updated)
+      setEditSaved(true)
+      setTimeout(() => setEditSaved(false), 2000)
+    } catch (err: any) {
+      setEditError(err.message)
+    } finally {
+      setEditSaving(false)
+    }
+  }
+
+  const fmtTs = (ts: string | null | undefined) => {
+    if (!ts) return ''
+    return new Date(ts).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+  }
+
+  const tabs = [
+    { key: 'details', label: 'Details' },
+    { key: 'messages', label: 'Messages' },
+    ...(!isCancelled ? [{ key: 'edit', label: 'Edit' }] : []),
+  ] as const
+
   return (
     <ModalShell onClose={onClose}>
       <ModalHeader
@@ -172,101 +256,189 @@ function BookingDetailModal({ booking: b, password, onClose, onUpdate }: {
         </>}
         sub={`${b.hotel?.name} · ${b.checkin_date} → ${b.checkout_date}`}
       />
-      <div className="overflow-y-auto flex-1 px-5 py-5 flex flex-col gap-5">
-        <div>
-          <SectionHeader title="Guest Info" />
-          <div className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-3">
-            <InfoRow label="Full Name">{b.guest?.first_name} {b.guest?.last_name}</InfoRow>
-            <InfoRow label="Email"><a href={`mailto:${b.guest?.email}`} className="text-orange-500 hover:underline break-all">{b.guest?.email}</a></InfoRow>
-            <InfoRow label="Phone"><a href={`tel:${b.guest?.phone}`} className="text-orange-500 hover:underline">{b.guest?.phone}</a></InfoRow>
-            <InfoRow label="Guest Type">{GUEST_TYPE_LABELS[b.guest_type] ?? b.guest_type}</InfoRow>
-            {b.guest?.company && <InfoRow label="Company">{b.guest.company}</InfoRow>}
-            {b.special_requests && (
-              <div className="border-t border-slate-200 pt-3 mt-1">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Special Requests</p>
-                <p className="text-[#1e3a5f] text-sm leading-relaxed">{b.special_requests}</p>
-              </div>
-            )}
-          </div>
-        </div>
-        <div>
-          <SectionHeader title="Booking Info" />
-          <div className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-3">
-            <InfoRow label="Reference"><span className="font-mono font-bold text-orange-600">{b.booking_ref}</span></InfoRow>
-            <InfoRow label="Hotel">{b.hotel?.name ?? '—'}</InfoRow>
-            <InfoRow label="Room">{b.room?.name ?? '—'}</InfoRow>
-            <InfoRow label="Check-in">{b.checkin_date}</InfoRow>
-            <InfoRow label="Check-out">{b.checkout_date}</InfoRow>
-            <InfoRow label="Nights">{b.nights} {b.nights === 1 ? 'night' : 'nights'}</InfoRow>
-            <InfoRow label="Est. Arrival">{b.estimated_arrival ?? '—'}</InfoRow>
-            <div className="border-t border-slate-200 pt-3 mt-1 flex justify-between items-center">
-              <span className="text-slate-400 text-sm">${b.room_rate}/night × {b.nights}</span>
-              <span className="text-[#1e3a5f] font-black text-xl">${(b.total_amount ?? 0).toFixed(0)}</span>
-            </div>
-          </div>
-        </div>
-        <div>
-          <SectionHeader title="Payment Info" />
-          <div className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-3">
-            {b.card_last4 ? (
-              <>
-                <InfoRow label="Card">{CARD_BRAND_ICONS[b.card_brand ?? ''] ?? `💳 ${b.card_brand ?? 'Card'}`}</InfoRow>
-                <InfoRow label="Last 4"><span className="font-mono tracking-widest">•••• {b.card_last4}</span></InfoRow>
-                <InfoRow label="Status"><span className="text-green-600">✅ Guarantee on file</span></InfoRow>
-              </>
-            ) : (
-              <p className="text-slate-400 text-sm">No card on file — guest pays at check-in.</p>
-            )}
-          </div>
-        </div>
-        {isConfirmed && b.pms_confirmation && (
-          <div>
-            <SectionHeader title="PMS Confirmation" />
-            <div className="bg-green-50 border border-green-200 rounded-2xl p-4">
-              <p className="text-green-600 text-xs font-bold uppercase tracking-wider mb-1.5">Confirmation Number</p>
-              <p className="font-mono font-black text-green-700 text-2xl">{b.pms_confirmation}</p>
-            </div>
-          </div>
-        )}
-        <div>
-          <SectionHeader title="Actions" />
-          <div className="flex flex-col gap-3">
-            {isPending && (
-              <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 flex flex-col gap-3">
-                <div>
-                  <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block mb-1.5">PMS Confirmation Number *</label>
-                  <input
-                    autoFocus placeholder="e.g. WYN-789456" value={pmsInput}
-                    onChange={e => { setPmsInput(e.target.value); setConfirmError('') }}
-                    onKeyDown={e => { if (e.key === 'Enter' && pmsInput.trim()) handleConfirm() }}
-                    className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
-                  />
-                </div>
-                {confirmError && <p className="text-red-500 text-sm bg-red-50 rounded-xl px-3 py-2 border border-red-200">{confirmError}</p>}
-                <button onClick={handleConfirm} disabled={confirming || !pmsInput.trim()} className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-black py-3.5 rounded-xl text-sm transition-colors">
-                  {confirming ? 'Confirming...' : '✅ Confirm Booking'}
-                </button>
-              </div>
-            )}
-            {isConfirmed && (
-              <div className="bg-green-50 border border-green-200 rounded-2xl p-4 flex items-center gap-3">
-                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
-                </div>
-                <div>
-                  <p className="text-green-700 font-bold text-sm">Booking Confirmed</p>
-                  <p className="text-green-600 text-xs mt-0.5">PMS #{b.pms_confirmation}</p>
-                </div>
-              </div>
-            )}
-            {!isCancelled && (
-              <button onClick={handleCancel} disabled={cancelling} className={`w-full font-bold py-3 rounded-xl text-sm transition-all ${cancelStep ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-200' : 'bg-white hover:bg-red-50 text-red-500 border border-red-200'}`}>
-                {cancelling ? 'Cancelling...' : cancelStep ? '⚠ Confirm Cancel — This cannot be undone' : 'Cancel Booking'}
-              </button>
-            )}
-          </div>
-        </div>
+
+      {/* Inner tabs */}
+      <div className="flex gap-0 border-b border-slate-100 flex-shrink-0 px-5">
+        {tabs.map(t => (
+          <button key={t.key} onClick={() => setInnerTab(t.key as any)} className={`py-3 px-4 text-sm font-bold capitalize border-b-2 transition-colors ${innerTab === t.key ? 'border-orange-500 text-orange-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>
+            {t.label}
+          </button>
+        ))}
       </div>
+
+      {/* DETAILS TAB */}
+      {innerTab === 'details' && (
+        <div className="overflow-y-auto flex-1 px-5 py-5 flex flex-col gap-5">
+          <div>
+            <SectionHeader title="Guest Info" />
+            <div className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-3">
+              <InfoRow label="Full Name">{b.guest?.first_name} {b.guest?.last_name}</InfoRow>
+              <InfoRow label="Email"><a href={`mailto:${b.guest?.email}`} className="text-orange-500 hover:underline break-all">{b.guest?.email}</a></InfoRow>
+              <InfoRow label="Phone"><a href={`tel:${b.guest?.phone}`} className="text-orange-500 hover:underline">{b.guest?.phone}</a></InfoRow>
+              <InfoRow label="Guest Type">{GUEST_TYPE_LABELS[b.guest_type] ?? b.guest_type}</InfoRow>
+              {b.guest?.company && <InfoRow label="Company">{b.guest.company}</InfoRow>}
+              {b.special_requests && (
+                <div className="border-t border-slate-200 pt-3 mt-1">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Special Requests</p>
+                  <p className="text-[#1e3a5f] text-sm leading-relaxed">{b.special_requests}</p>
+                </div>
+              )}
+            </div>
+          </div>
+          <div>
+            <SectionHeader title="Booking Info" />
+            <div className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-3">
+              <InfoRow label="Reference"><span className="font-mono font-bold text-orange-600">{b.booking_ref}</span></InfoRow>
+              <InfoRow label="Hotel">{b.hotel?.name ?? '—'}</InfoRow>
+              <InfoRow label="Room">{b.room?.name ?? '—'}</InfoRow>
+              <InfoRow label="Check-in">{b.checkin_date}</InfoRow>
+              <InfoRow label="Check-out">{b.checkout_date}</InfoRow>
+              <InfoRow label="Nights">{b.nights} {b.nights === 1 ? 'night' : 'nights'}</InfoRow>
+              <InfoRow label="Est. Arrival">{b.estimated_arrival ?? '—'}</InfoRow>
+              <div className="border-t border-slate-200 pt-3 mt-1 flex justify-between items-center">
+                <span className="text-slate-400 text-sm">${b.room_rate}/night × {b.nights}</span>
+                <span className="text-[#1e3a5f] font-black text-xl">${(b.total_amount ?? 0).toFixed(0)}</span>
+              </div>
+            </div>
+          </div>
+          <div>
+            <SectionHeader title="Payment Info" />
+            <div className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-3">
+              {b.card_last4 ? (
+                <>
+                  <InfoRow label="Card">{CARD_BRAND_ICONS[b.card_brand ?? ''] ?? `💳 ${b.card_brand ?? 'Card'}`}</InfoRow>
+                  <InfoRow label="Last 4"><span className="font-mono tracking-widest">•••• {b.card_last4}</span></InfoRow>
+                  <InfoRow label="Status"><span className="text-green-600">✅ Guarantee on file</span></InfoRow>
+                </>
+              ) : (
+                <p className="text-slate-400 text-sm">No card on file — guest pays at check-in.</p>
+              )}
+            </div>
+          </div>
+          {isConfirmed && b.pms_confirmation && (
+            <div>
+              <SectionHeader title="PMS Confirmation" />
+              <div className="bg-green-50 border border-green-200 rounded-2xl p-4">
+                <p className="text-green-600 text-xs font-bold uppercase tracking-wider mb-1.5">Confirmation Number</p>
+                <p className="font-mono font-black text-green-700 text-2xl">{b.pms_confirmation}</p>
+              </div>
+            </div>
+          )}
+          {b.last_modified_at && (
+            <p className="text-slate-400 text-xs text-center">Last edited {fmtTs(b.last_modified_at)} by {b.last_modified_by ?? 'admin'}</p>
+          )}
+          <div>
+            <SectionHeader title="Actions" />
+            <div className="flex flex-col gap-3">
+              {isPending && (
+                <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 flex flex-col gap-3">
+                  <div>
+                    <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block mb-1.5">PMS Confirmation Number *</label>
+                    <input
+                      autoFocus placeholder="e.g. WYN-789456" value={pmsInput}
+                      onChange={e => { setPmsInput(e.target.value); setConfirmError('') }}
+                      onKeyDown={e => { if (e.key === 'Enter' && pmsInput.trim()) handleConfirm() }}
+                      className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+                    />
+                  </div>
+                  {confirmError && <p className="text-red-500 text-sm bg-red-50 rounded-xl px-3 py-2 border border-red-200">{confirmError}</p>}
+                  <button onClick={handleConfirm} disabled={confirming || !pmsInput.trim()} className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-black py-3.5 rounded-xl text-sm transition-colors">
+                    {confirming ? 'Confirming...' : '✅ Confirm Booking'}
+                  </button>
+                </div>
+              )}
+              {isConfirmed && (
+                <div className="bg-green-50 border border-green-200 rounded-2xl p-4 flex items-center gap-3">
+                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                  </div>
+                  <div>
+                    <p className="text-green-700 font-bold text-sm">Booking Confirmed</p>
+                    <p className="text-green-600 text-xs mt-0.5">PMS #{b.pms_confirmation}</p>
+                  </div>
+                </div>
+              )}
+              {!isCancelled && (
+                <button onClick={handleCancel} disabled={cancelling} className={`w-full font-bold py-3 rounded-xl text-sm transition-all ${cancelStep ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-200' : 'bg-white hover:bg-red-50 text-red-500 border border-red-200'}`}>
+                  {cancelling ? 'Cancelling...' : cancelStep ? '⚠ Confirm Cancel — This cannot be undone' : 'Cancel Booking'}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MESSAGES TAB */}
+      {innerTab === 'messages' && (
+        <div className="flex flex-col flex-1" style={{ minHeight: 0 }}>
+          <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-3">
+            {!msgsLoaded ? (
+              <div className="text-center text-slate-400 text-sm py-8">Loading messages...</div>
+            ) : messages.length === 0 ? (
+              <div className="text-center text-slate-400 text-sm py-8">No messages yet. Send the first reply below.</div>
+            ) : (
+              messages.map((m: any) => (
+                <div key={m.id} className={`flex ${m.sender === 'admin' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${m.sender === 'admin' ? 'bg-orange-500 text-white rounded-br-sm' : 'bg-slate-100 text-[#1e3a5f] rounded-bl-sm'}`}>
+                    <p className="text-sm leading-relaxed">{m.message}</p>
+                    <p className={`text-xs mt-1.5 ${m.sender === 'admin' ? 'text-orange-100' : 'text-slate-400'}`}>{m.sender_name} · {fmtTs(m.created_at)}</p>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+          <div className="border-t border-slate-100 px-5 py-4 flex gap-2 flex-shrink-0">
+            <textarea
+              rows={2} value={reply} onChange={e => setReply(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
+              placeholder="Type a reply... (Enter to send)"
+              className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-orange-400"
+            />
+            <button onClick={handleSend} disabled={sending || !reply.trim()} className="bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white font-bold px-4 rounded-xl text-sm transition-colors">
+              {sending ? '...' : 'Send'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT TAB */}
+      {innerTab === 'edit' && !isCancelled && (
+        <form onSubmit={handleEdit} className="overflow-y-auto flex-1 px-5 py-5 flex flex-col gap-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Check-in</label>
+              <input type="date" value={editForm.checkin_date} onChange={e => setEditForm(f => ({ ...f, checkin_date: e.target.value }))} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white" />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Check-out</label>
+              <input type="date" value={editForm.checkout_date} min={editForm.checkin_date} onChange={e => setEditForm(f => ({ ...f, checkout_date: e.target.value }))} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white" />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Rate per Night ($)</label>
+            <input type="number" min="1" step="0.01" value={editForm.rate_per_night} onChange={e => setEditForm(f => ({ ...f, rate_per_night: e.target.value }))} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white" />
+          </div>
+          <div>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Special Requests</label>
+            <textarea rows={2} value={editForm.special_requests} onChange={e => setEditForm(f => ({ ...f, special_requests: e.target.value }))} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-orange-400" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Guest Phone</label>
+              <input type="tel" value={editForm.guest_phone} onChange={e => setEditForm(f => ({ ...f, guest_phone: e.target.value }))} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white" />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Guest Email</label>
+              <input type="email" value={editForm.guest_email} onChange={e => setEditForm(f => ({ ...f, guest_email: e.target.value }))} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white" />
+            </div>
+          </div>
+          {editError && <p className="text-red-500 text-sm bg-red-50 rounded-xl px-3 py-2 border border-red-200">{editError}</p>}
+          <p className="text-slate-400 text-xs">Saving will recalculate nights, total, and commission. Guest will receive an update email.</p>
+          <button type="submit" disabled={editSaving} className="w-full bg-[#1e3a5f] hover:bg-[#162d4a] disabled:opacity-60 text-white font-black py-3.5 rounded-xl text-sm transition-colors">
+            {editSaving ? 'Saving...' : editSaved ? '✅ Saved! Guest notified.' : 'Save Changes'}
+          </button>
+        </form>
+      )}
     </ModalShell>
   )
 }
@@ -793,6 +965,8 @@ export default function Admin() {
   const [selectedStay, setSelectedStay] = useState<Stay | null>(null)
   const [createStayInquiry, setCreateStayInquiry] = useState<Inquiry | null>(null)
   const [showCreateStay, setShowCreateStay] = useState(false)
+  const [bookingSearch, setBookingSearch] = useState('')
+  const [bookingFilter, setBookingFilter] = useState<'all' | 'pending' | 'confirmed' | 'cancelled'>('all')
   const [billingMonth, setBillingMonth] = useState(() => {
     const n = new Date()
     return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`
@@ -935,6 +1109,18 @@ export default function Admin() {
     return new Date(s + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   }
 
+  // Filtered bookings for display
+  const filteredBookings = bookings.filter(b => {
+    const q = bookingSearch.toLowerCase()
+    const matchSearch = !q ||
+      (b.guest?.first_name ?? '').toLowerCase().includes(q) ||
+      (b.guest?.last_name ?? '').toLowerCase().includes(q) ||
+      (b.guest?.email ?? '').toLowerCase().includes(q) ||
+      b.booking_ref.toLowerCase().includes(q)
+    const matchFilter = bookingFilter === 'all' || b.status === bookingFilter
+    return matchSearch && matchFilter
+  })
+
   // Stats
   const total = bookings.length
   const pending = bookings.filter(b => b.status === 'pending').length
@@ -1025,7 +1211,7 @@ export default function Admin() {
 
         {/* ── BOOKINGS TAB ── */}
         {activeTab === 'bookings' && <>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
             {[
               { label: 'Total', value: total, color: 'text-[#1e3a5f]' },
               { label: 'Pending', value: pending, color: 'text-orange-500' },
@@ -1038,11 +1224,34 @@ export default function Admin() {
               </div>
             ))}
           </div>
+
+          {/* Search + filter */}
+          <div className="flex flex-col sm:flex-row gap-3 mb-4">
+            <input
+              type="text"
+              placeholder="Search by name, email, or ref..."
+              value={bookingSearch}
+              onChange={e => setBookingSearch(e.target.value)}
+              className="flex-1 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+            />
+            <div className="flex gap-1">
+              {(['all', 'pending', 'confirmed', 'cancelled'] as const).map(f => (
+                <button
+                  key={f}
+                  onClick={() => setBookingFilter(f)}
+                  className={`px-3 py-2 rounded-lg text-xs font-bold transition-colors capitalize ${bookingFilter === f ? 'bg-[#1e3a5f] text-white' : 'bg-white text-slate-500 hover:bg-slate-100 border border-slate-200'}`}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
             {loading && bookings.length === 0 ? (
               <div className="p-10 text-center text-slate-400">Loading...</div>
-            ) : bookings.length === 0 ? (
-              <div className="p-10 text-center text-slate-400">No bookings yet.</div>
+            ) : filteredBookings.length === 0 ? (
+              <div className="p-10 text-center text-slate-400">{bookings.length === 0 ? 'No bookings yet.' : 'No bookings match your search.'}</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -1057,7 +1266,7 @@ export default function Admin() {
                     </tr>
                   </thead>
                   <tbody>
-                    {bookings.map(b => {
+                    {filteredBookings.map(b => {
                       const isPending = b.status === 'pending'
                       const isConfirmed = b.status === 'confirmed'
                       const borderColor = isPending ? 'border-orange-400 bg-orange-50' : isConfirmed ? 'border-green-400 bg-green-50' : 'border-transparent'

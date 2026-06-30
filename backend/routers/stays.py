@@ -257,7 +257,7 @@ async def billing_summary(
             "hotel_name": data["hotel_name"],
             "hotel_id": data["hotel_id"],
             "total_stays": len(sl),
-            "active_stays": sum(1 for s in sl if s["status"] in ("active", "extended")),
+            "active_stays": sum(1 for s in sl if s["status"] in ("active", "extended", "upcoming")),
             "completed_stays": sum(1 for s in sl if s["status"] == "checked_out"),
             "total_revenue": revenue,
             "total_commission": commission,

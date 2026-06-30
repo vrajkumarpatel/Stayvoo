@@ -4,7 +4,7 @@ from datetime import datetime
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from sqlalchemy.orm import selectinload
 from database import get_db
 from models import Guest, Booking, Stay, Inquiry, StayMessage
@@ -146,17 +146,27 @@ async def get_my_stay_messages(
     guest = result.scalar_one_or_none()
     _validate_token(guest)
 
-    filt = _record_filter(record_type, record_id)
+    # For bookings, also fetch messages saved under the linked stay (admin replies go there)
+    if record_type == "booking":
+        stay_r = await db.execute(select(Stay).where(Stay.booking_id == _uuid.UUID(record_id)))
+        linked_stay = stay_r.scalar_one_or_none()
+        if linked_stay:
+            filt = or_(StayMessage.booking_id == record_id, StayMessage.stay_id == linked_stay.id)
+        else:
+            filt = StayMessage.booking_id == record_id
+    else:
+        filt = _record_filter(record_type, record_id)
+
     msgs_result = await db.execute(
         select(StayMessage)
-        .where(filt, StayMessage.guest_id == guest.id)
+        .where(filt)
         .order_by(StayMessage.created_at.asc())
     )
     msgs = msgs_result.scalars().all()
 
     await db.execute(
         StayMessage.__table__.update()
-        .where(filt, StayMessage.guest_id == guest.id, StayMessage.sender == "admin")
+        .where(filt, StayMessage.sender == "admin")
         .values(is_read=True)
     )
     await db.commit()
@@ -186,6 +196,11 @@ async def send_my_stay_message(
     }
     if record_type == "booking":
         kwargs["booking_id"] = _uuid.UUID(record_id)
+        # Also link to stay so admin sees it in stays view
+        stay_r = await db.execute(select(Stay).where(Stay.booking_id == _uuid.UUID(record_id)))
+        linked_stay = stay_r.scalar_one_or_none()
+        if linked_stay:
+            kwargs["stay_id"] = linked_stay.id
     elif record_type == "stay":
         kwargs["stay_id"] = _uuid.UUID(record_id)
     elif record_type == "inquiry":

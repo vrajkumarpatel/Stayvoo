@@ -256,6 +256,8 @@ async def _run_column_migrations(conn) -> None:
         "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS guest_id UUID REFERENCES guests(id)",
         "ALTER TABLE stays ADD COLUMN IF NOT EXISTS booking_id UUID REFERENCES bookings(id)",
         "ALTER TABLE stays ADD COLUMN IF NOT EXISTS guest_id UUID REFERENCES guests(id)",
+        "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS last_modified_at TIMESTAMP",
+        "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS last_modified_by VARCHAR",
     ]
     for stmt in stmts:
         try:

@@ -70,6 +70,8 @@ def booking_to_dict(b: Booking) -> dict:
         "card_last4": b.card_last4,
         "card_brand": b.card_brand,
         "created_at": b.created_at.isoformat() if b.created_at else None,
+        "last_modified_at": b.last_modified_at.isoformat() if b.last_modified_at else None,
+        "last_modified_by": b.last_modified_by,
         "guest": {
             "id": str(b.guest.id),
             "first_name": b.guest.first_name,
