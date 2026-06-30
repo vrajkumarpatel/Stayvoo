@@ -101,7 +101,7 @@ interface BillingData {
 
 function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex justify-between items-start gap-4">
+    <div className="flex justify-between items-center gap-4 py-1">
       <span className="text-slate-400 text-sm flex-shrink-0 w-28">{label}</span>
       <span className="text-[#1e3a5f] font-semibold text-sm text-right flex-1">{children}</span>
     </div>
@@ -109,13 +109,13 @@ function InfoRow({ label, children }: { label: string; children: React.ReactNode
 }
 
 function SectionHeader({ title }: { title: string }) {
-  return <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2.5 mt-1">{title}</h3>
+  return <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 mt-6 first:mt-0">{title}</h3>
 }
 
 function ModalShell({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg max-h-[95vh] sm:max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-stretch sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div className="bg-white rounded-none sm:rounded-2xl shadow-2xl w-full sm:max-w-[720px] lg:max-w-[800px] max-h-screen sm:h-auto sm:max-h-[85vh] flex flex-col">
         {children}
       </div>
     </div>
@@ -124,7 +124,7 @@ function ModalShell({ onClose, children }: { onClose: () => void; children: Reac
 
 function ModalHeader({ title, sub, onClose }: { title: React.ReactNode; sub?: string; onClose: () => void }) {
   return (
-    <div className="bg-[#1e3a5f] px-5 py-4 rounded-t-3xl sm:rounded-t-2xl flex-shrink-0">
+    <div className="bg-[#1e3a5f] px-5 py-4 sm:rounded-t-2xl flex-shrink-0">
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2.5 flex-wrap">{title}</div>
@@ -267,17 +267,17 @@ function BookingDetailModal({ booking: b, password, onClose, onUpdate }: {
         onClose={onClose}
         title={<>
           <span className="text-white font-mono font-black text-lg tracking-wider leading-none">{b.booking_ref}</span>
-          {isPending && <span className="bg-orange-400/30 text-orange-200 text-xs font-bold px-2.5 py-0.5 rounded-full">Pending</span>}
-          {isConfirmed && <span className="bg-green-400/30 text-green-200 text-xs font-bold px-2.5 py-0.5 rounded-full">Confirmed</span>}
-          {isCancelled && <span className="bg-slate-400/30 text-slate-200 text-xs font-bold px-2.5 py-0.5 rounded-full">Cancelled</span>}
+          {isPending && <span className="bg-orange-400/30 text-orange-200 text-xs font-bold px-3 py-1.5 rounded-full">Pending</span>}
+          {isConfirmed && <span className="bg-green-400/30 text-green-200 text-xs font-bold px-3 py-1.5 rounded-full">Confirmed</span>}
+          {isCancelled && <span className="bg-slate-400/30 text-slate-200 text-xs font-bold px-3 py-1.5 rounded-full">Cancelled</span>}
         </>}
         sub={`${b.hotel?.name} · ${b.checkin_date} → ${b.checkout_date}`}
       />
 
       {/* Inner tabs */}
-      <div className="flex gap-0 border-b border-slate-100 flex-shrink-0 px-5">
+      <div className="flex border-b border-slate-100 flex-shrink-0 px-4 gap-1">
         {tabs.map(t => (
-          <button key={t.key} onClick={() => setInnerTab(t.key as any)} className={`py-3 px-4 text-sm font-bold capitalize border-b-2 transition-colors ${innerTab === t.key ? 'border-orange-500 text-orange-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>
+          <button key={t.key} onClick={() => setInnerTab(t.key as any)} className={`py-3 px-5 text-base font-bold capitalize border-b-[3px] transition-all min-h-[44px] rounded-t-xl ${innerTab === t.key ? 'border-orange-500 text-orange-600 bg-orange-50' : 'border-transparent text-slate-400 hover:text-slate-700 hover:bg-slate-50'}`}>
             {t.label}
           </button>
         ))}
@@ -285,10 +285,10 @@ function BookingDetailModal({ booking: b, password, onClose, onUpdate }: {
 
       {/* DETAILS TAB */}
       {innerTab === 'details' && (
-        <div className="overflow-y-auto flex-1 px-5 py-5 flex flex-col gap-5">
+        <div className="overflow-y-auto flex-1 px-6 py-6 flex flex-col gap-6">
           <div>
             <SectionHeader title="Guest Info" />
-            <div className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-3">
+            <div className="bg-slate-50 rounded-2xl p-5 flex flex-col gap-3">
               <InfoRow label="Full Name">{b.guest?.first_name} {b.guest?.last_name}</InfoRow>
               <InfoRow label="Email"><a href={`mailto:${b.guest?.email}`} className="text-orange-500 hover:underline break-all">{b.guest?.email}</a></InfoRow>
               <InfoRow label="Phone"><a href={`tel:${b.guest?.phone}`} className="text-orange-500 hover:underline">{b.guest?.phone}</a></InfoRow>
@@ -304,7 +304,7 @@ function BookingDetailModal({ booking: b, password, onClose, onUpdate }: {
           </div>
           <div>
             <SectionHeader title="Booking Info" />
-            <div className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-3">
+            <div className="bg-slate-50 rounded-2xl p-5 flex flex-col gap-3">
               <InfoRow label="Reference"><span className="font-mono font-bold text-orange-600">{b.booking_ref}</span></InfoRow>
               <InfoRow label="Hotel">{b.hotel?.name ?? '—'}</InfoRow>
               <InfoRow label="Room">{b.room?.name ?? '—'}</InfoRow>
@@ -320,7 +320,7 @@ function BookingDetailModal({ booking: b, password, onClose, onUpdate }: {
           </div>
           <div>
             <SectionHeader title="Payment Info" />
-            <div className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-3">
+            <div className="bg-slate-50 rounded-2xl p-5 flex flex-col gap-3">
               {b.card_last4 ? (
                 <>
                   <InfoRow label="Card">{CARD_BRAND_ICONS[b.card_brand ?? ''] ?? `💳 ${b.card_brand ?? 'Card'}`}</InfoRow>
@@ -388,7 +388,7 @@ function BookingDetailModal({ booking: b, password, onClose, onUpdate }: {
       {/* MESSAGES TAB */}
       {innerTab === 'messages' && (
         <div className="flex flex-col flex-1" style={{ minHeight: 0 }}>
-          <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-3">
+          <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-4">
             {!msgsLoaded ? (
               <div className="text-center text-slate-400 text-sm py-8">Loading messages...</div>
             ) : messages.length === 0 ? (
@@ -420,7 +420,7 @@ function BookingDetailModal({ booking: b, password, onClose, onUpdate }: {
 
       {/* EDIT TAB */}
       {innerTab === 'edit' && !isCancelled && (
-        <form onSubmit={handleEdit} className="overflow-y-auto flex-1 px-5 py-5 flex flex-col gap-4">
+        <form onSubmit={handleEdit} className="overflow-y-auto flex-1 px-6 py-6 flex flex-col gap-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Check-in</label>
@@ -528,15 +528,15 @@ function InquiryDetailModal({ inq, password, onClose, onUpdate, onConvertToStay 
         onClose={onClose}
         title={<>
           <span className="text-white font-mono font-black text-lg tracking-wider">INQ-{inqRef}</span>
-          <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full capitalize ${INQUIRY_STATUS_COLORS[inq.status] ?? 'bg-slate-100 text-slate-600'}`}>{inq.status}</span>
+          <span className={`text-xs font-bold px-3 py-1.5 rounded-full capitalize ${INQUIRY_STATUS_COLORS[inq.status] ?? 'bg-slate-100 text-slate-600'}`}>{inq.status}</span>
         </>}
         sub={`${inq.guest_type} · ${inq.num_rooms} rooms · ${inq.length_of_stay}`}
       />
 
       {/* Inner tabs */}
-      <div className="flex gap-0 border-b border-slate-100 flex-shrink-0 px-5">
+      <div className="flex border-b border-slate-100 flex-shrink-0 px-4 gap-1">
         {(['details', 'messages'] as const).map(t => (
-          <button key={t} onClick={() => setInnerTab(t)} className={`py-3 px-4 text-sm font-bold capitalize border-b-2 transition-colors ${innerTab === t ? 'border-orange-500 text-orange-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>
+          <button key={t} onClick={() => setInnerTab(t)} className={`py-3 px-5 text-base font-bold capitalize border-b-[3px] transition-all min-h-[44px] rounded-t-xl ${innerTab === t ? 'border-orange-500 text-orange-600 bg-orange-50' : 'border-transparent text-slate-400 hover:text-slate-700 hover:bg-slate-50'}`}>
             {t}
           </button>
         ))}
@@ -544,10 +544,10 @@ function InquiryDetailModal({ inq, password, onClose, onUpdate, onConvertToStay 
 
       <div className="overflow-y-auto flex-1">
         {innerTab === 'details' && (
-          <div className="px-5 py-5 flex flex-col gap-5">
+          <div className="px-6 py-6 flex flex-col gap-6">
             <div>
               <SectionHeader title="Contact Info" />
-              <div className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-3">
+              <div className="bg-slate-50 rounded-2xl p-5 flex flex-col gap-3">
                 <InfoRow label="Full Name">{inq.first_name} {inq.last_name}</InfoRow>
                 <InfoRow label="Email"><a href={`mailto:${inq.email}`} className="text-orange-500 hover:underline break-all">{inq.email}</a></InfoRow>
                 <InfoRow label="Phone"><a href={`tel:${inq.phone}`} className="text-orange-500 hover:underline">{inq.phone}</a></InfoRow>
@@ -557,7 +557,7 @@ function InquiryDetailModal({ inq, password, onClose, onUpdate, onConvertToStay 
             </div>
             <div>
               <SectionHeader title="Inquiry Details" />
-              <div className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-3">
+              <div className="bg-slate-50 rounded-2xl p-5 flex flex-col gap-3">
                 <InfoRow label="Hotel Pref">{inq.hotel_preference || 'No preference'}</InfoRow>
                 <InfoRow label="Rooms">{inq.num_rooms}</InfoRow>
                 <InfoRow label="Duration">{inq.length_of_stay}</InfoRow>
@@ -572,7 +572,7 @@ function InquiryDetailModal({ inq, password, onClose, onUpdate, onConvertToStay 
             </div>
             <div>
               <SectionHeader title="Update" />
-              <div className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-3">
+              <div className="bg-slate-50 rounded-2xl p-5 flex flex-col gap-4">
                 <div>
                   <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block mb-1.5">Status</label>
                   <select value={status} onChange={e => setStatus(e.target.value)} className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400">
@@ -598,7 +598,7 @@ function InquiryDetailModal({ inq, password, onClose, onUpdate, onConvertToStay 
 
         {innerTab === 'messages' && (
           <div className="flex flex-col h-full" style={{ minHeight: 0 }}>
-            <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-3">
+            <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-4">
               {!msgsLoaded ? (
                 <div className="text-center text-slate-400 text-sm py-8">Loading messages...</div>
               ) : messages.length === 0 ? (
@@ -809,14 +809,14 @@ function StayDetailModal({ stay: s, password, onClose, onUpdate }: {
           onClose={onClose}
           title={<>
             <span className="text-white font-black text-lg">{s.guest_first_name} {s.guest_last_name}</span>
-            <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full capitalize ${STAY_STATUS_COLORS[s.status] ?? 'bg-slate-100 text-slate-600'}`}>{s.status}</span>
+            <span className={`text-xs font-bold px-3 py-1 rounded-full capitalize ${STAY_STATUS_COLORS[s.status] ?? 'bg-slate-100 text-slate-600'}`}>{s.status}</span>
           </>}
           sub={`${s.hotel_name} · ${s.checkin_date} → ${s.expected_checkout}`}
         />
-        <div className="overflow-y-auto flex-1 px-5 py-5 flex flex-col gap-5">
+        <div className="overflow-y-auto flex-1 px-6 py-6 flex flex-col gap-6">
           <div>
             <SectionHeader title="Guest Info" />
-            <div className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-3">
+            <div className="bg-slate-50 rounded-2xl p-5 flex flex-col gap-3">
               <InfoRow label="Email"><a href={`mailto:${s.guest_email}`} className="text-orange-500 hover:underline break-all">{s.guest_email}</a></InfoRow>
               <InfoRow label="Phone"><a href={`tel:${s.guest_phone}`} className="text-orange-500 hover:underline">{s.guest_phone}</a></InfoRow>
               {s.guest_type && <InfoRow label="Type">{s.guest_type}</InfoRow>}
@@ -825,7 +825,7 @@ function StayDetailModal({ stay: s, password, onClose, onUpdate }: {
           </div>
           <div>
             <SectionHeader title="Stay Info" />
-            <div className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-3">
+            <div className="bg-slate-50 rounded-2xl p-5 flex flex-col gap-3">
               <InfoRow label="Hotel">{s.hotel_name}</InfoRow>
               <InfoRow label="Check-in">{s.checkin_date}</InfoRow>
               <InfoRow label="Exp. Checkout">{s.expected_checkout}</InfoRow>
@@ -836,7 +836,7 @@ function StayDetailModal({ stay: s, password, onClose, onUpdate }: {
           </div>
           <div>
             <SectionHeader title="Billing" />
-            <div className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-3">
+            <div className="bg-slate-50 rounded-2xl p-5 flex flex-col gap-3">
               <InfoRow label="Total">${s.total_amount.toFixed(2)}</InfoRow>
               <InfoRow label="Amount Paid">
                 <input
@@ -861,7 +861,7 @@ function StayDetailModal({ stay: s, password, onClose, onUpdate }: {
           </div>
           <div>
             <SectionHeader title="Edit Details" />
-            <div className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-3">
+            <div className="bg-slate-50 rounded-2xl p-5 flex flex-col gap-4">
               <div><label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">PMS Confirmation</label>
                 <input value={pms} onChange={e => setPms(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white" /></div>
               <div><label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Room Number</label>
@@ -1096,15 +1096,15 @@ function ReservationDetailModal({ res: r, password, onClose, onUpdate }: {
         onClose={onClose}
         title={<>
           <span className="text-white font-mono font-black text-lg tracking-wider leading-none">{r.reservation_ref}</span>
-          <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full capitalize ${RES_STATUS_COLORS[r.status] ?? 'bg-slate-100 text-slate-600'}`}>{r.status.replace('_', ' ')}</span>
-          <span className="bg-orange-500/30 text-orange-200 text-xs font-bold px-2 py-0.5 rounded-full">Exclusive</span>
+          <span className={`text-xs font-bold px-3 py-1.5 rounded-full capitalize ${RES_STATUS_COLORS[r.status] ?? 'bg-slate-100 text-slate-600'}`}>{r.status.replace('_', ' ')}</span>
+          <span className="bg-orange-500/30 text-orange-200 text-xs font-bold px-3 py-1.5 rounded-full">Exclusive</span>
         </>}
         sub={`${r.hotel_name_snapshot} · ${r.checkin_date} → ${r.checkout_date}`}
       />
 
-      <div className="flex gap-0 border-b border-slate-100 flex-shrink-0 px-5">
+      <div className="flex border-b border-slate-100 flex-shrink-0 px-4 gap-1">
         {tabs.map(t => (
-          <button key={t.key} onClick={() => setInnerTab(t.key as any)} className={`py-3 px-4 text-sm font-bold capitalize border-b-2 transition-colors ${innerTab === t.key ? 'border-orange-500 text-orange-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>
+          <button key={t.key} onClick={() => setInnerTab(t.key as any)} className={`py-3 px-5 text-base font-bold capitalize border-b-[3px] transition-all min-h-[44px] rounded-t-xl ${innerTab === t.key ? 'border-orange-500 text-orange-600 bg-orange-50' : 'border-transparent text-slate-400 hover:text-slate-700 hover:bg-slate-50'}`}>
             {t.label}
           </button>
         ))}
@@ -1112,10 +1112,10 @@ function ReservationDetailModal({ res: r, password, onClose, onUpdate }: {
 
       {/* DETAILS TAB */}
       {innerTab === 'details' && (
-        <div className="overflow-y-auto flex-1 px-5 py-5 flex flex-col gap-5">
+        <div className="overflow-y-auto flex-1 px-6 py-6 flex flex-col gap-6">
           <div>
             <SectionHeader title="Guest Info" />
-            <div className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-3">
+            <div className="bg-slate-50 rounded-2xl p-5 flex flex-col gap-3">
               <InfoRow label="Name">{r.guest_first_name} {r.guest_last_name}</InfoRow>
               <InfoRow label="Email"><a href={`mailto:${r.guest_email}`} className="text-orange-500 hover:underline break-all">{r.guest_email}</a></InfoRow>
               <InfoRow label="Phone"><a href={`tel:${r.guest_phone}`} className="text-orange-500 hover:underline">{r.guest_phone ?? '—'}</a></InfoRow>
@@ -1131,7 +1131,7 @@ function ReservationDetailModal({ res: r, password, onClose, onUpdate }: {
           </div>
           <div>
             <SectionHeader title="Reservation Info" />
-            <div className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-3">
+            <div className="bg-slate-50 rounded-2xl p-5 flex flex-col gap-3">
               <InfoRow label="Hotel">{r.hotel_name_snapshot}</InfoRow>
               {r.hotel_address_snapshot && <InfoRow label="Address">{r.hotel_address_snapshot}</InfoRow>}
               <InfoRow label="Room">{r.room_type_snapshot ?? '—'}</InfoRow>
@@ -1152,7 +1152,7 @@ function ReservationDetailModal({ res: r, password, onClose, onUpdate }: {
           {r.card_last4 && (
             <div>
               <SectionHeader title="Card Guarantee" />
-              <div className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-3">
+              <div className="bg-slate-50 rounded-2xl p-5 flex flex-col gap-3">
                 <InfoRow label="Card">{CARD_BRAND_ICONS[r.card_brand ?? ''] ?? `💳 ${r.card_brand ?? 'Card'}`}</InfoRow>
                 <InfoRow label="Last 4"><span className="font-mono tracking-widest">•••• {r.card_last4}</span></InfoRow>
                 <InfoRow label="Status"><span className="text-green-600">✅ On file</span></InfoRow>
@@ -1210,7 +1210,7 @@ function ReservationDetailModal({ res: r, password, onClose, onUpdate }: {
       {/* MESSAGES TAB */}
       {innerTab === 'messages' && (
         <div className="flex flex-col flex-1" style={{ minHeight: 0 }}>
-          <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-3">
+          <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-4">
             {!msgsLoaded ? (
               <div className="text-center text-slate-400 text-sm py-8">Loading messages...</div>
             ) : messages.length === 0 ? (
@@ -1239,7 +1239,7 @@ function ReservationDetailModal({ res: r, password, onClose, onUpdate }: {
 
       {/* EDIT TAB */}
       {innerTab === 'edit' && canEdit && (
-        <form onSubmit={handleEdit} className="overflow-y-auto flex-1 px-5 py-5 flex flex-col gap-4">
+        <form onSubmit={handleEdit} className="overflow-y-auto flex-1 px-6 py-6 flex flex-col gap-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Check-in</label>
@@ -1278,7 +1278,7 @@ function ReservationDetailModal({ res: r, password, onClose, onUpdate }: {
 
       {/* HISTORY TAB */}
       {innerTab === 'history' && (
-        <div className="overflow-y-auto flex-1 px-5 py-5 flex flex-col gap-3">
+        <div className="overflow-y-auto flex-1 px-6 py-6 flex flex-col gap-4">
           <SectionHeader title="Timeline" />
           {[
             { label: 'Created', ts: r.created_at, color: 'bg-slate-200' },
