@@ -103,7 +103,7 @@ export default function Home() {
 
           {/* Quick trust stats */}
           <div className="flex flex-wrap justify-center gap-8 mt-10">
-            {[['3', 'Partner Hotels'], ['2 hrs', 'Quote Response'], ['$0', 'Booking Fees']].map(([num, label]) => (
+            {[['3', 'Partner Hotels'], ['Same-Day', 'Response'], ['$0', 'Booking Fees']].map(([num, label]) => (
               <div key={label} className="text-center">
                 <div className="text-white font-black text-2xl">{num}</div>
                 <div className="text-white/50 text-xs uppercase tracking-wider">{label}</div>
@@ -151,6 +151,11 @@ export default function Home() {
               ))}
             </div>
           )}
+
+          <p className="text-center text-slate-400 text-xs mt-6 max-w-xl mx-auto">
+            More Milwaukee Area properties being added regularly. Need a specific hotel or location?
+            Contact us — we have access to hotels across the entire region.
+          </p>
 
           {/* Two-path section */}
           <div className="mt-16">
@@ -227,7 +232,7 @@ export default function Home() {
                 className="relative overflow-hidden min-h-[280px] rounded-2xl p-6 flex flex-col justify-end border border-white/10 bg-cover bg-center group"
                 style={{ backgroundImage: `url('${g.photo}')` }}
               >
-                <div className="absolute inset-0" style={{ background: 'rgba(10,30,70,0.75)' }} />
+                <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.72)' }} />
                 <div className="relative z-10">
                   <div className="text-4xl mb-3">{g.icon}</div>
                   <h3 className="text-white font-bold text-xl mb-2">{g.title}</h3>

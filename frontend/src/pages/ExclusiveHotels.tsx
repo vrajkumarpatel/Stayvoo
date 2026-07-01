@@ -86,9 +86,14 @@ export default function ExclusiveHotels() {
   useEffect(() => {
     const params = new URLSearchParams(location.search)
     const type = params.get('type')
-    if (type && TYPE_MAP[type]) {
-      setForm(f => ({ ...f, guest_type: TYPE_MAP[type] }))
-    }
+    const startDate = params.get('start_date')
+    const lengthOfStay = params.get('length_of_stay')
+    setForm(f => ({
+      ...f,
+      ...(type && TYPE_MAP[type] ? { guest_type: TYPE_MAP[type] } : {}),
+      ...(startDate ? { start_date: startDate } : {}),
+      ...(lengthOfStay && STAY_LENGTHS.includes(lengthOfStay) ? { length_of_stay: lengthOfStay } : {}),
+    }))
   }, [location.search])
 
   useEffect(() => {

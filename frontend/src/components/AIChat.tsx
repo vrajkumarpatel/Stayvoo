@@ -267,8 +267,8 @@ export default function AIChat() {
     <>
       {open && (
         <div
-          className="fixed bottom-24 right-4 sm:right-6 z-50 flex flex-col shadow-2xl rounded-2xl overflow-hidden"
-          style={{ width: 350, height: 520 }}
+          className="fixed bottom-24 right-[20px] z-50 flex flex-col shadow-2xl rounded-2xl overflow-hidden w-[calc(100vw-40px)] max-w-[350px]"
+          style={{ height: 520 }}
         >
           {/* Header */}
           <div className="bg-[#1e3a5f] px-4 py-3 flex items-center justify-between flex-shrink-0">
@@ -372,7 +372,7 @@ export default function AIChat() {
       {/* Floating button */}
       <button
         onClick={() => setOpen(o => !o)}
-        className="fixed bottom-5 right-4 sm:right-6 z-50 w-14 h-14 bg-orange-500 hover:bg-orange-600 text-white rounded-full shadow-xl hover:shadow-orange-200 transition-all flex items-center justify-center"
+        className="fixed bottom-[20px] right-[20px] z-50 w-14 h-14 bg-orange-500 hover:bg-orange-600 text-white rounded-full shadow-xl hover:shadow-orange-200 transition-all flex items-center justify-center"
         aria-label="Open chat"
       >
         {open ? (
