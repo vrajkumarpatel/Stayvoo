@@ -15,6 +15,7 @@ const GUEST_TYPES = [
   {
     icon: '👩‍⚕️',
     title: 'Travel Nurses',
+    photo: '/images/nurse-card.jpg',
     desc: 'Placed at hospitals across the Milwaukee Area, Southeast Wisconsin, or Northern Illinois?\nOur hotels are 2 min from Froedtert and 5 min from Aurora Medical — in the heart of the Milwaukee Area and accessible from Chicago and across the region.\n\nNegotiated extended stay rates.\nMonthly billing available.\nFlexible assignment dates.\n🎁 Welcome kit at check-in.',
     cta: 'Get Nurse Rate →',
     link: '/exclusive?type=nurse',
@@ -22,6 +23,7 @@ const GUEST_TYPES = [
   {
     icon: '🏗️',
     title: 'Construction Crews',
+    photo: '/images/crew-card.jpg',
     desc: 'Working on projects across the Milwaukee Area, Southeast Wisconsin, or Northern Illinois?\nOur hotels are centrally located in the Milwaukee Area for crews traveling the entire region — from Chicago to Green Bay.\n\nNegotiated block rates for teams.\nDirect company billing.\nEarly breakfast available.\n🎁 Welcome kit at check-in.',
     cta: 'Get Crew Rate →',
     link: '/exclusive?type=crew',
@@ -29,6 +31,7 @@ const GUEST_TYPES = [
   {
     icon: '💼',
     title: 'Corporate Teams',
+    photo: '/images/corporate-card.jpg',
     desc: 'Visiting offices in the Milwaukee Area from Chicago or across Wisconsin?\nOur hotels in Waukesha and Brookfield are in the heart of the Milwaukee Area corporate corridor.\n\nNegotiated corporate rates below anything on Expedia.\nMonthly invoicing available.\nNo per-trip expense reports.\nDedicated account manager.\n🎁 Welcome kit at check-in.',
     cta: 'Get Corporate Rate →',
     link: '/exclusive?type=corporate',
@@ -36,6 +39,7 @@ const GUEST_TYPES = [
   {
     icon: '💒',
     title: 'Groups & Events',
+    photo: '/images/events-card.jpg',
     desc: 'Wedding blocks, sports teams, school trips, and corporate events across the Milwaukee Area and Chicagoland.\n\nNo attrition penalties.\nGroup billing simplified.\nFlexible room block sizes.\n🎁 Welcome kit for every guest.',
     cta: 'Get Group Rate →',
     link: '/exclusive?type=group',
@@ -56,8 +60,9 @@ export default function Home() {
   return (
     <div className="min-h-screen">
       {/* ── Section 1: Hero ── */}
-      <section className="relative min-h-screen flex flex-col items-center justify-center px-4 pt-16 pb-20"
-        style={{ background: 'linear-gradient(135deg, #0f2240 0%, #1e3a5f 50%, #162d4a 100%)' }}>
+      <section className="relative min-h-screen flex flex-col items-center justify-center px-4 pt-16 pb-20 bg-cover bg-center"
+        style={{ backgroundImage: "url('/images/hero-bg.jpg')" }}>
+        <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.60)' }} />
         <div className="absolute inset-0 opacity-5"
           style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,.15) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.15) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
 
@@ -217,16 +222,23 @@ export default function Home() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {GUEST_TYPES.map(g => (
-              <div key={g.title} className="bg-white/10 hover:bg-white/15 border border-white/10 rounded-2xl p-6 transition-colors group">
-                <div className="text-4xl mb-3">{g.icon}</div>
-                <h3 className="text-white font-bold text-xl mb-2">{g.title}</h3>
-                <p className="text-white/60 text-sm leading-relaxed whitespace-pre-line">{g.desc}</p>
-                <Link
-                  to={g.link}
-                  className="inline-flex items-center gap-1 mt-4 text-orange-400 hover:text-orange-300 text-sm font-semibold transition-colors"
-                >
-                  {g.cta}
-                </Link>
+              <div
+                key={g.title}
+                className="relative overflow-hidden min-h-[280px] rounded-2xl p-6 flex flex-col justify-end border border-white/10 bg-cover bg-center group"
+                style={{ backgroundImage: `url('${g.photo}')` }}
+              >
+                <div className="absolute inset-0" style={{ background: 'rgba(10,30,70,0.75)' }} />
+                <div className="relative z-10">
+                  <div className="text-4xl mb-3">{g.icon}</div>
+                  <h3 className="text-white font-bold text-xl mb-2">{g.title}</h3>
+                  <p className="text-white/70 text-sm leading-relaxed whitespace-pre-line">{g.desc}</p>
+                  <Link
+                    to={g.link}
+                    className="inline-flex items-center gap-1 mt-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold px-4 py-2 rounded-lg text-sm transition-colors"
+                  >
+                    {g.cta}
+                  </Link>
+                </div>
               </div>
             ))}
           </div>

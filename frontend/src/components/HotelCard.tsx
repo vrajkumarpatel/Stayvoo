@@ -60,9 +60,10 @@ export default function HotelCard({ hotel, large = false, twoButton = false, vie
     <div
       className={`bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col group ${large ? 'min-h-[420px]' : 'min-h-[360px]'}`}
     >
-      {/* Photo */}
-      <div className={`relative ${large ? 'h-52' : 'h-44'} bg-gradient-to-br from-[#1e3a5f] to-[#2a4f7c] flex items-center justify-center overflow-hidden`}>
-        <div className="text-white/20 text-8xl select-none">🏨</div>
+      {/* Photo — placeholder until real hotel photos are uploaded */}
+      <div className="relative h-[200px] rounded-t-xl bg-[#1e3a5f] flex flex-col items-center justify-center overflow-hidden">
+        <div className="text-white text-6xl select-none">🏨</div>
+        <div className="text-white text-xs mt-2 select-none">Photo coming soon</div>
         {(hotel.exclusive || twoButton) && (
           <div className="absolute top-3 left-3 flex items-center gap-1 bg-orange-500 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow">
             ⭐ Extended Stay Specialist

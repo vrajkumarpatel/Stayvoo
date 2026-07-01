@@ -100,8 +100,9 @@ export default function GroupBooking() {
   return (
     <div className="min-h-screen bg-slate-50 pt-16">
       {/* Hero */}
-      <section className="bg-[#1e3a5f] py-20 px-4 text-center">
-        <div className="max-w-3xl mx-auto">
+      <section className="relative py-20 px-4 text-center bg-cover bg-center" style={{ backgroundImage: "url('/images/groups-hero.jpg')" }}>
+        <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.60)' }} />
+        <div className="relative z-10 max-w-3xl mx-auto">
           <div className="inline-flex items-center gap-2 bg-orange-500/20 border border-orange-500/30 text-orange-400 text-sm font-semibold px-4 py-1.5 rounded-full mb-5">
             💒 Group Hotel Bookings
           </div>
