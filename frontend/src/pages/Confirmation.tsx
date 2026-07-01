@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { getReservation } from '../lib/api'
 
-const STEPS = [
+const BASE_STEPS = [
   {
     icon: '✅',
     title: 'Booking Received',
@@ -19,12 +19,13 @@ const STEPS = [
     title: 'You Get Confirmed',
     desc: 'We text you a real confirmation number directly from the hotel — not a generic booking code.',
   },
-  {
-    icon: '🎁',
-    title: 'Welcome Kit Waiting',
-    desc: 'Your personalized welcome bag with local snacks, restaurant vouchers, and a handwritten note will be ready at the front desk.',
-  },
 ]
+
+const WELCOME_KIT_STEP = {
+  icon: '🎁',
+  title: 'Welcome Kit Waiting',
+  desc: 'Your personalized welcome bag with local snacks, restaurant vouchers, and a handwritten note will be ready at the front desk.',
+}
 
 function Checkmark() {
   return (
@@ -75,6 +76,9 @@ export default function Confirmation() {
   )
 
   const r = reservation
+  const steps = r && r.nights >= 7
+    ? [...BASE_STEPS, WELCOME_KIT_STEP]
+    : BASE_STEPS
 
   return (
     <div className="min-h-screen bg-slate-50 pt-16">
@@ -139,7 +143,7 @@ export default function Confirmation() {
         <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
           <h2 className="text-[#1e3a5f] font-black text-lg mb-6">What happens in the next 30 minutes</h2>
           <div className="flex flex-col gap-6">
-            {STEPS.map((step, i) => (
+            {steps.map((step, i) => (
               <div key={i} className="flex gap-4">
                 <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-lg
                   ${step.done ? 'bg-green-100' : 'bg-slate-100'}`}>

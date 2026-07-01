@@ -41,9 +41,10 @@ interface Props {
   hotel: Hotel
   large?: boolean
   twoButton?: boolean
+  viewOnly?: boolean
 }
 
-export default function HotelCard({ hotel, large = false, twoButton = false }: Props) {
+export default function HotelCard({ hotel, large = false, twoButton = false, viewOnly = false }: Props) {
   const navigate = useNavigate()
   const hotelId = hotel.id ?? hotel.hotel_id ?? ''
   const isMock = hotelId.startsWith('mock-')
@@ -62,9 +63,9 @@ export default function HotelCard({ hotel, large = false, twoButton = false }: P
       {/* Photo */}
       <div className={`relative ${large ? 'h-52' : 'h-44'} bg-gradient-to-br from-[#1e3a5f] to-[#2a4f7c] flex items-center justify-center overflow-hidden`}>
         <div className="text-white/20 text-8xl select-none">🏨</div>
-        {hotel.exclusive && (
+        {(hotel.exclusive || twoButton) && (
           <div className="absolute top-3 left-3 flex items-center gap-1 bg-orange-500 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow">
-            ⭐ Exclusive Partner
+            ⭐ Extended Stay Specialist
           </div>
         )}
         {hotel.rating && hotel.review_count && hotel.review_count > 0 ? (
@@ -101,46 +102,49 @@ export default function HotelCard({ hotel, large = false, twoButton = false }: P
           </div>
         </div>
 
-        {/* Price + CTA */}
-        <div className="mt-4 pt-4 border-t border-slate-100">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-[#1e3a5f] font-black text-xl">${hotel.price_per_night}</span>
-            <span className="text-slate-400 text-sm">/night</span>
-            {twoButton && (
-              <span className="ml-auto text-orange-500 text-xs font-bold bg-orange-50 px-2 py-0.5 rounded-full">Extended Stay Specialist</span>
+        {/* CTA section */}
+        {twoButton ? (
+          <div className="mt-4 pt-4 border-t border-slate-100">
+            <div className="flex flex-wrap gap-1.5 mb-3">
+              {['Monthly billing ✅', 'Flexible dates ✅', 'Free parking ✅', 'Welcome kit ✅'].map(tag => (
+                <span key={tag} className="text-xs text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full">{tag}</span>
+              ))}
+            </div>
+            <p className="text-xs text-slate-400 mb-3">In the Milwaukee Area — near Milwaukee · Kenosha · Chicago</p>
+            <Link
+              to="/exclusive#inquiry-form"
+              className="w-full bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold py-2.5 px-4 rounded-xl transition-colors text-center block"
+            >
+              Get Extended Stay Rate →
+            </Link>
+          </div>
+        ) : viewOnly ? (
+          <div className="mt-4 pt-4 border-t border-slate-100">
+            <p className="text-xs text-slate-400">In the Milwaukee Area — Waukesha & Brookfield, Wisconsin</p>
+          </div>
+        ) : (
+          <div className="mt-4 pt-4 border-t border-slate-100">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-[#1e3a5f] font-black text-xl">${hotel.price_per_night}</span>
+              <span className="text-slate-400 text-sm">/night</span>
+            </div>
+            {hotel.exclusive ? (
+              <button
+                onClick={handleClick}
+                className="w-full bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold py-2.5 px-4 rounded-xl transition-colors"
+              >
+                Get Exclusive Rate →
+              </button>
+            ) : (
+              <button
+                onClick={handleClick}
+                className="w-full bg-[#1e3a5f] hover:bg-[#162d4a] text-white text-sm font-bold py-2.5 px-4 rounded-xl transition-colors"
+              >
+                View Rooms →
+              </button>
             )}
           </div>
-          {twoButton ? (
-            <div className="flex flex-col gap-2">
-              <Link
-                to="/exclusive#inquiry-form"
-                className="w-full bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold py-2.5 px-4 rounded-xl transition-colors text-center"
-              >
-                Get Extended Stay Quote
-              </Link>
-              <Link
-                to="/search"
-                className="w-full border-2 border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white text-sm font-bold py-2 px-4 rounded-xl transition-colors text-center"
-              >
-                Book Short Stay (1–6 nights)
-              </Link>
-            </div>
-          ) : hotel.exclusive ? (
-            <button
-              onClick={handleClick}
-              className="w-full bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold py-2.5 px-4 rounded-xl transition-colors"
-            >
-              Get Exclusive Rate →
-            </button>
-          ) : (
-            <button
-              onClick={handleClick}
-              className="w-full bg-[#1e3a5f] hover:bg-[#162d4a] text-white text-sm font-bold py-2.5 px-4 rounded-xl transition-colors"
-            >
-              View Rooms →
-            </button>
-          )}
-        </div>
+        )}
       </div>
     </div>
   )

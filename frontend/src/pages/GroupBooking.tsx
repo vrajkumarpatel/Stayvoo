@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { createInquiry } from '../lib/api'
 
@@ -48,11 +48,13 @@ function Field({ label, required, children }: { label: string; required?: boolea
   )
 }
 
-const GROUP_TYPES = [
-  { icon: '💒', title: 'Wedding Groups', desc: 'Room blocks for out-of-town guests. Special group rates and dedicated coordinator.' },
-  { icon: '⚽', title: 'Sports Teams', desc: 'Block rooms for your entire team. Early breakfast, equipment storage, group checkout.' },
-  { icon: '🎉', title: 'Events & Conferences', desc: 'Corporate events, retreats, and conferences with meeting room access.' },
-  { icon: '🏗️', title: 'Project Crews', desc: 'Long-term crews for construction and infrastructure projects in the area.' },
+const GROUP_BENEFITS = [
+  { icon: '✅', text: 'No attrition penalties' },
+  { icon: '✅', text: 'Flexible room block sizes' },
+  { icon: '✅', text: 'Group billing and invoicing' },
+  { icon: '✅', text: 'Dedicated group coordinator' },
+  { icon: '✅', text: 'Flexible cancellation terms' },
+  { icon: '🎁', text: 'Welcome kit for every guest (local snacks, restaurant vouchers, handwritten note)' },
 ]
 
 export default function GroupBooking() {
@@ -60,6 +62,8 @@ export default function GroupBooking() {
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState<{ ref: string; email: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => { document.title = 'Group Hotel Bookings | Milwaukee Area & Chicagoland | Stayvoo' }, [])
 
   const set = (key: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm(f => ({ ...f, [key]: e.target.value }))
@@ -99,36 +103,46 @@ export default function GroupBooking() {
       <section className="bg-[#1e3a5f] py-20 px-4 text-center">
         <div className="max-w-3xl mx-auto">
           <div className="inline-flex items-center gap-2 bg-orange-500/20 border border-orange-500/30 text-orange-400 text-sm font-semibold px-4 py-1.5 rounded-full mb-5">
-            🏗️ Group Bookings
+            💒 Group Hotel Bookings
           </div>
           <h1 className="text-white font-black text-4xl sm:text-5xl leading-tight">
-            Group Stays in<br />
-            <span className="text-orange-400">Waukesha & Brookfield</span>
+            Group Hotel Bookings<br />
+            <span className="text-orange-400">Milwaukee Area & Chicagoland</span>
           </h1>
           <p className="text-white/70 text-lg mt-4 max-w-xl mx-auto">
-            Weddings, sports teams, corporate events, and construction crews. Block rates, dedicated service, and welcome kits for every guest.
+            Wedding blocks, sports teams, school trips, and corporate events. Our partner hotels in the Milwaukee Area (Waukesha & Brookfield) are perfectly located for groups traveling from across Wisconsin and Northern Illinois.
           </p>
+          <div className="mt-6 text-white/50 text-sm">
+            In the Milwaukee Area · 30 min from Chicago · 20 min from Downtown Milwaukee · Accessible from all of Southeast Wisconsin
+          </div>
         </div>
       </section>
 
-      {/* Group types */}
-      <section className="py-16 px-4 bg-white">
-        <div className="max-w-5xl mx-auto">
-          <h2 className="text-[#1e3a5f] font-black text-2xl text-center mb-10">We Specialize In</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {GROUP_TYPES.map(g => (
-              <div key={g.title} className="text-center p-5">
-                <div className="text-4xl mb-3">{g.icon}</div>
-                <h3 className="text-[#1e3a5f] font-bold text-base mb-2">{g.title}</h3>
-                <p className="text-slate-500 text-sm leading-relaxed">{g.desc}</p>
+      {/* Group benefits */}
+      <section className="py-14 px-4 bg-white">
+        <div className="max-w-3xl mx-auto">
+          <h2 className="text-[#1e3a5f] font-black text-2xl text-center mb-8">What Every Group Booking Includes</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {GROUP_BENEFITS.map(b => (
+              <div key={b.text} className="flex items-start gap-3 bg-slate-50 rounded-xl p-4">
+                <span className="text-lg flex-shrink-0">{b.icon}</span>
+                <p className="text-slate-700 text-sm leading-relaxed">{b.text}</p>
               </div>
             ))}
+          </div>
+          <div className="mt-8 text-center">
+            <a
+              href="#group-form"
+              className="inline-block bg-orange-500 hover:bg-orange-600 text-white font-bold px-8 py-3 rounded-xl text-sm transition-colors"
+            >
+              Get your group rate →
+            </a>
           </div>
         </div>
       </section>
 
       {/* Form */}
-      <section className="pb-20 px-4">
+      <section id="group-form" className="pb-20 px-4">
         <div className="max-w-2xl mx-auto">
           <div className="bg-white rounded-3xl shadow-xl overflow-hidden">
             <div className="bg-[#1e3a5f] px-8 py-7">

@@ -35,7 +35,7 @@ def _base_html(title: str, body: str) -> str:
         <tr>
           <td style="padding:20px 0;text-align:center;">
             <p style="margin:0;color:#94a3b8;font-size:12px;">
-              Stayvoo · Waukesha &amp; Brookfield, WI ·
+              Stayvoo · Milwaukee Area · Waukesha &amp; Brookfield, WI ·
               <a href="tel:{SUPPORT_PHONE}" style="color:#94a3b8;">{SUPPORT_PHONE}</a>
             </p>
           </td>
@@ -151,6 +151,7 @@ async def send_booking_confirmed(b: dict) -> None:
     ref = b.get("booking_ref", "")
     pms = b.get("pms_confirmation") or "—"
     hotel = b.get("hotel") or {}
+    nights = int(b.get("nights") or 0)
     portal_url = b.get("portal_url")
     portal_block = ""
     if portal_url:
@@ -160,6 +161,23 @@ async def send_booking_confirmed(b: dict) -> None:
         View My Reservations →
       </a>
       <p style="margin:6px 0 0;color:#94a3b8;font-size:11px;">Bookmark this link — it's your personal stay portal</p>
+    </div>"""
+    welcome_kit_block = ""
+    if nights >= 7:
+        welcome_kit_block = f"""
+    <div style="margin-top:24px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:16px;">
+      <p style="margin:0;color:#1d4ed8;font-size:14px;font-weight:600;">🎁 Your welcome kit will be waiting at the front desk.</p>
+      <p style="margin:6px 0 0;color:#1e40af;font-size:13px;">
+        Need anything before you arrive? Call <strong>{SUPPORT_PHONE}</strong>
+      </p>
+    </div>"""
+    else:
+        welcome_kit_block = f"""
+    <div style="margin-top:24px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px;">
+      <p style="margin:0;color:#15803d;font-size:14px;font-weight:600;">✅ Your stay is confirmed!</p>
+      <p style="margin:6px 0 0;color:#166534;font-size:13px;">
+        Need anything before you arrive? Call <strong>{SUPPORT_PHONE}</strong>
+      </p>
     </div>"""
     body = f"""
     <h2 style="margin:0 0 6px;color:{BRAND_COLOR};font-size:20px;font-weight:900;">You're confirmed, {first}!</h2>
@@ -175,12 +193,7 @@ async def send_booking_confirmed(b: dict) -> None:
     <table width="100%" cellpadding="0" cellspacing="0">
       {_booking_summary_rows(b)}
     </table>
-    <div style="margin-top:24px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:16px;">
-      <p style="margin:0;color:#1d4ed8;font-size:14px;font-weight:600;">🎁 Your welcome kit will be waiting at the front desk.</p>
-      <p style="margin:6px 0 0;color:#1e40af;font-size:13px;">
-        Need anything before you arrive? Call <strong>{SUPPORT_PHONE}</strong>
-      </p>
-    </div>
+    {welcome_kit_block}
     {portal_block}"""
     await _send(to_email, f"Confirmed! Your Stay at {hotel.get('name', 'Hotel')} — {ref}", _base_html("Booking Confirmed", body))
 
@@ -194,17 +207,23 @@ async def send_pre_arrival_email(b: dict) -> None:
     hotel = b.get("hotel") or {}
     ref = b.get("booking_ref", "")
     checkin = b.get("checkin_date", "tomorrow")
+    nights = int(b.get("nights") or 0)
+    intro_text = (
+        f"Your stay at <strong>{hotel.get('name', '')}</strong> begins on <strong>{checkin}</strong>. Everything is confirmed and your welcome kit is ready."
+        if nights >= 7 else
+        f"Your stay at <strong>{hotel.get('name', '')}</strong> begins on <strong>{checkin}</strong>. Everything is confirmed and we look forward to welcoming you."
+    )
+    welcome_kit_reminder = "<li>Ask the front desk for your Stayvoo welcome kit</li>" if nights >= 7 else ""
     body = f"""
     <h2 style="margin:0 0 6px;color:{BRAND_COLOR};font-size:20px;font-weight:900;">See you tomorrow, {first}!</h2>
     <p style="margin:0 0 20px;color:#475569;font-size:15px;line-height:1.6;">
-      Your stay at <strong>{hotel.get('name', '')}</strong> begins on <strong>{checkin}</strong>.
-      Everything is confirmed and your welcome kit is ready.
+      {intro_text}
     </p>
     <h3 style="margin:0 0 8px;color:{BRAND_COLOR};font-size:15px;">Quick Reminders</h3>
     <ul style="margin:0 0 20px;padding-left:20px;color:#475569;font-size:14px;line-height:2;">
       <li>Standard check-in is 3PM (early check-in subject to availability)</li>
       <li>Bring a photo ID and the card you'll use to cover incidentals</li>
-      <li>Ask the front desk for your Stayvoo welcome kit</li>
+      {welcome_kit_reminder}
       <li>Free parking on site — no validation needed</li>
     </ul>
     <table width="100%" cellpadding="0" cellspacing="0">
@@ -299,7 +318,7 @@ async def send_inquiry_auto_reply(inq: dict) -> None:
     <h2 style="margin:0 0 6px;color:{BRAND_COLOR};font-size:20px;font-weight:900;">Hi {first}!</h2>
     <p style="margin:0 0 20px;color:#475569;font-size:15px;line-height:1.6;">
       Thank you for reaching out to Stayvoo. We have received your inquiry for
-      extended stay accommodation in <strong>Waukesha and Brookfield, Wisconsin</strong>.
+      extended stay accommodation in the <strong>Milwaukee Area</strong> (Waukesha &amp; Brookfield, Wisconsin).
     </p>
     <div style="text-align:center;margin:20px 0;">
       <div style="display:inline-block;background:#fff7ed;border:2px solid #fed7aa;border-radius:12px;padding:12px 28px;">
@@ -588,6 +607,7 @@ async def send_reservation_confirmed(r: dict) -> None:
     ref = r.get("reservation_ref", "")
     pms = r.get("pms_confirmation") or "—"
     hotel_name = r.get("hotel_name_snapshot", "Hotel")
+    nights = int(r.get("nights") or 0)
     portal_url = r.get("portal_url")
     portal_block = ""
     if portal_url:
@@ -597,6 +617,24 @@ async def send_reservation_confirmed(r: dict) -> None:
         View My Reservations →
       </a>
       <p style="margin:6px 0 0;color:#94a3b8;font-size:11px;">Bookmark this link — it's your personal stay portal</p>
+    </div>"""
+    welcome_kit_block = ""
+    if nights >= 7:
+        welcome_kit_block = f"""
+    <div style="margin-top:24px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:16px;">
+      <p style="margin:0;color:#1d4ed8;font-size:14px;font-weight:600;">🎁 Your welcome kit will be waiting at the front desk.</p>
+      <p style="margin:4px 0 0;color:#1e40af;font-size:13px;">Local snacks, restaurant vouchers, and a handwritten welcome note.</p>
+      <p style="margin:6px 0 0;color:#1e40af;font-size:13px;">
+        Need anything before you arrive? Call <strong>{SUPPORT_PHONE}</strong>
+      </p>
+    </div>"""
+    else:
+        welcome_kit_block = f"""
+    <div style="margin-top:24px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px;">
+      <p style="margin:0;color:#15803d;font-size:14px;font-weight:600;">✅ Your stay is confirmed!</p>
+      <p style="margin:6px 0 0;color:#166534;font-size:13px;">
+        Need anything before you arrive? Call <strong>{SUPPORT_PHONE}</strong>
+      </p>
     </div>"""
     body = f"""
     <h2 style="margin:0 0 6px;color:{BRAND_COLOR};font-size:20px;font-weight:900;">You're confirmed, {first}!</h2>
@@ -612,12 +650,7 @@ async def send_reservation_confirmed(r: dict) -> None:
     <table width="100%" cellpadding="0" cellspacing="0">
       {_res_summary_rows(r)}
     </table>
-    <div style="margin-top:24px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:16px;">
-      <p style="margin:0;color:#1d4ed8;font-size:14px;font-weight:600;">🎁 Your welcome kit will be waiting at the front desk.</p>
-      <p style="margin:6px 0 0;color:#1e40af;font-size:13px;">
-        Need anything before you arrive? Call <strong>{SUPPORT_PHONE}</strong>
-      </p>
-    </div>
+    {welcome_kit_block}
     {portal_block}"""
     await _send(to_email, f"Confirmed! Your Stay at {hotel_name} — {ref}", _base_html("Booking Confirmed", body))
 

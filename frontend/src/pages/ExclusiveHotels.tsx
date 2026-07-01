@@ -61,6 +61,13 @@ function Field({ label, required, children }: { label: string; required?: boolea
 
 const inputCls = "w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
 
+const TYPE_MAP: Record<string, string> = {
+  nurse: 'Travel Nurse',
+  crew: 'Construction Crew',
+  corporate: 'Corporate / Business',
+  group: 'Wedding Group',
+}
+
 export default function ExclusiveHotels() {
   const [hotels, setHotels] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -70,9 +77,19 @@ export default function ExclusiveHotels() {
   const [error, setError] = useState<string | null>(null)
   const location = useLocation()
 
+  useEffect(() => { document.title = 'Extended Stay Rates | Milwaukee Area Hotels | Stayvoo' }, [])
+
   useEffect(() => {
     getHotels().then(setHotels).catch(() => setHotels([])).finally(() => setLoading(false))
   }, [])
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const type = params.get('type')
+    if (type && TYPE_MAP[type]) {
+      setForm(f => ({ ...f, guest_type: TYPE_MAP[type] }))
+    }
+  }, [location.search])
 
   useEffect(() => {
     if (location.hash === '#inquiry-form') {
@@ -121,38 +138,71 @@ export default function ExclusiveHotels() {
       <section className="bg-[#1e3a5f] py-16 px-4 text-center">
         <div className="max-w-3xl mx-auto">
           <div className="inline-flex items-center gap-2 bg-orange-500/20 border border-orange-500/30 text-orange-400 text-sm font-semibold px-4 py-1.5 rounded-full mb-5">
-            ⭐ Exclusive Partner Hotels
+            ⭐ Extended Stay & Group Rates
           </div>
           <h1 className="text-white font-black text-4xl sm:text-5xl leading-tight">
-            Extended Stay & Group Rates
+            Extended Stay & Group Rates<br />
+            <span className="text-orange-400">Milwaukee Area & Chicagoland</span>
           </h1>
-          <p className="text-white/70 text-lg mt-4">
-            Exclusive negotiated rates for travel nurses, construction crews, corporate teams, and groups.
+          <p className="text-white/70 text-lg mt-4 max-w-2xl mx-auto">
+            Our partner hotels in the Milwaukee Area (Waukesha & Brookfield Wisconsin) are ideally located for workers and groups traveling the entire region. We negotiate rates directly with our partner hotels — unavailable on Expedia — and handle every booking personally.
           </p>
-          <div className="flex gap-3 justify-center mt-6">
-            <a href="#inquiry-form" className="bg-orange-500 hover:bg-orange-600 text-white font-bold px-6 py-3 rounded-xl text-sm transition-colors">
+          <div className="mt-6">
+            <a href="#inquiry-form" className="bg-orange-500 hover:bg-orange-600 text-white font-bold px-8 py-3 rounded-xl text-sm transition-colors">
               Get a Quote →
             </a>
-            <Link to="/search" className="border-2 border-white/30 hover:border-white text-white font-bold px-6 py-3 rounded-xl text-sm transition-colors">
-              Short Stay Search
-            </Link>
           </div>
         </div>
       </section>
 
-      {/* Short stay notice */}
+      {/* Location context box */}
+      <div className="max-w-4xl mx-auto px-4 mt-10">
+        <div className="bg-[#1e3a5f] rounded-2xl px-6 py-6 text-white">
+          <p className="font-black text-lg mb-4">📍 Our Hotels Are In The Milwaukee Area<br /><span className="font-normal text-white/70 text-sm">(Waukesha & Brookfield, Wisconsin)</span></p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {[
+              '2 min from Froedtert Hospital',
+              '5 min from Aurora Medical Center',
+              'In the heart of the Milwaukee Area',
+              '20 min from Downtown Milwaukee',
+              '30 min from Downtown Chicago',
+              '35 min from Kenosha',
+              'I-94 and I-43 corridor access',
+              'Easy access from all of Southeast Wisconsin',
+            ].map(item => (
+              <div key={item} className="flex items-center gap-2 text-sm text-white/80">
+                <span className="text-green-400 flex-shrink-0">✅</span>
+                <span>{item}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* What every extended stay includes */}
       <div className="max-w-4xl mx-auto px-4 mt-8">
-        <div className="bg-orange-50 border border-orange-200 rounded-2xl px-5 py-4 flex items-start gap-3">
-          <span className="text-orange-500 text-xl flex-shrink-0 mt-0.5">ℹ️</span>
-          <p className="text-orange-800 text-sm leading-relaxed">
-            Our exclusive partner rates are designed for extended stays of <strong>7+ nights</strong>.
-            For shorter stays (1–6 nights), please{' '}
-            <Link to="/search" className="font-bold underline hover:text-orange-600">use our hotel search</Link>.
+        <div className="bg-orange-50 border border-orange-200 rounded-2xl px-6 py-6">
+          <h2 className="text-[#1e3a5f] font-black text-lg mb-4">What Every Extended Stay Includes</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
+            {[
+              '✅ Negotiated rate below Expedia',
+              '✅ Flexible month-to-month terms',
+              '✅ Free parking always',
+              '✅ Personal service and support',
+              '✅ Direct billing options',
+              '✅ Monthly invoicing available',
+              '🎁 Welcome kit at check-in',
+            ].map(item => (
+              <div key={item} className="text-sm text-slate-700">{item}</div>
+            ))}
+          </div>
+          <p className="text-orange-800 text-sm">
+            Ready to get your rate? Fill out the form below and we will contact you within 2 hours with availability and pricing.
           </p>
         </div>
       </div>
 
-      {/* Hotels grid */}
+      {/* Hotels grid — view only */}
       <section className="py-12 px-4">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-[#1e3a5f] font-black text-2xl mb-6">Our Partner Hotels</h2>
@@ -165,7 +215,8 @@ export default function ExclusiveHotels() {
               {hotels.map(h => (
                 <HotelCard
                   key={h.id}
-                  hotel={{ ...h, exclusive: false, price_per_night: h.rooms?.[0]?.price_per_night ?? 120 }}
+                  hotel={{ ...h, exclusive: true, price_per_night: 0 }}
+                  viewOnly
                 />
               ))}
             </div>

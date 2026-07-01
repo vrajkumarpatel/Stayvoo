@@ -41,19 +41,19 @@ export default function Navbar() {
           <div className="hidden md:flex items-center gap-8">
             <Link to="/" className={`text-sm font-medium transition-colors ${active('/')}`}>Home</Link>
 
-            {/* Exclusive Hotels dropdown */}
+            {/* Extended Stay & Groups dropdown */}
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setDropdownOpen(o => !o)}
                 className={`flex items-center gap-1 text-sm font-medium transition-colors ${pathname === '/exclusive' || pathname === '/groups' ? 'text-orange-500 font-semibold' : 'text-white/80 hover:text-white'}`}
               >
-                Exclusive Hotels
+                Extended Stay & Groups
                 <svg className={`w-3.5 h-3.5 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
               {dropdownOpen && (
-                <div className="absolute top-full left-0 mt-2 w-52 bg-white rounded-xl shadow-xl border border-slate-100 py-1 z-50">
+                <div className="absolute top-full left-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-100 py-1 z-50">
                   <Link
                     to="/exclusive"
                     onClick={() => setDropdownOpen(false)}
@@ -62,11 +62,18 @@ export default function Navbar() {
                     <span>🏥</span> Extended Stay Quote
                   </Link>
                   <Link
-                    to="/exclusive#inquiry-form"
+                    to="/groups"
                     onClick={() => setDropdownOpen(false)}
                     className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-[#1e3a5f] hover:bg-orange-50 hover:text-orange-600 font-medium transition-colors"
                   >
-                    <span>🏗️</span> Group Booking
+                    <span>💒</span> Group Booking
+                  </Link>
+                  <Link
+                    to="/search"
+                    onClick={() => setDropdownOpen(false)}
+                    className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-[#1e3a5f] hover:bg-orange-50 hover:text-orange-600 font-medium transition-colors"
+                  >
+                    <span>🔍</span> Search All Hotels
                   </Link>
                 </div>
               )}
@@ -108,10 +115,9 @@ export default function Navbar() {
           <div className="md:hidden border-t border-white/10 py-4 flex flex-col gap-1">
             {[
               { to: '/', label: 'Home' },
-              { to: '/exclusive', label: 'Exclusive Hotels' },
               { to: '/exclusive', label: 'Extended Stay Quote' },
-              { to: '/exclusive#inquiry-form', label: 'Group Booking' },
-              { to: '/search', label: 'Search Hotels' },
+              { to: '/groups', label: 'Group Booking' },
+              { to: '/search', label: 'Search All Hotels' },
               { to: '/my-reservations', label: 'My Reservations' },
             ].map(({ to, label }) => (
               <Link
