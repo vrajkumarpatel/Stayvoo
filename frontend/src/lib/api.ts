@@ -111,6 +111,7 @@ export async function createInquiry(data: {
   start_date: string
   special_requirements?: string
   source?: string
+  sms_consent?: boolean
 }) {
   const r = await fetch(`${BASE}/inquiries`, {
     method: 'POST',
@@ -383,6 +384,7 @@ export async function createReservation(data: {
   estimated_arrival?: string
   source?: string
   stripe_payment_method_id?: string
+  sms_consent?: boolean
 }) {
   const r = await fetch(`${BASE}/reservations`, {
     method: 'POST',

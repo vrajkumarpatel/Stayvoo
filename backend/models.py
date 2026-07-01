@@ -178,6 +178,7 @@ class Inquiry(Base):
     notes = Column(Text, nullable=True)
     guest_id = Column(UUID(as_uuid=True), ForeignKey("guests.id"), nullable=True)
     reservation_id = Column(UUID(as_uuid=True), ForeignKey("reservations.id"), nullable=True)
+    sms_consent = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
@@ -242,6 +243,7 @@ class Reservation(Base):
     pms_confirmation = Column(String, nullable=True)
     tier = Column(Integer, default=1)
     source = Column(String, default="website")
+    sms_consent = Column(Boolean, default=False)
 
     stripe_payment_method_id = Column(String, nullable=True)
     card_last4 = Column(String, nullable=True)

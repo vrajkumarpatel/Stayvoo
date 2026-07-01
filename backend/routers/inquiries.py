@@ -36,6 +36,7 @@ class InquiryIn(BaseModel):
     start_date: Optional[Union[date, str]] = None
     special_requirements: Optional[str] = None
     source: Optional[str] = "website"
+    sms_consent: bool = False
 
     @field_validator('num_rooms', mode='before')
     @classmethod
@@ -95,6 +96,7 @@ def inquiry_to_dict(inq: Inquiry) -> dict:
         "start_date": str(inq.start_date),
         "special_requirements": inq.special_requirements,
         "source": inq.source,
+        "sms_consent": inq.sms_consent,
         "status": inq.status,
         "notes": inq.notes,
         "created_at": inq.created_at.isoformat() if inq.created_at else None,

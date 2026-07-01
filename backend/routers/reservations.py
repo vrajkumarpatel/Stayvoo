@@ -43,6 +43,7 @@ class ReservationIn(BaseModel):
     estimated_arrival: str | None = None
     source: str = "website"
     stripe_payment_method_id: str | None = None
+    sms_consent: bool = False
 
 
 def reservation_to_dict(r: Reservation) -> dict:
@@ -77,6 +78,7 @@ def reservation_to_dict(r: Reservation) -> dict:
         "pms_confirmation": r.pms_confirmation,
         "tier": r.tier,
         "source": r.source,
+        "sms_consent": r.sms_consent,
         "card_last4": r.card_last4,
         "card_brand": r.card_brand,
         "status": r.status,
@@ -229,6 +231,7 @@ async def create_reservation(
         status="pending",
         tier=hotel.tier,
         source=payload.source,
+        sms_consent=payload.sms_consent,
         stripe_payment_method_id=payload.stripe_payment_method_id,
         card_last4=card_last4,
         card_brand=card_brand,

@@ -370,6 +370,8 @@ async def _run_column_migrations(conn) -> None:
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS last_modified_at TIMESTAMP",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS last_modified_by VARCHAR",
         "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS reservation_id UUID REFERENCES reservations(id)",
+        "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS sms_consent BOOLEAN DEFAULT FALSE",
+        "ALTER TABLE reservations ADD COLUMN IF NOT EXISTS sms_consent BOOLEAN DEFAULT FALSE",
     ]
     for stmt in stmts:
         try:

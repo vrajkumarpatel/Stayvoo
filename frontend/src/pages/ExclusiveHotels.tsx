@@ -46,6 +46,7 @@ const EMPTY = {
   start_date: '',
   special_requirements: '',
   how_heard: 'Google search',
+  sms_consent: false,
 }
 
 function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
@@ -124,6 +125,7 @@ export default function ExclusiveHotels() {
         start_date: form.start_date,
         special_requirements: form.special_requirements || undefined,
         source: `website — ${form.how_heard}`,
+        sms_consent: form.sms_consent,
       })
       setSuccess({
         ref: result.id?.slice(0, 8).toUpperCase() ?? '—',
@@ -309,6 +311,10 @@ export default function ExclusiveHotels() {
                     </Field>
                     <Field label="Phone" required>
                       <input required type="tel" value={form.phone} onChange={set('phone')} placeholder="+1 (xxx) xxx-xxxx" className={inputCls} />
+                      <p className="text-slate-400 text-xs mt-1.5">
+                        By providing your phone number you agree to receive SMS updates about your inquiry from Stayvoo.
+                        Reply STOP at any time to opt out. Message and data rates may apply.
+                      </p>
                     </Field>
                   </div>
 
@@ -372,9 +378,20 @@ export default function ExclusiveHotels() {
                     <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl px-4 py-3">{error}</div>
                   )}
 
+                  <label className="flex items-start gap-2.5 text-sm text-slate-600">
+                    <input
+                      required
+                      type="checkbox"
+                      checked={form.sms_consent}
+                      onChange={e => setForm(f => ({ ...f, sms_consent: e.target.checked }))}
+                      className="mt-0.5 w-4 h-4 accent-orange-500 flex-shrink-0"
+                    />
+                    <span>I agree to receive SMS booking updates from Stayvoo</span>
+                  </label>
+
                   <button
                     type="submit"
-                    disabled={submitting}
+                    disabled={submitting || !form.sms_consent}
                     className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-black py-4 rounded-xl text-base transition-colors shadow-lg shadow-orange-100"
                   >
                     {submitting ? 'Submitting...' : 'Request Exclusive Rate →'}

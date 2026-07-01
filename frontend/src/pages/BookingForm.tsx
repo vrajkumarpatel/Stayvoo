@@ -41,6 +41,7 @@ interface FormState {
   guestType: string
   specialRequests: string
   estimatedArrival: string
+  smsConsent: boolean
 }
 
 interface InnerProps {
@@ -64,6 +65,7 @@ function BookingFormInner({ hotel, room, checkin, checkout, total }: InnerProps)
     guestType: 'leisure',
     specialRequests: '',
     estimatedArrival: '3PM',
+    smsConsent: false,
   })
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
@@ -122,6 +124,7 @@ function BookingFormInner({ hotel, room, checkin, checkout, total }: InnerProps)
         estimated_arrival: form.estimatedArrival,
         source: 'website',
         stripe_payment_method_id: stripePaymentMethodId,
+        sms_consent: form.smsConsent,
       })
       navigate(`/confirmation?ref=${res.reservation_ref}`)
     } catch (err: any) {
@@ -196,6 +199,10 @@ function BookingFormInner({ hotel, room, checkin, checkout, total }: InnerProps)
           onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
           className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
         />
+        <p className="text-slate-400 text-xs mt-1.5">
+          By providing your phone number you agree to receive SMS updates about your reservation from Stayvoo.
+          Reply STOP at any time to opt out. Message and data rates may apply.
+        </p>
       </div>
 
       {/* Guest type */}
@@ -280,9 +287,20 @@ function BookingFormInner({ hotel, room, checkin, checkout, total }: InnerProps)
         <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl px-4 py-3">{formError}</div>
       )}
 
+      <label className="flex items-start gap-2.5 text-sm text-slate-600">
+        <input
+          required
+          type="checkbox"
+          checked={form.smsConsent}
+          onChange={e => setForm(f => ({ ...f, smsConsent: e.target.checked }))}
+          className="mt-0.5 w-4 h-4 accent-orange-500 flex-shrink-0"
+        />
+        <span>I agree to receive SMS booking updates from Stayvoo</span>
+      </label>
+
       <button
         type="submit"
-        disabled={submitting || (stripePromise !== null && !cardComplete)}
+        disabled={submitting || !form.smsConsent || (stripePromise !== null && !cardComplete)}
         className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-black py-4 rounded-xl text-base transition-colors shadow-lg shadow-orange-200"
       >
         {submitting ? 'Processing...' : `Confirm Booking — $${total.toFixed(0)} total`}
