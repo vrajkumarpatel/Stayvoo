@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useLocation, Link } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import HotelCard from '../components/HotelCard'
 import { getHotels, createInquiry, checkGuest } from '../lib/api'
 

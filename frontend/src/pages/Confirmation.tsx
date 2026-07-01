@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { getReservation } from '../lib/api'
 
-const BASE_STEPS = [
+interface Step { icon: string; title: string; desc: string; done?: boolean }
+
+const BASE_STEPS: Step[] = [
   {
     icon: '✅',
     title: 'Booking Received',
@@ -21,7 +23,7 @@ const BASE_STEPS = [
   },
 ]
 
-const WELCOME_KIT_STEP = {
+const WELCOME_KIT_STEP: Step = {
   icon: '🎁',
   title: 'Welcome Kit Waiting',
   desc: 'Your personalized welcome bag with local snacks, restaurant vouchers, and a handwritten note will be ready at the front desk.',
