@@ -57,7 +57,7 @@ export default function SearchBar({ inline = false }: Props) {
     <div className={`w-full ${inline ? '' : 'max-w-4xl mx-auto'}`}>
       <div className={`
         bg-white rounded-2xl shadow-2xl p-4
-        flex flex-col sm:flex-row gap-3 sm:gap-2 items-stretch sm:items-end
+        flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-2 items-stretch sm:items-end
       `}>
         {/* Check-in */}
         <div className="flex-1 flex flex-col gap-1">
