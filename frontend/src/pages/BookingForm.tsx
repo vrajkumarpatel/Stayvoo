@@ -287,7 +287,7 @@ function BookingFormInner({ hotel, room, checkin, checkout, total }: InnerProps)
         <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl px-4 py-3">{formError}</div>
       )}
 
-      <label className="flex items-start gap-2.5 text-sm text-slate-600">
+      <label className="flex items-start gap-2.5 text-base text-slate-800">
         <input
           required
           type="checkbox"
@@ -295,7 +295,10 @@ function BookingFormInner({ hotel, room, checkin, checkout, total }: InnerProps)
           onChange={e => setForm(f => ({ ...f, smsConsent: e.target.checked }))}
           className="mt-0.5 w-4 h-4 accent-orange-500 flex-shrink-0"
         />
-        <span>I agree to receive SMS booking updates from Stayvoo</span>
+        <span>
+          I agree to receive SMS text messages from Stayvoo about my booking including confirmation,
+          check-in reminders, and updates. Message &amp; data rates may apply. Reply STOP to opt out anytime.
+        </span>
       </label>
 
       <button
