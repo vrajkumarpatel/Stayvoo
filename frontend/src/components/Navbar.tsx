@@ -1,100 +1,56 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import LogoMark from './LogoMark'
 
-const PHONE = '+1 (888) 352-8151'
-const PHONE_HREF = 'tel:+18883528151'
+const NAV_LINKS = [
+  { to: '/', label: 'Home' },
+  { to: '/exclusive', label: 'Extended Stay' },
+  { to: '/groups', label: 'Groups & Corporate' },
+  { to: '/about', label: 'About' },
+  { to: '/contact', label: 'Contact' },
+  { to: '/my-reservations', label: 'My Reservations' },
+]
 
 export default function Navbar() {
   const [open, setOpen] = useState(false)
-  const [dropdownOpen, setDropdownOpen] = useState(false)
-  const dropdownRef = useRef<HTMLDivElement>(null)
   const { pathname } = useLocation()
 
   const active = (to: string) =>
-    pathname === to ? 'text-orange-500 font-semibold' : 'text-white/80 hover:text-white'
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setDropdownOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+    pathname === to ? 'text-navy font-semibold' : 'text-ink-muted hover:text-navy'
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-[#1e3a5f] shadow-lg">
+    <nav className="sticky top-0 left-0 right-0 z-50 bg-paper/85 backdrop-blur-sm border-b border-border">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link to="/" className="flex flex-col leading-none group">
-            <span className="text-white font-black text-2xl tracking-tight group-hover:text-orange-400 transition-colors">
-              Stayvoo
-            </span>
-            <span className="text-white/50 text-[10px] font-medium tracking-widest uppercase">
-              Book Direct. Stay Better.
-            </span>
+          {/* Wordmark */}
+          <Link to="/" className="flex items-center gap-2 group">
+            <LogoMark size={28} />
+            <div className="flex flex-col leading-none">
+              <span className="font-serif text-navy font-bold text-xl tracking-tight">Stayvoo</span>
+              <span className="font-sans text-ink-muted/70 text-[10px] font-medium tracking-widest uppercase">
+                Booking Agency
+              </span>
+            </div>
           </Link>
 
           {/* Desktop nav */}
-          <div className="hidden md:flex items-center gap-8">
-            <Link to="/" className={`text-sm font-medium transition-colors ${active('/')}`}>Home</Link>
-
-            {/* Extended Stay & Groups dropdown */}
-            <div className="relative" ref={dropdownRef}>
-              <button
-                onClick={() => setDropdownOpen(o => !o)}
-                className={`flex items-center gap-1 text-sm font-medium transition-colors ${pathname === '/exclusive' || pathname === '/groups' ? 'text-orange-500 font-semibold' : 'text-white/80 hover:text-white'}`}
-              >
-                Extended Stay & Groups
-                <svg className={`w-3.5 h-3.5 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-              {dropdownOpen && (
-                <div className="absolute top-full left-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-100 py-1 z-50">
-                  <Link
-                    to="/exclusive"
-                    onClick={() => setDropdownOpen(false)}
-                    className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-[#1e3a5f] hover:bg-orange-50 hover:text-orange-600 font-medium transition-colors"
-                  >
-                    <span>🏥</span> Extended Stay Quote
-                  </Link>
-                  <Link
-                    to="/groups"
-                    onClick={() => setDropdownOpen(false)}
-                    className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-[#1e3a5f] hover:bg-orange-50 hover:text-orange-600 font-medium transition-colors"
-                  >
-                    <span>💒</span> Group Booking
-                  </Link>
-                  <Link
-                    to="/search"
-                    onClick={() => setDropdownOpen(false)}
-                    className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-[#1e3a5f] hover:bg-orange-50 hover:text-orange-600 font-medium transition-colors"
-                  >
-                    <span>🔍</span> Search All Hotels
-                  </Link>
-                </div>
-              )}
-            </div>
-
-            <Link to="/search" className={`text-sm font-medium transition-colors ${active('/search')}`}>Search</Link>
-
-            <Link to="/my-reservations" className={`text-sm font-medium transition-colors ${active('/my-reservations')}`}>My Reservations</Link>
-
-            <a
-              href={PHONE_HREF}
-              className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+          <div className="hidden md:flex items-center gap-6">
+            {NAV_LINKS.map(({ to, label }) => (
+              <Link key={to} to={to} className={`font-sans text-sm font-medium transition-colors ${active(to)}`}>
+                {label}
+              </Link>
+            ))}
+            <Link
+              to="/contact"
+              className="inline-flex items-center justify-center rounded-control bg-brand-orange hover:bg-brand-orange-dark text-white font-sans text-sm font-medium px-5 py-2.5 transition-colors"
             >
-              <span>📞</span>
-              <span>{PHONE}</span>
-            </a>
+              Request a quote
+            </Link>
           </div>
 
           {/* Mobile hamburger */}
           <button
-            className="md:hidden text-white p-2"
+            className="md:hidden text-navy p-2"
             onClick={() => setOpen(o => !o)}
             aria-label="Toggle menu"
           >
@@ -112,31 +68,26 @@ export default function Navbar() {
 
         {/* Mobile menu */}
         {open && (
-          <div className="md:hidden border-t border-white/10 py-4 flex flex-col gap-1">
-            {[
-              { to: '/', label: 'Home' },
-              { to: '/exclusive', label: 'Extended Stay Quote' },
-              { to: '/groups', label: 'Group Booking' },
-              { to: '/search', label: 'Search All Hotels' },
-              { to: '/my-reservations', label: 'My Reservations' },
-            ].map(({ to, label }) => (
+          <div className="md:hidden border-t border-border py-4 flex flex-col gap-1">
+            {NAV_LINKS.map(({ to, label }) => (
               <Link
-                key={label}
+                key={to}
                 to={to}
                 onClick={() => setOpen(false)}
-                className="text-sm font-medium py-2.5 px-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                className={`font-sans text-sm font-medium py-2.5 px-2 rounded-control transition-colors ${
+                  pathname === to ? 'text-navy font-semibold bg-mist/40' : 'text-ink-muted hover:text-navy hover:bg-mist/40'
+                }`}
               >
                 {label}
               </Link>
             ))}
-            <a
-              href={PHONE_HREF}
+            <Link
+              to="/contact"
               onClick={() => setOpen(false)}
-              className="mt-2 flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold px-4 py-3 rounded-xl transition-colors"
+              className="mt-2 flex items-center justify-center rounded-control bg-brand-orange hover:bg-brand-orange-dark text-white font-sans text-sm font-medium px-4 py-3 transition-colors"
             >
-              <span>📞</span>
-              <span>Call Us: {PHONE}</span>
-            </a>
+              Request a quote
+            </Link>
           </div>
         )}
       </div>

@@ -1,5 +1,23 @@
 @import "tailwindcss";
 
+/* --- 2026 site redesign tokens (public-facing pages) --- */
+@theme {
+  --color-navy: #091A36;
+  --color-paper: #F8FAFD;
+  --color-mist: #E3EBF5;
+  --color-ink-muted: #4B5666;
+  --color-border: #D7DFE8;
+  --color-accent: #3D74B0;
+  --color-brand-orange: #E8833A;
+  --color-brand-orange-dark: #d0722f;
+
+  --font-serif: 'Libre Baskerville', Georgia, serif;
+  --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
+
+  --radius-control: 4px;
+  --radius-card: 10px;
+}
+
 :root {
   --navy: #1e3a5f;
   --navy-dark: #162d4a;
