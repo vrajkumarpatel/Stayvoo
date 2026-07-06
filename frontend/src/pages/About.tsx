@@ -1,71 +1,91 @@
 import { useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import SectionEyebrow from '../components/SectionEyebrow'
+import CtaBanner from '../components/CtaBanner'
+import SiteFooter from '../components/SiteFooter'
+
+const FEATURES = [
+  {
+    title: 'Guest-first, hotel-paid',
+    body: 'Travelers and organizers never pay a Stayvoo fee. Our commission comes from the partner hotel on a booking that closes.',
+  },
+  {
+    title: 'Depth over breadth',
+    body: "We'd rather know three hotels completely than list three thousand we've never walked through. Every property we book, we know personally.",
+  },
+  {
+    title: 'Two lanes, one team',
+    body: 'We only do extended stays and group blocks. That focus is why we\'re fast at both.',
+  },
+]
 
 export default function About() {
-  useEffect(() => { document.title = 'About Stayvoo | Extended Stay Hotel Specialist | Milwaukee Area' }, [])
+  useEffect(() => {
+    document.title = 'About Stayvoo | Extended Stay Hotel Specialist | Milwaukee Area'
+  }, [])
+
   return (
-    <div className="min-h-screen bg-slate-50 pt-16">
-      <div className="max-w-2xl mx-auto px-4 py-16">
-        <Link to="/" className="text-orange-500 hover:text-orange-600 text-sm font-semibold">← Back to Home</Link>
-        <h1 className="text-[#1e3a5f] font-black text-3xl mt-6 mb-2">About Stayvoo</h1>
-        <p className="text-slate-500 mb-8">Extended Stay Hotel Specialist · Milwaukee Area & Chicagoland</p>
-        <div className="bg-white rounded-2xl shadow-sm p-8 text-slate-600 leading-relaxed flex flex-col gap-5">
-          <p>
-            Stayvoo is an extended stay and group hotel specialist serving the Milwaukee Area and Chicagoland.
-          </p>
-          <p>
-            Our partner hotels in Waukesha and Brookfield are in the heart of the Milwaukee Area — 20 minutes from Downtown Milwaukee, 30 minutes from Downtown Chicago, and near major employers and medical centers including Froedtert Hospital and Aurora Medical Center.
-          </p>
-          <p>
-            We specialize in stays of 7+ nights for travel nurses, construction crews, corporate teams, and groups. We negotiate direct rates with our partner hotels — rates unavailable on Expedia or Booking.com — and handle every booking personally.
-          </p>
+    <div className="min-h-screen bg-paper">
+      {/* Hero */}
+      <section className="max-w-3xl mx-auto px-4 pt-20 pb-16 text-center border-b border-border">
+        <SectionEyebrow>About</SectionEyebrow>
+        <h1 className="font-serif font-bold text-navy text-4xl sm:text-5xl mt-2">
+          A local agency in a market full of call centers.
+        </h1>
+        <p className="font-sans text-ink-muted text-base sm:text-lg mt-5 leading-relaxed">
+          Stayvoo is a commission-based booking agency based in the Milwaukee area. We don't own hotels and we don't
+          run a faceless marketplace. We work with a small set of partner hotels we know room by room, and we place
+          every guest personally.
+        </p>
+      </section>
 
-          <div className="bg-slate-50 rounded-xl p-5">
-            <p className="font-bold text-[#1e3a5f] mb-3">Every extended stay includes:</p>
-            <ul className="flex flex-col gap-2">
-              {[
-                'Negotiated rates below Expedia',
-                'Flexible month-to-month terms',
-                'Free parking at all properties',
-                'Personal service and support',
-                'Direct billing options',
-                'Monthly invoicing available',
-                '🎁 Welcome kit at check-in',
-              ].map(item => (
-                <li key={item} className="flex items-start gap-2">
-                  <span className="text-green-500 font-bold flex-shrink-0 mt-0.5">{item.startsWith('🎁') ? '' : '✅'}</span>
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
+      {/* Feature row */}
+      <section className="max-w-5xl mx-auto px-4 py-16 grid grid-cols-1 sm:grid-cols-3 gap-10">
+        {FEATURES.map(f => (
+          <div key={f.title}>
+            <h3 className="font-serif font-bold text-navy text-xl">{f.title}</h3>
+            <p className="font-sans text-ink-muted text-[15px] mt-3 leading-relaxed">{f.body}</p>
           </div>
+        ))}
+      </section>
 
-          <div className="bg-[#1e3a5f] rounded-xl p-5 text-white">
-            <p className="font-bold mb-3">📍 Service Area</p>
-            <p className="text-white/70 text-sm leading-relaxed">
-              Milwaukee Area · Waukesha · Brookfield · Kenosha · Racine · Madison · Green Bay · Chicago · Chicagoland · and all of Southeast Wisconsin
+      {/* How We Work */}
+      <section className="bg-mist/40 py-20 px-4">
+        <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12">
+          <div>
+            <SectionEyebrow>How we work</SectionEyebrow>
+            <h2 className="font-serif font-bold text-navy text-3xl sm:text-4xl mt-2">
+              Small team. Direct line. No ticket queues.
+            </h2>
+          </div>
+          <div className="flex flex-col gap-5">
+            <p className="font-sans text-ink-muted text-[15px] leading-relaxed">
+              Every booking gets one coordinator, start to finish — from first brief through the final invoice.
+              You'll have a direct number, and the person who answers will already know your reservation.
+            </p>
+            <p className="font-sans text-ink-muted text-[15px] leading-relaxed">
+              We operate on relationship pricing, not rack rates. Because we consistently deliver qualified guests to
+              our partner hotels, we get access to weekly, monthly, and group rates that public booking sites don't
+              show.
+            </p>
+            <p className="font-sans text-ink-muted text-[15px] leading-relaxed">
+              Terms are spelled out in plain language before you commit — rates, changes, and cancellation, up front.
+              No surprises on the bill.
             </p>
           </div>
-
-          <div className="border-t border-slate-100 pt-5">
-            <p className="font-semibold text-[#1e3a5f] mb-3">Questions? Call or WhatsApp:</p>
-            <div className="flex flex-col gap-2">
-              <a href="tel:+18883528151" className="flex items-center gap-2 text-orange-500 hover:text-orange-600 font-semibold">
-                📞 +1 (888) 352-8151
-              </a>
-              <a href="https://wa.me/18883528151" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-green-600 hover:text-green-700 font-semibold">
-                💬 WhatsApp us
-              </a>
-              <a href="mailto:hello@stayvoo.com" className="flex items-center gap-2 text-orange-500 hover:text-orange-600 font-semibold">
-                ✉️ hello@stayvoo.com
-              </a>
-              <a href="https://stayvoo.com" className="flex items-center gap-2 text-slate-500 hover:text-slate-700 font-semibold">
-                🌐 stayvoo.com
-              </a>
-            </div>
-          </div>
         </div>
-      </div>
+      </section>
+
+      {/* CTA */}
+      <section className="py-20">
+        <CtaBanner
+          heading="Want to talk to a real coordinator?"
+          body="No forms in a black hole. A person replies, and stays on the thread."
+          buttonLabel="Get in touch"
+          buttonHref="/contact"
+        />
+      </section>
+
+      <SiteFooter />
     </div>
   )
 }
