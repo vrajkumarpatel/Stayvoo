@@ -15,6 +15,7 @@ import About from './pages/About'
 import MyReservations from './pages/MyReservations'
 import GuestPortal from './pages/GuestPortal'
 import Contact from './pages/Contact'
+import Brand from './pages/Brand'
 
 export default function App() {
   return (
@@ -35,6 +36,7 @@ export default function App() {
         <Route path="/my-reservations" element={<MyReservations />} />
         <Route path="/my-stay/:token" element={<GuestPortal />} />
         <Route path="/contact" element={<Contact />} />
+        <Route path="/brand" element={<Brand />} />
       </Routes>
       <AIChat />
     </BrowserRouter>

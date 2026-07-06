@@ -1,7 +1,20 @@
 @import "tailwindcss";
 
-/* --- 2026 site redesign tokens (public-facing pages) --- */
+/* Copper replaces Tailwind's default orange scale everywhere orange-* utilities are used */
 @theme {
+  --color-orange-50: #fbf3ea;
+  --color-orange-100: #f5e4d3;
+  --color-orange-200: #eac7a8;
+  --color-orange-300: #dea97d;
+  --color-orange-400: #d18f58;
+  --color-orange-500: #c4703a;
+  --color-orange-600: #a85c2c;
+  --color-orange-700: #8b4a22;
+  --color-orange-800: #6f3a1b;
+
+  --font-display: 'Fraunces', serif;
+
+  /* --- 2026 site redesign tokens (public-facing pages) --- */
   --color-navy: #091A36;
   --color-paper: #F8FAFD;
   --color-mist: #E3EBF5;
@@ -19,11 +32,11 @@
 }
 
 :root {
-  --navy: #1e3a5f;
-  --navy-dark: #162d4a;
-  --navy-light: #2a4f7c;
-  --orange: #f97316;
-  --orange-dark: #ea6c0a;
+  --navy: #10192b;
+  --navy-dark: #0a1220;
+  --navy-light: #1c3350;
+  --orange: #c4703a;
+  --orange-dark: #a85c2c;
 }
 
 * {
@@ -32,8 +45,8 @@
 
 body {
   margin: 0;
-  background: #f8fafc;
-  color: #1e293b;
+  background: #f7f3ec;
+  color: #241f1a;
 }
 
 /* Smooth scroll */
@@ -46,3 +59,27 @@ html {
 ::-webkit-scrollbar-track { background: #f1f5f9; }
 ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* Chat launcher breathing animation */
+@media (prefers-reduced-motion: no-preference) {
+  .stayvoo-blob-breathe {
+    animation: stayvoo-breathe 4s ease-in-out infinite;
+  }
+}
+
+@keyframes stayvoo-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+}
+
+/* Nav logo — one-time fade-in on first load */
+@media (prefers-reduced-motion: no-preference) {
+  .brand-logo-fade-in {
+    animation: brand-logo-fade-in 300ms ease-out;
+  }
+}
+
+@keyframes brand-logo-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import LogoMark from './LogoMark'
+import { LogoFull } from './Logo'
 
 const NAV_LINKS = [
   { to: '/', label: 'Home' },
@@ -23,14 +23,8 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-16">
           {/* Wordmark */}
-          <Link to="/" className="flex items-center gap-2 group">
-            <LogoMark size={28} />
-            <div className="flex flex-col leading-none">
-              <span className="font-serif text-navy font-bold text-xl tracking-tight">Stayvoo</span>
-              <span className="font-sans text-ink-muted/85 text-[10px] font-medium tracking-widest uppercase">
-                Booking Agency
-              </span>
-            </div>
+          <Link to="/" className="flex items-center group">
+            <LogoFull className="h-10 w-auto brand-logo-fade-in" />
           </Link>
 
           {/* Desktop nav */}
