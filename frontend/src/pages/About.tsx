@@ -25,7 +25,8 @@ export default function About() {
   )
 
   return (
-    <div className="min-h-screen bg-paper">
+    <>
+      <main className="min-h-screen bg-paper">
       {/* Hero */}
       <section className="max-w-3xl mx-auto px-4 pt-20 pb-16 text-center border-b border-border">
         <SectionEyebrow>About</SectionEyebrow>
@@ -43,7 +44,7 @@ export default function About() {
       <section className="max-w-5xl mx-auto px-4 py-16 grid grid-cols-1 sm:grid-cols-3 gap-10">
         {FEATURES.map(f => (
           <div key={f.title}>
-            <h3 className="font-serif font-bold text-navy text-xl">{f.title}</h3>
+            <h2 className="font-serif font-bold text-navy text-xl">{f.title}</h2>
             <p className="font-sans text-ink-muted text-[15px] mt-3 leading-relaxed">{f.body}</p>
           </div>
         ))}
@@ -86,7 +87,9 @@ export default function About() {
         />
       </section>
 
+      </main>
+
       <SiteFooter />
-    </div>
+    </>
   )
 }

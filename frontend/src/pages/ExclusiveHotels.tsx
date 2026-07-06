@@ -47,7 +47,8 @@ export default function ExclusiveHotels() {
   )
 
   return (
-    <div className="min-h-screen bg-paper">
+    <>
+      <main className="min-h-screen bg-paper">
       {/* Hero */}
       <section className="max-w-6xl mx-auto px-4 pt-20 pb-16 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
         <div>
@@ -67,14 +68,14 @@ export default function ExclusiveHotels() {
           </Link>
         </div>
         <div className="rounded-card overflow-hidden">
-          <img src="/images/exclusive-hero.jpg" alt="" className="w-full h-full object-cover" />
+          <img src="/images/exclusive-hero.webp" alt="" className="w-full h-full object-cover" />
         </div>
       </section>
 
       {/* Who books this */}
       <section className="max-w-5xl mx-auto px-4 pb-20">
         <div className="text-center mb-10">
-          <SectionEyebrow>Who books this</SectionEyebrow>
+          <SectionEyebrow as="h2">Who books this</SectionEyebrow>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {WHO_BOOKS_THIS.map(item => (
@@ -121,7 +122,9 @@ export default function ExclusiveHotels() {
         />
       </section>
 
+      </main>
+
       <SiteFooter />
-    </div>
+    </>
   )
 }

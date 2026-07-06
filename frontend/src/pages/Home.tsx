@@ -90,12 +90,13 @@ export default function Home() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-paper">
+    <>
+      <main className="min-h-screen bg-paper">
       {/* Hero */}
       <section className="relative overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: "url('/images/hero-bg.jpg')" }}
+          style={{ backgroundImage: "url('/images/hero-bg.webp')" }}
         />
         <div
           className="absolute inset-0"
@@ -166,14 +167,14 @@ export default function Home() {
           </div>
           <div className="max-w-4xl mx-auto grid grid-cols-1 sm:grid-cols-2 gap-6">
             <FeatureCard
-              image="/images/nurse-card.jpg"
+              image="/images/nurse-card.webp"
               eyebrow="For travelers & assignees"
               title="Extended stay"
               body="Weeks or months of comfortable hotel living at weekly and monthly rates — travel nursing contracts, project work, relocations, medical stays."
               href="/exclusive"
             />
             <FeatureCard
-              image="/images/events-card.jpg"
+              image="/images/events-card.webp"
               eyebrow="For companies & organizers"
               title="Groups & corporate"
               body="Room blocks for crews, sports teams, weddings, and events across Southeast Wisconsin and Chicagoland — with a single point of contact."
@@ -242,8 +243,9 @@ export default function Home() {
           buttonHref="/contact"
         />
       </section>
+      </main>
 
       <SiteFooter />
-    </div>
+    </>
   )
 }

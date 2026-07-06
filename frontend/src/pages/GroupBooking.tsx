@@ -47,7 +47,8 @@ export default function GroupBooking() {
   )
 
   return (
-    <div className="min-h-screen bg-paper">
+    <>
+      <main className="min-h-screen bg-paper">
       {/* Hero */}
       <section className="max-w-6xl mx-auto px-4 pt-20 pb-16 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
         <div>
@@ -67,14 +68,14 @@ export default function GroupBooking() {
           </Link>
         </div>
         <div className="rounded-card overflow-hidden">
-          <img src="/images/groups-hero.jpg" alt="" className="w-full h-full object-cover" />
+          <img src="/images/groups-hero.webp" alt="" className="w-full h-full object-cover" />
         </div>
       </section>
 
       {/* Blocks we handle */}
       <section className="max-w-5xl mx-auto px-4 pb-20">
         <div className="text-center mb-10">
-          <SectionEyebrow>Blocks we handle</SectionEyebrow>
+          <SectionEyebrow as="h2">Blocks we handle</SectionEyebrow>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {BLOCKS_WE_HANDLE.map(item => (
@@ -118,7 +119,9 @@ export default function GroupBooking() {
         />
       </section>
 
+      </main>
+
       <SiteFooter />
-    </div>
+    </>
   )
 }

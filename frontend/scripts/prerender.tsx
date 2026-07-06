@@ -19,18 +19,24 @@ const TRAVEL_AGENCY_SCHEMA = {
   areaServed: ['Milwaukee', 'Waukesha', 'Brookfield', 'Kenosha', 'Racine', 'Chicago'],
 }
 
-const ROUTES: { routePath: string; Component: React.ComponentType; outDir: string; jsonLd?: object }[] = [
-  { routePath: '/', Component: Home, outDir: '', jsonLd: TRAVEL_AGENCY_SCHEMA },
+const ROUTES: {
+  routePath: string
+  Component: React.ComponentType
+  outDir: string
+  jsonLd?: object
+  preloadImage?: string
+}[] = [
+  { routePath: '/', Component: Home, outDir: '', jsonLd: TRAVEL_AGENCY_SCHEMA, preloadImage: '/images/hero-bg.webp' },
   { routePath: '/contact', Component: Contact, outDir: 'contact' },
-  { routePath: '/exclusive', Component: ExclusiveHotels, outDir: 'exclusive' },
-  { routePath: '/groups', Component: GroupBooking, outDir: 'groups' },
+  { routePath: '/exclusive', Component: ExclusiveHotels, outDir: 'exclusive', preloadImage: '/images/exclusive-hero.webp' },
+  { routePath: '/groups', Component: GroupBooking, outDir: 'groups', preloadImage: '/images/groups-hero.webp' },
   { routePath: '/about', Component: About, outDir: 'about' },
 ]
 
 const distDir = path.resolve(process.cwd(), 'dist')
 const template = fs.readFileSync(path.join(distDir, 'index.html'), 'utf-8')
 
-for (const { routePath, Component, outDir, jsonLd } of ROUTES) {
+for (const { routePath, Component, outDir, jsonLd, preloadImage } of ROUTES) {
   const appHtml = renderToStaticMarkup(
     <StaticRouter location={routePath}>
       <Navbar />
@@ -40,9 +46,15 @@ for (const { routePath, Component, outDir, jsonLd } of ROUTES) {
 
   let pageHtml = template.replace('<div id="root"></div>', `<div id="root">${appHtml}</div>`)
 
+  let headExtras = ''
   if (jsonLd) {
-    const script = `<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>`
-    pageHtml = pageHtml.replace('</head>', `${script}</head>`)
+    headExtras += `<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>`
+  }
+  if (preloadImage) {
+    headExtras += `<link rel="preload" as="image" fetchpriority="high" href="${preloadImage}">`
+  }
+  if (headExtras) {
+    pageHtml = pageHtml.replace('</head>', `${headExtras}</head>`)
   }
 
   const targetDir = outDir ? path.join(distDir, outDir) : distDir

@@ -135,7 +135,8 @@ export default function Contact() {
   }
 
   return (
-    <div className="min-h-screen bg-paper">
+    <>
+      <main className="min-h-screen bg-paper">
       {/* Hero */}
       <section className="max-w-3xl mx-auto px-4 pt-20 pb-14 text-center">
         <SectionEyebrow>Contact</SectionEyebrow>
@@ -291,7 +292,7 @@ export default function Contact() {
         {/* Sidebar */}
         <div className="flex flex-col gap-6">
           <div className="bg-mist/40 border border-border rounded-card p-6">
-            <h3 className="font-serif font-bold text-navy text-lg mb-3">Direct lines</h3>
+            <h2 className="font-serif font-bold text-navy text-lg mb-3">Direct lines</h2>
             <div className="flex flex-col gap-2 font-sans text-sm text-ink-muted">
               <a href="mailto:hello@stayvoo.com" className="hover:text-navy transition-colors">
                 hello@stayvoo.com
@@ -304,7 +305,7 @@ export default function Contact() {
           </div>
 
           <div className="bg-paper border border-border rounded-card p-6">
-            <h3 className="font-serif font-bold text-navy text-lg mb-3">Response time</h3>
+            <h2 className="font-serif font-bold text-navy text-lg mb-3">Response time</h2>
             <p className="font-sans text-sm text-ink-muted leading-relaxed">
               Same-day first reply during business hours. A quote typically follows within 24 hours of a complete
               brief.
@@ -312,8 +313,9 @@ export default function Contact() {
           </div>
         </div>
       </section>
+      </main>
 
       <SiteFooter />
-    </div>
+    </>
   )
 }
