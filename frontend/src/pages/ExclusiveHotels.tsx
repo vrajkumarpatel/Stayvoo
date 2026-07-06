@@ -1,4 +1,3 @@
-import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Stethoscope, HardHat, Home as HomeIcon, Briefcase, HeartPulse, ShieldCheck } from 'lucide-react'
 import SectionEyebrow from '../components/SectionEyebrow'
@@ -6,6 +5,7 @@ import FeatureCard from '../components/FeatureCard'
 import ChecklistItem from '../components/ChecklistItem'
 import CtaBanner from '../components/CtaBanner'
 import SiteFooter from '../components/SiteFooter'
+import { useDocumentMeta } from '../hooks/useDocumentMeta'
 
 const WHO_BOOKS_THIS = [
   {
@@ -41,9 +41,10 @@ const WHO_BOOKS_THIS = [
 ]
 
 export default function ExclusiveHotels() {
-  useEffect(() => {
-    document.title = 'Extended Stay Rates | Milwaukee Area Hotels | Stayvoo'
-  }, [])
+  useDocumentMeta(
+    'Extended Stay Rates | Milwaukee Area Hotels | Stayvoo',
+    'Weekly and monthly rates for travel nurses, relocations, project assignments, and medical stays at partner hotels in the Milwaukee Area and Chicagoland.'
+  )
 
   return (
     <div className="min-h-screen bg-paper">

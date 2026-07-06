@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npx tsc -b && npx vite build",
+    "build": "npx tsc -b && npx vite build && npx vite build --ssr scripts/prerender.tsx --outDir scripts/.ssr-out && node scripts/.ssr-out/prerender.js && node -e \"require('fs').rmSync('scripts/.ssr-out',{recursive:true,force:true})\"",
     "lint": "oxlint",
     "preview": "vite preview"
   },
@@ -17,6 +17,7 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.2",
+    "lucide-react": "^1.23.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-router-dom": "^7.18.0",

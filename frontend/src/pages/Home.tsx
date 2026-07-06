@@ -1,9 +1,20 @@
+import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Tag, Percent, UserRound, ClipboardList, KeyRound, MapPin } from 'lucide-react'
 import SectionEyebrow from '../components/SectionEyebrow'
 import FeatureCard from '../components/FeatureCard'
 import CtaBanner from '../components/CtaBanner'
 import SiteFooter from '../components/SiteFooter'
+
+const TRAVEL_AGENCY_SCHEMA = {
+  '@context': 'https://schema.org',
+  '@type': 'TravelAgency',
+  name: 'Stayvoo LLC',
+  telephone: '+1-888-352-8151',
+  email: 'hello@stayvoo.com',
+  url: 'https://stayvoo.com',
+  areaServed: ['Milwaukee', 'Waukesha', 'Brookfield', 'Kenosha', 'Racine', 'Chicago'],
+}
 
 const STATS: [string, string][] = [
   ['3', 'Partner Hotels'],
@@ -68,6 +79,16 @@ const PROCESS = [
 ]
 
 export default function Home() {
+  useEffect(() => {
+    const script = document.createElement('script')
+    script.type = 'application/ld+json'
+    script.textContent = JSON.stringify(TRAVEL_AGENCY_SCHEMA)
+    document.head.appendChild(script)
+    return () => {
+      document.head.removeChild(script)
+    }
+  }, [])
+
   return (
     <div className="min-h-screen bg-paper">
       {/* Hero */}
@@ -98,7 +119,7 @@ export default function Home() {
           <div className="flex flex-col sm:flex-row gap-4 mt-8">
             <Link
               to="/contact"
-              className="inline-flex items-center justify-center rounded-control bg-brand-orange hover:bg-brand-orange-dark text-white font-sans text-sm font-medium px-6 py-3 transition-colors"
+              className="inline-flex items-center justify-center rounded-control bg-brand-orange hover:bg-brand-orange-dark text-navy font-sans text-sm font-medium px-6 py-3 transition-colors"
             >
               Request a quote
             </Link>

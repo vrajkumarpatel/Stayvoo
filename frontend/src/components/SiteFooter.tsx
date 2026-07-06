@@ -17,7 +17,7 @@ export default function SiteFooter() {
         </div>
 
         <div className="flex flex-col gap-3">
-          <p className="font-sans text-xs font-medium uppercase tracking-[2.4px] text-paper/40">Services</p>
+          <p className="font-sans text-xs font-medium uppercase tracking-[2.4px] text-paper/50">Services</p>
           <nav className="flex flex-col gap-2 font-sans text-sm">
             <Link to="/exclusive" className="hover:text-paper transition-colors">Extended stay</Link>
             <Link to="/groups" className="hover:text-paper transition-colors">Groups &amp; corporate</Link>
@@ -26,7 +26,7 @@ export default function SiteFooter() {
         </div>
 
         <div className="flex flex-col gap-3">
-          <p className="font-sans text-xs font-medium uppercase tracking-[2.4px] text-paper/40">Company</p>
+          <p className="font-sans text-xs font-medium uppercase tracking-[2.4px] text-paper/50">Company</p>
           <nav className="flex flex-col gap-2 font-sans text-sm">
             <Link to="/about" className="hover:text-paper transition-colors">About</Link>
             <Link to="/contact" className="hover:text-paper transition-colors">Contact</Link>
@@ -37,7 +37,7 @@ export default function SiteFooter() {
       </div>
 
       <div className="border-t border-white/10">
-        <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-center justify-between gap-2 font-sans text-xs text-paper/40">
+        <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-center justify-between gap-2 font-sans text-xs text-paper/50">
           <p>© 2026 Stayvoo LLC. All rights reserved.</p>
           <p>Commission-based booking agency · Milwaukee Area &amp; Chicagoland</p>
         </div>

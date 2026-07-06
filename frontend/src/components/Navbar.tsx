@@ -27,7 +27,7 @@ export default function Navbar() {
             <LogoMark size={28} />
             <div className="flex flex-col leading-none">
               <span className="font-serif text-navy font-bold text-xl tracking-tight">Stayvoo</span>
-              <span className="font-sans text-ink-muted/70 text-[10px] font-medium tracking-widest uppercase">
+              <span className="font-sans text-ink-muted/85 text-[10px] font-medium tracking-widest uppercase">
                 Booking Agency
               </span>
             </div>
@@ -42,7 +42,7 @@ export default function Navbar() {
             ))}
             <Link
               to="/contact"
-              className="inline-flex items-center justify-center rounded-control bg-brand-orange hover:bg-brand-orange-dark text-white font-sans text-sm font-medium px-5 py-2.5 transition-colors"
+              className="inline-flex items-center justify-center rounded-control bg-brand-orange hover:bg-brand-orange-dark text-navy font-sans text-sm font-medium px-5 py-2.5 transition-colors"
             >
               Request a quote
             </Link>
@@ -84,7 +84,7 @@ export default function Navbar() {
             <Link
               to="/contact"
               onClick={() => setOpen(false)}
-              className="mt-2 flex items-center justify-center rounded-control bg-brand-orange hover:bg-brand-orange-dark text-white font-sans text-sm font-medium px-4 py-3 transition-colors"
+              className="mt-2 flex items-center justify-center rounded-control bg-brand-orange hover:bg-brand-orange-dark text-navy font-sans text-sm font-medium px-4 py-3 transition-colors"
             >
               Request a quote
             </Link>

@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { cloneElement, useEffect, useState, type ReactElement } from 'react'
 import { useLocation } from 'react-router-dom'
 import SectionEyebrow from '../components/SectionEyebrow'
 import SiteFooter from '../components/SiteFooter'
 import { createInquiry, checkGuest } from '../lib/api'
+import { useDocumentMeta } from '../hooks/useDocumentMeta'
 
 const STAY_TYPES = [
   'Extended stay (individual)',
@@ -40,14 +41,15 @@ const inputCls =
   'w-full border border-border rounded-control px-4 py-3 text-sm font-sans text-navy placeholder:text-ink-muted/50 bg-paper focus:outline-none focus:ring-2 focus:ring-accent/40'
 const labelCls = 'font-sans text-xs font-medium uppercase tracking-wide text-ink-muted block mb-1.5'
 
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+function Field({ label, required, children }: { label: string; required?: boolean; children: ReactElement<{ id?: string }> }) {
+  const id = `field-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
   return (
     <div>
-      <label className={labelCls}>
+      <label htmlFor={id} className={labelCls}>
         {label}
         {required && ' *'}
       </label>
-      {children}
+      {cloneElement(children, { id })}
     </div>
   )
 }
@@ -59,9 +61,10 @@ export default function Contact() {
   const [error, setError] = useState<string | null>(null)
   const location = useLocation()
 
-  useEffect(() => {
-    document.title = 'Contact & Get a Quote | Stayvoo | Milwaukee Area & Chicagoland'
-  }, [])
+  useDocumentMeta(
+    'Contact & Get a Quote | Stayvoo | Milwaukee Area & Chicagoland',
+    "Tell us your dates, headcount, and stay type — Stayvoo responds same-day with a negotiated rate for extended stays and group room blocks in the Milwaukee Area and Chicagoland."
+  )
 
   useEffect(() => {
     const params = new URLSearchParams(location.search)
@@ -277,7 +280,7 @@ export default function Contact() {
               <button
                 type="submit"
                 disabled={submitting || !form.sms_consent}
-                className="w-full inline-flex items-center justify-center rounded-control bg-brand-orange hover:bg-brand-orange-dark disabled:opacity-60 text-white font-sans text-sm font-medium py-3.5 transition-colors"
+                className="w-full inline-flex items-center justify-center rounded-control bg-brand-orange hover:bg-brand-orange-dark disabled:opacity-60 text-navy font-sans text-sm font-medium py-3.5 transition-colors"
               >
                 {submitting ? 'Sending...' : 'Send request'}
               </button>

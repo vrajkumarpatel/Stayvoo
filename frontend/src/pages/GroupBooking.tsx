@@ -1,4 +1,3 @@
-import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Heart, Trophy, CalendarDays, Building2, Users, HardHat } from 'lucide-react'
 import SectionEyebrow from '../components/SectionEyebrow'
@@ -6,6 +5,7 @@ import FeatureCard from '../components/FeatureCard'
 import ChecklistItem from '../components/ChecklistItem'
 import CtaBanner from '../components/CtaBanner'
 import SiteFooter from '../components/SiteFooter'
+import { useDocumentMeta } from '../hooks/useDocumentMeta'
 
 const BLOCKS_WE_HANDLE = [
   {
@@ -41,9 +41,10 @@ const BLOCKS_WE_HANDLE = [
 ]
 
 export default function GroupBooking() {
-  useEffect(() => {
-    document.title = 'Group Hotel Bookings | Milwaukee Area & Chicagoland | Stayvoo'
-  }, [])
+  useDocumentMeta(
+    'Group Hotel Bookings | Milwaukee Area & Chicagoland | Stayvoo',
+    'Room blocks for weddings, sports teams, conferences, and corporate travel — one coordinator, one negotiated rate, one consolidated bill, in the Milwaukee Area and Chicagoland.'
+  )
 
   return (
     <div className="min-h-screen bg-paper">

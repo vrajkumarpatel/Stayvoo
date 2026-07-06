@@ -16,7 +16,7 @@ export default function CtaBanner({ heading, body, buttonLabel, buttonHref, clas
         <p className="font-sans text-base sm:text-lg text-paper/75 max-w-xl leading-relaxed">{body}</p>
         <Link
           to={buttonHref}
-          className="mt-2 inline-flex items-center justify-center rounded-control bg-brand-orange hover:bg-brand-orange-dark text-white text-sm font-medium px-6 py-3 transition-colors"
+          className="mt-2 inline-flex items-center justify-center rounded-control bg-brand-orange hover:bg-brand-orange-dark text-navy text-sm font-medium px-6 py-3 transition-colors"
         >
           {buttonLabel}
         </Link>

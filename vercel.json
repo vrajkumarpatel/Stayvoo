@@ -4,6 +4,10 @@
   "outputDirectory": "frontend/dist",
   "rewrites": [
     { "source": "/sitemap.xml", "destination": "/sitemap.xml" },
+    { "source": "/contact", "destination": "/contact/index.html" },
+    { "source": "/exclusive", "destination": "/exclusive/index.html" },
+    { "source": "/groups", "destination": "/groups/index.html" },
+    { "source": "/about", "destination": "/about/index.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

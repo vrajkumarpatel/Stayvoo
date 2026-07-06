@@ -1,7 +1,7 @@
-import { useEffect } from 'react'
 import SectionEyebrow from '../components/SectionEyebrow'
 import CtaBanner from '../components/CtaBanner'
 import SiteFooter from '../components/SiteFooter'
+import { useDocumentMeta } from '../hooks/useDocumentMeta'
 
 const FEATURES = [
   {
@@ -19,9 +19,10 @@ const FEATURES = [
 ]
 
 export default function About() {
-  useEffect(() => {
-    document.title = 'About Stayvoo | Extended Stay Hotel Specialist | Milwaukee Area'
-  }, [])
+  useDocumentMeta(
+    'About Stayvoo | Extended Stay Hotel Specialist | Milwaukee Area',
+    'Stayvoo is a commission-based booking agency in the Milwaukee area, working with a small set of partner hotels we know room by room for extended stays and group blocks.'
+  )
 
   return (
     <div className="min-h-screen bg-paper">
