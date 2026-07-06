@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Building2, CheckCircle2, Gift, Phone, X } from 'lucide-react'
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
@@ -69,11 +70,11 @@ function TypingDots() {
 function BookingCardUI({ card }: { card: BookingCard }) {
   return (
     <div className="bg-white border-2 border-orange-100 rounded-2xl p-4 shadow-sm w-full mt-1.5">
-      <div className="font-bold text-[#1e3a5f] text-sm mb-2">🏨 {card.hotelName}</div>
+      <div className="font-bold text-[#10192b] text-sm mb-2 flex items-center gap-1.5"><Building2 className="w-4 h-4" /> {card.hotelName}</div>
       <div className="flex flex-col gap-1 text-xs text-slate-600 mb-3">
-        <div className="font-semibold text-base text-[#1e3a5f]">From ${card.price}/night</div>
-        <div className="flex items-center gap-1.5 text-green-700">✅ Pay at hotel — no charge today</div>
-        <div className="flex items-center gap-1.5 text-orange-600">🎁 Welcome kit included</div>
+        <div className="font-semibold text-base text-[#10192b]">From ${card.price}/night</div>
+        <div className="flex items-center gap-1.5 text-green-700"><CheckCircle2 className="w-3.5 h-3.5" /> Pay at hotel — no charge today</div>
+        <div className="flex items-center gap-1.5 text-orange-600"><Gift className="w-3.5 h-3.5" /> Welcome kit included</div>
       </div>
       <Link
         to={`/book?hotel_id=${card.hotelId}`}
@@ -271,11 +272,11 @@ export default function AIChat() {
           style={{ height: 520 }}
         >
           {/* Header */}
-          <div className="bg-[#1e3a5f] px-4 py-3 flex items-center justify-between flex-shrink-0">
+          <div className="bg-[#10192b] px-4 py-3 flex items-center justify-between flex-shrink-0">
             <div className="flex items-center gap-3">
               <div className="relative">
-                <div className="w-9 h-9 bg-orange-500 rounded-full flex items-center justify-center text-lg">🏨</div>
-                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-400 rounded-full border-2 border-[#1e3a5f]" />
+                <div className="w-9 h-9 bg-orange-500 rounded-full flex items-center justify-center"><Building2 className="w-5 h-5 text-white" /></div>
+                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-400 rounded-full border-2 border-[#10192b]" />
               </div>
               <div>
                 <p className="text-white font-bold text-sm leading-none">Stayvo AI Assistant</p>
@@ -321,9 +322,9 @@ export default function AIChat() {
                     ))}
                     <a
                       href="tel:+18883528151"
-                      className="bg-white border border-slate-200 hover:border-slate-300 text-slate-600 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors"
+                      className="bg-white border border-slate-200 hover:border-slate-300 text-slate-600 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors flex items-center gap-1"
                     >
-                      📞 Call Us
+                      <Phone className="w-3 h-3" /> Call Us
                     </a>
                   </div>
                 )}
@@ -372,18 +373,18 @@ export default function AIChat() {
       {/* Floating button */}
       <button
         onClick={() => setOpen(o => !o)}
-        className="fixed bottom-[20px] right-[20px] z-50 w-14 h-14 bg-orange-500 hover:bg-orange-600 text-white rounded-full shadow-xl hover:shadow-orange-200 transition-all flex items-center justify-center"
+        className="fixed bottom-[20px] right-[20px] z-50 w-14 h-14 rounded-full shadow-xl hover:shadow-orange-200 transition-all flex items-center justify-center"
         aria-label="Open chat"
       >
         {open ? (
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-          </svg>
+          <div className="w-14 h-14 rounded-full bg-orange-500 hover:bg-orange-600 transition-colors flex items-center justify-center">
+            <X className="w-6 h-6 text-white" strokeWidth={2.5} />
+          </div>
         ) : (
-          <span className="relative text-2xl leading-none">
-            💬
+          <span className="relative w-14 h-14 rounded-full overflow-hidden flex items-center justify-center stayvoo-blob-breathe">
+            <img src="/brand/monogram.svg" alt="Open chat" className="absolute inset-0 w-full h-full object-cover" />
             {hasUnread && (
-              <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white" />
+              <span className="absolute top-1 right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white" />
             )}
           </span>
         )}
