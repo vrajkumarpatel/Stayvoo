@@ -15,15 +15,6 @@ const DURATION_OPTIONS = [
   { value: '6m+', label: '6+ months' },
 ]
 
-// Maps a duration selection to the "Expected Length of Stay" option on the /exclusive inquiry form
-const LENGTH_OF_STAY_MAP: Record<string, string> = {
-  '1-2w': '1–2 weeks',
-  '1m': '3–4 weeks (1 month)',
-  '2-3m': '2–3 months',
-  '3-6m': '3–6 months',
-  '6m+': '6+ months',
-}
-
 export default function SearchBar({ inline = false }: Props) {
   const navigate = useNavigate()
   const today = new Date().toISOString().split('T')[0]
@@ -47,10 +38,8 @@ export default function SearchBar({ inline = false }: Props) {
   }
 
   const handleQuote = () => {
-    const params = new URLSearchParams({ start_date: checkin })
-    const lengthOfStay = LENGTH_OF_STAY_MAP[duration]
-    if (lengthOfStay) params.set('length_of_stay', lengthOfStay)
-    navigate(`/exclusive?${params}#inquiry-form`)
+    const params = new URLSearchParams({ checkin, checkout })
+    navigate(`/contact?${params}`)
   }
 
   return (

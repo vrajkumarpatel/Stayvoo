@@ -113,7 +113,7 @@ export default function HotelCard({ hotel, large = false, twoButton = false, vie
             </div>
             <p className="text-xs text-slate-400 mb-3">In the Milwaukee Area — near Milwaukee · Kenosha · Chicago</p>
             <Link
-              to="/exclusive#inquiry-form"
+              to="/contact"
               className="w-full bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold py-2.5 px-4 rounded-xl transition-colors text-center block"
             >
               Get Extended Stay Rate →

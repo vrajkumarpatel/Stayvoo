@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import SectionEyebrow from '../components/SectionEyebrow'
 import SiteFooter from '../components/SiteFooter'
 import { createInquiry, checkGuest } from '../lib/api'
@@ -12,6 +13,14 @@ const STAY_TYPES = [
   'Wedding block',
   'Other',
 ]
+
+const TYPE_PARAM_MAP: Record<string, string> = {
+  nurse: 'Travel nurse or medical contract',
+  crew: 'Crew housing',
+  corporate: 'Corporate housing or relocation',
+  group: 'Group room block',
+  wedding: 'Wedding block',
+}
 
 const EMPTY = {
   stay_type: STAY_TYPES[0],
@@ -48,10 +57,24 @@ export default function Contact() {
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState<{ ref: string; email: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const location = useLocation()
 
   useEffect(() => {
     document.title = 'Contact & Get a Quote | Stayvoo | Milwaukee Area & Chicagoland'
   }, [])
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const type = params.get('type')
+    const checkin = params.get('checkin')
+    const checkout = params.get('checkout')
+    setForm(f => ({
+      ...f,
+      ...(type && TYPE_PARAM_MAP[type] ? { stay_type: TYPE_PARAM_MAP[type] } : {}),
+      ...(checkin ? { checkin } : {}),
+      ...(checkout ? { checkout } : {}),
+    }))
+  }, [location.search])
 
   const set = (key: keyof typeof EMPTY) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm(f => ({ ...f, [key]: e.target.value }))

@@ -1,408 +1,126 @@
-import { useEffect, useState } from 'react'
-import { useLocation } from 'react-router-dom'
-import HotelCard from '../components/HotelCard'
-import { getHotels, createInquiry, checkGuest } from '../lib/api'
+import { useEffect } from 'react'
+import { Link } from 'react-router-dom'
+import { Stethoscope, HardHat, Home as HomeIcon, Briefcase, HeartPulse, ShieldCheck } from 'lucide-react'
+import SectionEyebrow from '../components/SectionEyebrow'
+import FeatureCard from '../components/FeatureCard'
+import ChecklistItem from '../components/ChecklistItem'
+import CtaBanner from '../components/CtaBanner'
+import SiteFooter from '../components/SiteFooter'
 
-const GUEST_TYPES = [
-  { value: 'Travel Nurse', label: 'Travel Nurse' },
-  { value: 'Construction Crew', label: 'Construction Crew' },
-  { value: 'Corporate / Business', label: 'Corporate / Business' },
-  { value: 'Wedding Group', label: 'Wedding Group' },
-  { value: 'Sports Team', label: 'Sports Team' },
-  { value: 'Other Group', label: 'Other Group' },
+const WHO_BOOKS_THIS = [
+  {
+    icon: Stethoscope,
+    title: 'Travel nurses',
+    body: '13-week contracts near Milwaukee-area hospitals — weekly rates, flexible extensions, no lease.',
+  },
+  {
+    icon: HardHat,
+    title: 'Construction & work crews',
+    body: 'Comfortable rooms for rotating crews on multi-week projects, with consolidated billing.',
+  },
+  {
+    icon: HomeIcon,
+    title: 'Relocations',
+    body: "New role, new city — a comfortable base while you find permanent housing.",
+  },
+  {
+    icon: Briefcase,
+    title: 'Project assignments',
+    body: 'Consultants, engineers, and contractors on 4–12 week engagements.',
+  },
+  {
+    icon: HeartPulse,
+    title: 'Medical stays',
+    body: 'Extended treatment near a specific hospital, for patients and families.',
+  },
+  {
+    icon: ShieldCheck,
+    title: 'Insurance housing',
+    body: 'Temporary displacement while a home is repaired or rebuilt.',
+  },
 ]
-
-const HOTEL_PREFS = [
-  { value: 'Wyndham Brookfield (near Froedtert)', label: 'Wyndham Brookfield (near Froedtert)' },
-  { value: 'Wyndham Waukesha', label: 'Wyndham Waukesha' },
-  { value: 'Choice Hotels Waukesha', label: 'Choice Hotels Waukesha' },
-  { value: '', label: 'No preference — best available' },
-]
-
-const STAY_LENGTHS = [
-  '1–2 weeks',
-  '3–4 weeks (1 month)',
-  '2–3 months',
-  '3–6 months',
-  '6+ months',
-]
-
-const HOW_HEARD = [
-  'Travel nurse agency',
-  'Construction company',
-  'Corporate HR',
-  'Google search',
-  'Referral from friend/colleague',
-  'Hotel recommendation',
-  'Other',
-]
-
-const EMPTY = {
-  first_name: '', last_name: '', email: '', phone: '',
-  guest_type: 'Travel Nurse',
-  hotel_preference: '',
-  num_rooms: '1',
-  length_of_stay: '1–2 weeks',
-  start_date: '',
-  special_requirements: '',
-  how_heard: 'Google search',
-  sms_consent: false,
-}
-
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
-  return (
-    <div>
-      <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block mb-1.5">
-        {label}{required && ' *'}
-      </label>
-      {children}
-    </div>
-  )
-}
-
-const inputCls = "w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
-
-const TYPE_MAP: Record<string, string> = {
-  nurse: 'Travel Nurse',
-  crew: 'Construction Crew',
-  corporate: 'Corporate / Business',
-  group: 'Wedding Group',
-}
 
 export default function ExclusiveHotels() {
-  const [hotels, setHotels] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [form, setForm] = useState(EMPTY)
-  const [submitting, setSubmitting] = useState(false)
-  const [success, setSuccess] = useState<{ ref: string; email: string; phone: string } | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const location = useLocation()
-
-  useEffect(() => { document.title = 'Extended Stay Rates | Milwaukee Area Hotels | Stayvoo' }, [])
-
   useEffect(() => {
-    getHotels().then(setHotels).catch(() => setHotels([])).finally(() => setLoading(false))
+    document.title = 'Extended Stay Rates | Milwaukee Area Hotels | Stayvoo'
   }, [])
 
-  useEffect(() => {
-    const params = new URLSearchParams(location.search)
-    const type = params.get('type')
-    const startDate = params.get('start_date')
-    const lengthOfStay = params.get('length_of_stay')
-    setForm(f => ({
-      ...f,
-      ...(type && TYPE_MAP[type] ? { guest_type: TYPE_MAP[type] } : {}),
-      ...(startDate ? { start_date: startDate } : {}),
-      ...(lengthOfStay && STAY_LENGTHS.includes(lengthOfStay) ? { length_of_stay: lengthOfStay } : {}),
-    }))
-  }, [location.search])
-
-  useEffect(() => {
-    if (location.hash === '#inquiry-form') {
-      setTimeout(() => {
-        document.getElementById('inquiry-form')?.scrollIntoView({ behavior: 'smooth' })
-      }, 100)
-    }
-  }, [location])
-
-  const set = (key: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
-    setForm(f => ({ ...f, [key]: e.target.value }))
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setSubmitting(true)
-    setError(null)
-    try {
-      const result = await createInquiry({
-        first_name: form.first_name,
-        last_name: form.last_name,
-        email: form.email,
-        phone: form.phone,
-        guest_type: form.guest_type,
-        hotel_preference: form.hotel_preference || undefined,
-        num_rooms: parseInt(form.num_rooms) || 1,
-        length_of_stay: form.length_of_stay,
-        start_date: form.start_date,
-        special_requirements: form.special_requirements || undefined,
-        source: `website — ${form.how_heard}`,
-        sms_consent: form.sms_consent,
-      })
-      setSuccess({
-        ref: result.id?.slice(0, 8).toUpperCase() ?? '—',
-        email: form.email,
-        phone: form.phone,
-      })
-    } catch (err: any) {
-      setError(err.message)
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
   return (
-    <div className="min-h-screen bg-slate-50 pt-16">
+    <div className="min-h-screen bg-paper">
       {/* Hero */}
-      <section className="relative py-16 px-4 text-center bg-cover bg-center" style={{ backgroundImage: "url('/images/exclusive-hero.jpg')" }}>
-        <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.65)' }} />
-        <div className="relative z-10 max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 bg-orange-500/20 border border-orange-500/30 text-orange-400 text-sm font-semibold px-4 py-1.5 rounded-full mb-5">
-            ⭐ Extended Stay & Group Rates
-          </div>
-          <h1 className="text-white font-black text-4xl sm:text-5xl leading-tight">
-            Extended Stay & Group Rates<br />
-            <span className="text-orange-400">Milwaukee Area & Chicagoland</span>
+      <section className="max-w-6xl mx-auto px-4 pt-20 pb-16 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+        <div>
+          <SectionEyebrow>Extended stay</SectionEyebrow>
+          <h1 className="font-serif font-bold text-navy text-4xl sm:text-5xl leading-tight mt-2">
+            A hotel that feels like a home — for a few weeks or a few months.
           </h1>
-          <p className="text-white/70 text-lg mt-4 max-w-2xl mx-auto">
-            Our partner hotels in the Milwaukee Area (Waukesha & Brookfield Wisconsin) are ideally located for workers and groups traveling the entire region. We negotiate rates directly with our partner hotels — unavailable on Expedia — and handle every booking personally.
+          <p className="font-sans text-ink-muted text-base sm:text-lg mt-5 leading-relaxed">
+            Whether it's a travel nursing contract, a project posting, a relocation, or a medical stay near a
+            hospital, Stayvoo books you into a partner hotel at a rate built for the long haul.
           </p>
-          <div className="mt-6">
-            <a href="#inquiry-form" className="bg-orange-500 hover:bg-orange-600 text-white font-bold px-8 py-3 rounded-xl text-sm transition-colors">
-              Get a Quote →
-            </a>
-          </div>
+          <Link
+            to="/contact"
+            className="inline-flex items-center justify-center rounded-control bg-navy hover:bg-navy/90 text-white font-sans text-sm font-medium px-6 py-3 mt-7 transition-colors"
+          >
+            Get a quote
+          </Link>
+        </div>
+        <div className="rounded-card overflow-hidden">
+          <img src="/images/exclusive-hero.jpg" alt="" className="w-full h-full object-cover" />
         </div>
       </section>
 
-      {/* Location context box */}
-      <div className="max-w-4xl mx-auto px-4 mt-10">
-        <div className="bg-[#1e3a5f] rounded-2xl px-6 py-6 text-white">
-          <p className="font-black text-lg mb-4">📍 Our Hotels Are In The Milwaukee Area<br /><span className="font-normal text-white/70 text-sm">(Waukesha & Brookfield, Wisconsin)</span></p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {[
-              '2 min from Froedtert Hospital',
-              '5 min from Aurora Medical Center',
-              'In the heart of the Milwaukee Area',
-              '20 min from Downtown Milwaukee',
-              '30 min from Downtown Chicago',
-              '35 min from Kenosha',
-              'I-94 and I-43 corridor access',
-              'Easy access from all of Southeast Wisconsin',
-            ].map(item => (
-              <div key={item} className="flex items-center gap-2 text-sm text-white/80">
-                <span className="text-green-400 flex-shrink-0">✅</span>
-                <span>{item}</span>
-              </div>
-            ))}
-          </div>
+      {/* Who books this */}
+      <section className="max-w-5xl mx-auto px-4 pb-20">
+        <div className="text-center mb-10">
+          <SectionEyebrow>Who books this</SectionEyebrow>
         </div>
-      </div>
-
-      {/* What every extended stay includes */}
-      <div className="max-w-4xl mx-auto px-4 mt-8">
-        <div className="bg-orange-50 border border-orange-200 rounded-2xl px-6 py-6">
-          <h2 className="text-[#1e3a5f] font-black text-lg mb-4">What Every Extended Stay Includes</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
-            {[
-              '✅ Negotiated rate below Expedia',
-              '✅ Flexible month-to-month terms',
-              '✅ Free parking always',
-              '✅ Personal service and support',
-              '✅ Direct billing options',
-              '✅ Monthly invoicing available',
-              '🎁 Welcome kit at check-in',
-            ].map(item => (
-              <div key={item} className="text-sm text-slate-700">{item}</div>
-            ))}
-          </div>
-          <p className="text-orange-800 text-sm">
-            Ready to get your rate? Fill out the form below and we will contact you within 2 hours with availability and pricing.
-          </p>
-        </div>
-      </div>
-
-      {/* Hotels grid — view only */}
-      <section className="py-12 px-4">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-[#1e3a5f] font-black text-2xl mb-6">Our Partner Hotels</h2>
-          {loading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[1, 2, 3].map(i => <div key={i} className="bg-white rounded-2xl h-72 animate-pulse" />)}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {hotels.map(h => (
-                <HotelCard
-                  key={h.id}
-                  hotel={{ ...h, exclusive: true, price_per_night: 0 }}
-                  viewOnly
-                />
-              ))}
-            </div>
-          )}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {WHO_BOOKS_THIS.map(item => (
+            <FeatureCard
+              key={item.title}
+              icon={<item.icon className="w-5 h-5" />}
+              title={item.title}
+              body={item.body}
+            />
+          ))}
         </div>
       </section>
 
-      {/* Inquiry Form */}
-      <section id="inquiry-form" className="pb-20 px-4">
-        <div className="max-w-2xl mx-auto">
-          <div className="bg-white rounded-3xl shadow-xl overflow-hidden">
-            <div className="bg-[#1e3a5f] px-8 py-7">
-              <h2 className="text-white font-black text-2xl">Request Your Exclusive Rate</h2>
-              <p className="text-white/60 text-sm mt-1">
-                Fill out the form below and we'll contact you within 2 hours with availability and custom pricing.
-              </p>
-            </div>
-
-            <div className="p-8">
-              {success ? (
-                <div className="text-center py-8">
-                  <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-5">
-                    <svg className="w-10 h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                  <h3 className="text-[#1e3a5f] font-black text-2xl">Inquiry Received!</h3>
-                  <p className="text-slate-500 mt-2">We'll contact you within 2 hours at:</p>
-                  <div className="flex flex-col sm:flex-row justify-center gap-3 mt-3">
-                    <span className="bg-slate-100 text-slate-700 font-semibold text-sm px-4 py-2 rounded-full">{success.email}</span>
-                    <span className="bg-slate-100 text-slate-700 font-semibold text-sm px-4 py-2 rounded-full">{success.phone}</span>
-                  </div>
-                  <div className="bg-orange-50 border border-orange-200 rounded-2xl px-6 py-4 mt-5 inline-block">
-                    <p className="text-orange-400 text-xs font-bold uppercase tracking-wider mb-1">Reference</p>
-                    <span className="text-orange-600 font-black text-2xl tracking-widest">INQ-{success.ref}</span>
-                  </div>
-                  <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
-                    <button
-                      onClick={() => { setSuccess(null); setForm(EMPTY) }}
-                      className="bg-[#1e3a5f] text-white font-bold py-2.5 px-6 rounded-xl text-sm"
-                    >
-                      Submit Another Inquiry
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-                  {/* Row 1: Name */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Field label="First Name" required>
-                      <input required value={form.first_name} onChange={set('first_name')} placeholder="Jane" className={inputCls} />
-                    </Field>
-                    <Field label="Last Name" required>
-                      <input required value={form.last_name} onChange={set('last_name')} placeholder="Smith" className={inputCls} />
-                    </Field>
-                  </div>
-
-                  {/* Row 2: Contact */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Field label="Email" required>
-                      <input
-                        required
-                        type="email"
-                        value={form.email}
-                        onChange={set('email')}
-                        onBlur={async (e) => {
-                          const email = e.target.value.trim()
-                          if (!email.includes('@')) return
-                          try {
-                            const data = await checkGuest(email)
-                            if (data.exists) {
-                              setForm(f => ({
-                                ...f,
-                                first_name: f.first_name || data.first_name,
-                                last_name: f.last_name || data.last_name,
-                                phone: f.phone || data.phone,
-                              }))
-                            }
-                          } catch {}
-                        }}
-                        placeholder="jane@email.com"
-                        className={inputCls}
-                      />
-                    </Field>
-                    <Field label="Phone" required>
-                      <input required type="tel" value={form.phone} onChange={set('phone')} placeholder="+1 (xxx) xxx-xxxx" className={inputCls} />
-                      <p className="text-slate-400 text-xs mt-1.5">
-                        By providing your phone number you agree to receive SMS updates about your inquiry from Stayvoo.
-                        Reply STOP at any time to opt out. Message and data rates may apply.
-                      </p>
-                    </Field>
-                  </div>
-
-                  {/* Row 3: Guest type */}
-                  <Field label="Guest Type" required>
-                    <select required value={form.guest_type} onChange={set('guest_type')} className={inputCls}>
-                      {GUEST_TYPES.map(g => <option key={g.value} value={g.value}>{g.label}</option>)}
-                    </select>
-                  </Field>
-
-                  {/* Row 4: Hotel preference */}
-                  <Field label="Hotel Preference">
-                    <select value={form.hotel_preference} onChange={set('hotel_preference')} className={inputCls}>
-                      {HOTEL_PREFS.map(h => <option key={h.value} value={h.value}>{h.label}</option>)}
-                    </select>
-                  </Field>
-
-                  {/* Row 5: Rooms */}
-                  <Field label="Number of Rooms" required>
-                    <input required type="number" min="1" max="100" value={form.num_rooms} onChange={set('num_rooms')} className={inputCls} />
-                  </Field>
-
-                  {/* Row 6: Length of stay */}
-                  <Field label="Expected Length of Stay" required>
-                    <select required value={form.length_of_stay} onChange={set('length_of_stay')} className={inputCls}>
-                      {STAY_LENGTHS.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  </Field>
-
-                  {/* Row 7: Start date */}
-                  <Field label="Expected Start Date" required>
-                    <input
-                      required
-                      type="date"
-                      value={form.start_date}
-                      onChange={set('start_date')}
-                      min={new Date().toISOString().split('T')[0]}
-                      className={inputCls}
-                    />
-                  </Field>
-
-                  {/* Row 8: Special requirements */}
-                  <Field label="Special Requirements">
-                    <textarea
-                      rows={3}
-                      value={form.special_requirements}
-                      onChange={set('special_requirements')}
-                      placeholder="Any specific needs, accessibility requirements, or preferences we should know about?"
-                      className={`${inputCls} resize-none`}
-                    />
-                  </Field>
-
-                  {/* Row 9: How heard */}
-                  <Field label="How did you hear about us?">
-                    <select value={form.how_heard} onChange={set('how_heard')} className={inputCls}>
-                      {HOW_HEARD.map(h => <option key={h} value={h}>{h}</option>)}
-                    </select>
-                  </Field>
-
-                  {error && (
-                    <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl px-4 py-3">{error}</div>
-                  )}
-
-                  <label className="flex items-start gap-2.5 text-sm text-slate-600">
-                    <input
-                      required
-                      type="checkbox"
-                      checked={form.sms_consent}
-                      onChange={e => setForm(f => ({ ...f, sms_consent: e.target.checked }))}
-                      className="mt-0.5 w-4 h-4 accent-orange-500 flex-shrink-0"
-                    />
-                    <span>I agree to receive SMS booking updates from Stayvoo</span>
-                  </label>
-
-                  <button
-                    type="submit"
-                    disabled={submitting || !form.sms_consent}
-                    className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-black py-4 rounded-xl text-base transition-colors shadow-lg shadow-orange-100"
-                  >
-                    {submitting ? 'Submitting...' : 'Request Exclusive Rate →'}
-                  </button>
-                  <p className="text-slate-400 text-xs text-center">We'll contact you within 2 hours with availability and pricing.</p>
-                </form>
-              )}
-            </div>
+      {/* Checklist */}
+      <section className="bg-mist/40 py-20 px-4">
+        <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12">
+          <div>
+            <h2 className="font-serif font-bold text-navy text-3xl sm:text-4xl leading-tight">
+              What "extended-stay ready" means to us
+            </h2>
+            <p className="font-sans text-ink-muted text-base sm:text-lg mt-4 leading-relaxed max-w-md">
+              Not every hotel advertising long stays is actually suited for one. We work with partner properties we
+              know room by room.
+            </p>
           </div>
+          <ul className="flex flex-col gap-4">
+            <ChecklistItem>Kitchenette or in-room refrigerator and microwave</ChecklistItem>
+            <ChecklistItem>On-site laundry</ChecklistItem>
+            <ChecklistItem>Fast, reliable Wi-Fi with room to work</ChecklistItem>
+            <ChecklistItem>Housekeeping schedules that suit long stays</ChecklistItem>
+            <ChecklistItem>Weekly and monthly rate structures — not rack rate × 30</ChecklistItem>
+            <ChecklistItem>Front desks that know our guests by name</ChecklistItem>
+          </ul>
         </div>
       </section>
+
+      {/* CTA */}
+      <section className="py-20">
+        <CtaBanner
+          heading="Ready to move in for a while?"
+          body="Send the dates and headcount — we'll come back with your rate the same day."
+          buttonLabel="Start a request"
+          buttonHref="/contact"
+        />
+      </section>
+
+      <SiteFooter />
     </div>
   )
 }

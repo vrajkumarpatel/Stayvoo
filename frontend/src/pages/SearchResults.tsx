@@ -33,7 +33,7 @@ export default function SearchResults() {
     : 1
 
   return (
-    <div className="min-h-screen bg-slate-50 pt-16">
+    <div className="min-h-screen bg-slate-50">
       {/* Search bar header */}
       <div className="bg-[#1e3a5f] py-8 px-4">
         <div className="max-w-6xl mx-auto">
@@ -52,7 +52,7 @@ export default function SearchResults() {
               </p>
             </div>
             <Link
-              to="/exclusive#inquiry-form"
+              to={`/contact?checkin=${checkin}&checkout=${checkout}`}
               className="flex-shrink-0 bg-orange-500 hover:bg-orange-600 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-colors whitespace-nowrap"
             >
               Get Extended Stay Quote →
