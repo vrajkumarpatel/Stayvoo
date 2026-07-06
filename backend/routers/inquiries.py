@@ -5,7 +5,7 @@ import logging
 from datetime import date, timedelta
 from typing import Optional, Union
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from database import get_db
@@ -33,7 +33,7 @@ class InquiryIn(BaseModel):
     hotel_preference: Optional[str] = None
     num_rooms: Union[int, str] = 1
     length_of_stay: str = "TBD"
-    start_date: Optional[Union[date, str]] = None
+    start_date: Optional[Union[date, str]] = Field(default=None, validate_default=True)
     special_requirements: Optional[str] = None
     source: Optional[str] = "website"
     sms_consent: bool = False
