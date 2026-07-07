@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Building2 } from 'lucide-react'
 import { guestLogin } from '../lib/api'
 
 export default function MyReservations() {
@@ -24,12 +25,12 @@ export default function MyReservations() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 pt-16 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         {!sent ? (
           <div className="bg-white rounded-3xl shadow-xl overflow-hidden">
-            <div className="bg-[#1e3a5f] px-8 py-8 text-center">
-              <div className="text-4xl mb-3">🏨</div>
+            <div className="bg-[#10192b] px-8 py-8 text-center">
+              <Building2 className="w-9 h-9 mx-auto mb-3 text-white/70" strokeWidth={1.5} />
               <h1 className="text-white font-black text-2xl">My Reservations</h1>
               <p className="text-white/60 text-sm mt-2">
                 Enter your email to receive a secure link to your reservations.
@@ -87,7 +88,7 @@ export default function MyReservations() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
             </div>
-            <h2 className="text-[#1e3a5f] font-black text-2xl mb-2">Check your inbox!</h2>
+            <h2 className="text-[#10192b] font-black text-2xl mb-2">Check your inbox!</h2>
             <p className="text-slate-500 text-sm leading-relaxed mb-1">
               If <strong>{email}</strong> has a booking with us, we've sent a portal link.
             </p>
@@ -103,7 +104,7 @@ export default function MyReservations() {
             <div className="mt-6 pt-6 border-t border-slate-100">
               <p className="text-slate-400 text-xs">
                 Need immediate help?{' '}
-                <a href="tel:+18883528151" className="text-[#1e3a5f] font-semibold hover:text-orange-500">
+                <a href="tel:+18883528151" className="text-[#10192b] font-semibold hover:text-orange-500">
                   Call +1 (888) 352-8151
                 </a>
               </p>

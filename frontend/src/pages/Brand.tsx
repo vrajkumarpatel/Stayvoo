@@ -44,7 +44,7 @@ function BrowserTabMock() {
       <div className="flex items-end gap-1 px-2 pt-2">
         <div className="flex items-center gap-2 bg-white rounded-t-md px-3 py-2 min-w-0">
           <img src="/brand/monogram-16.svg" alt="tab icon" width={16} height={16} className="shrink-0" />
-          <span className="text-xs text-slate-700 truncate">Stayvoo — Extended Stay Hotel…</span>
+          <span className="text-xs text-slate-700 truncate">Stayvoo | Extended Stay Hotel…</span>
         </div>
       </div>
       <div className="h-9 bg-white flex items-center px-3 gap-2 border-t border-slate-100">
@@ -117,29 +117,29 @@ export default function Brand() {
   return (
     <div className="min-h-screen py-16 px-6" style={{ background: '#eef1f6' }}>
       <div className="max-w-5xl mx-auto">
-        <h1 className="text-3xl font-bold mb-2" style={{ color: NAVY }}>Stayvoo Logo Package — Final Review</h1>
+        <h1 className="text-3xl font-bold mb-2" style={{ color: NAVY }}>Stayvoo Logo Package: Final Review</h1>
         <p className="text-slate-500 mb-12">
-          Serif wordmark, thin pitched roofline (brand orange) over the "oo", tagline fixed for navy contrast. Not committed — review below.
+          Serif wordmark, thin pitched roofline (brand orange) over the "oo", tagline fixed for navy contrast. Not committed, review below.
         </p>
 
         <div className="flex flex-col gap-16">
           <section className="border-t border-slate-300 pt-8">
             <h2 className="text-xl font-semibold mb-1" style={{ color: NAVY }}>Wordmark</h2>
             <p className="text-slate-500 mb-6 max-w-2xl">
-              Libre Baskerville Bold + IBM Plex Sans Medium tagline, paths only. Roofline is a single stroke path — steep ~34° symmetric pitch to a centered peak, a zigzag notch (diagonal top parallel to the slope, not a flat chimney box) on the descent, tapered pen-stroke tips at both eaves — reused identically in the monogram below.
+              Libre Baskerville Bold + IBM Plex Sans Medium tagline, paths only. Roofline is a single stroke path: steep ~34° symmetric pitch to a centered peak, a zigzag notch (diagonal top parallel to the slope, not a flat chimney box) on the descent, tapered pen-stroke tips at both eaves, reused identically in the monogram below.
             </p>
             <div className="flex flex-wrap gap-10">
-              <Swatch bg={PAPER} src="/brand/logo-full.svg" size={140} sizeLabel="full size — light bg" />
-              <Swatch bg={NAVY} src="/brand/logo-full-white.svg" size={140} sizeLabel="full size — navy bg" />
-              <Swatch bg={PAPER} src="/brand/logo-full.svg" size={24} sizeLabel="24px — light bg" />
-              <Swatch bg={NAVY} src="/brand/logo-full-white.svg" size={24} sizeLabel="24px — navy bg" />
+              <Swatch bg={PAPER} src="/brand/logo-full.svg" size={140} sizeLabel="full size, light bg" />
+              <Swatch bg={NAVY} src="/brand/logo-full-white.svg" size={140} sizeLabel="full size, navy bg" />
+              <Swatch bg={PAPER} src="/brand/logo-full.svg" size={24} sizeLabel="24px, light bg" />
+              <Swatch bg={NAVY} src="/brand/logo-full-white.svg" size={24} sizeLabel="24px, navy bg" />
             </div>
           </section>
 
           <section className="border-t border-slate-300 pt-8">
             <h2 className="text-xl font-semibold mb-1" style={{ color: NAVY }}>Browser icons</h2>
             <p className="text-slate-500 mb-6 max-w-2xl">
-              Monogram (identical oo+roofline geometry, scaled) on a navy rounded square. The 16px cut drops the chimney notch and thickens the stroke slightly — 32px and up keep full detail and master proportions.
+              Monogram (identical oo+roofline geometry, scaled) on a navy rounded square. The 16px cut drops the chimney notch and thickens the stroke slightly, 32px and up keep full detail and master proportions.
             </p>
 
             <div className="flex flex-wrap gap-10 mb-10">
@@ -152,7 +152,7 @@ export default function Brand() {
           </section>
 
           <section className="border-t border-slate-300 pt-8">
-            <h2 className="text-xl font-semibold mb-1" style={{ color: NAVY }}>Nav &amp; footer — live preview</h2>
+            <h2 className="text-xl font-semibold mb-1" style={{ color: NAVY }}>Nav &amp; footer: live preview</h2>
             <p className="text-slate-500 mb-6 max-w-2xl">
               Not wired into the real components yet. Shows how logo-full / logo-full-white will look once integrated.
             </p>

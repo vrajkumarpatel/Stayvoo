@@ -103,7 +103,7 @@ function InfoRow({ label, children }: { label: string; children: React.ReactNode
   return (
     <div className="flex justify-between items-center gap-4 py-1">
       <span className="text-slate-400 text-sm flex-shrink-0 w-28">{label}</span>
-      <span className="text-[#1e3a5f] font-semibold text-sm text-right flex-1">{children}</span>
+      <span className="text-[#10192b] font-semibold text-sm text-right flex-1">{children}</span>
     </div>
   )
 }
@@ -124,7 +124,7 @@ function ModalShell({ onClose, children }: { onClose: () => void; children: Reac
 
 function ModalHeader({ title, sub, onClose }: { title: React.ReactNode; sub?: string; onClose: () => void }) {
   return (
-    <div className="bg-[#1e3a5f] px-5 py-4 sm:rounded-t-2xl flex-shrink-0">
+    <div className="bg-[#10192b] px-5 py-4 sm:rounded-t-2xl flex-shrink-0">
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2.5 flex-wrap">{title}</div>
@@ -297,7 +297,7 @@ function BookingDetailModal({ booking: b, password, onClose, onUpdate }: {
               {b.special_requests && (
                 <div className="border-t border-slate-200 pt-3 mt-1">
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Special Requests</p>
-                  <p className="text-[#1e3a5f] text-sm leading-relaxed">{b.special_requests}</p>
+                  <p className="text-[#10192b] text-sm leading-relaxed">{b.special_requests}</p>
                 </div>
               )}
             </div>
@@ -306,15 +306,15 @@ function BookingDetailModal({ booking: b, password, onClose, onUpdate }: {
             <SectionHeader title="Booking Info" />
             <div className="bg-slate-50 rounded-2xl p-5 flex flex-col gap-3">
               <InfoRow label="Reference"><span className="font-mono font-bold text-orange-600">{b.booking_ref}</span></InfoRow>
-              <InfoRow label="Hotel">{b.hotel?.name ?? '—'}</InfoRow>
-              <InfoRow label="Room">{b.room?.name ?? '—'}</InfoRow>
+              <InfoRow label="Hotel">{b.hotel?.name ?? '-'}</InfoRow>
+              <InfoRow label="Room">{b.room?.name ?? '-'}</InfoRow>
               <InfoRow label="Check-in">{b.checkin_date}</InfoRow>
               <InfoRow label="Check-out">{b.checkout_date}</InfoRow>
               <InfoRow label="Nights">{b.nights} {b.nights === 1 ? 'night' : 'nights'}</InfoRow>
-              <InfoRow label="Est. Arrival">{b.estimated_arrival ?? '—'}</InfoRow>
+              <InfoRow label="Est. Arrival">{b.estimated_arrival ?? '-'}</InfoRow>
               <div className="border-t border-slate-200 pt-3 mt-1 flex justify-between items-center">
                 <span className="text-slate-400 text-sm">${b.room_rate}/night × {b.nights}</span>
-                <span className="text-[#1e3a5f] font-black text-xl">${(b.total_amount ?? 0).toFixed(0)}</span>
+                <span className="text-[#10192b] font-black text-xl">${(b.total_amount ?? 0).toFixed(0)}</span>
               </div>
             </div>
           </div>
@@ -328,7 +328,7 @@ function BookingDetailModal({ booking: b, password, onClose, onUpdate }: {
                   <InfoRow label="Status"><span className="text-green-600">✅ Guarantee on file</span></InfoRow>
                 </>
               ) : (
-                <p className="text-slate-400 text-sm">No card on file — guest pays at check-in.</p>
+                <p className="text-slate-400 text-sm">No card on file, guest pays at check-in.</p>
               )}
             </div>
           </div>
@@ -377,7 +377,7 @@ function BookingDetailModal({ booking: b, password, onClose, onUpdate }: {
               )}
               {!isCancelled && (
                 <button onClick={handleCancel} disabled={cancelling} className={`w-full font-bold py-3 rounded-xl text-sm transition-all ${cancelStep ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-200' : 'bg-white hover:bg-red-50 text-red-500 border border-red-200'}`}>
-                  {cancelling ? 'Cancelling...' : cancelStep ? '⚠ Confirm Cancel — This cannot be undone' : 'Cancel Booking'}
+                  {cancelling ? 'Cancelling...' : cancelStep ? '⚠ Confirm Cancel: This cannot be undone' : 'Cancel Booking'}
                 </button>
               )}
             </div>
@@ -396,7 +396,7 @@ function BookingDetailModal({ booking: b, password, onClose, onUpdate }: {
             ) : (
               messages.map((m: any) => (
                 <div key={m.id} className={`flex ${m.sender === 'admin' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${m.sender === 'admin' ? 'bg-orange-500 text-white rounded-br-sm' : 'bg-slate-100 text-[#1e3a5f] rounded-bl-sm'}`}>
+                  <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${m.sender === 'admin' ? 'bg-orange-500 text-white rounded-br-sm' : 'bg-slate-100 text-[#10192b] rounded-bl-sm'}`}>
                     <p className="text-sm leading-relaxed">{m.message}</p>
                     <p className={`text-xs mt-1.5 ${m.sender === 'admin' ? 'text-orange-100' : 'text-slate-400'}`}>{m.sender_name} · {fmtTs(m.created_at)}</p>
                   </div>
@@ -451,7 +451,7 @@ function BookingDetailModal({ booking: b, password, onClose, onUpdate }: {
           </div>
           {editError && <p className="text-red-500 text-sm bg-red-50 rounded-xl px-3 py-2 border border-red-200">{editError}</p>}
           <p className="text-slate-400 text-xs">Saving will recalculate nights, total, and commission. Guest will receive an update email.</p>
-          <button type="submit" disabled={editSaving} className="w-full bg-[#1e3a5f] hover:bg-[#162d4a] disabled:opacity-60 text-white font-black py-3.5 rounded-xl text-sm transition-colors">
+          <button type="submit" disabled={editSaving} className="w-full bg-[#10192b] hover:bg-[#0a1220] disabled:opacity-60 text-white font-black py-3.5 rounded-xl text-sm transition-colors">
             {editSaving ? 'Saving...' : editSaved ? '✅ Saved! Guest notified.' : 'Save Changes'}
           </button>
         </form>
@@ -565,7 +565,7 @@ function InquiryDetailModal({ inq, password, onClose, onUpdate, onConvertToStay 
                 {inq.special_requirements && (
                   <div className="border-t border-slate-200 pt-3 mt-1">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Special Requirements</p>
-                    <p className="text-[#1e3a5f] text-sm leading-relaxed">{inq.special_requirements}</p>
+                    <p className="text-[#10192b] text-sm leading-relaxed">{inq.special_requirements}</p>
                   </div>
                 )}
               </div>
@@ -583,7 +583,7 @@ function InquiryDetailModal({ inq, password, onClose, onUpdate, onConvertToStay 
                   <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block mb-1.5">Notes</label>
                   <textarea rows={3} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Internal notes..." className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-orange-400" />
                 </div>
-                <button onClick={handleSave} disabled={saving} className="w-full bg-[#1e3a5f] hover:bg-[#162d4a] disabled:opacity-60 text-white font-bold py-3 rounded-xl text-sm transition-colors">
+                <button onClick={handleSave} disabled={saving} className="w-full bg-[#10192b] hover:bg-[#0a1220] disabled:opacity-60 text-white font-bold py-3 rounded-xl text-sm transition-colors">
                   {saving ? 'Saving...' : saved ? '✅ Saved!' : 'Save Changes'}
                 </button>
                 {inq.status !== 'booked' && (
@@ -606,7 +606,7 @@ function InquiryDetailModal({ inq, password, onClose, onUpdate, onConvertToStay 
               ) : (
                 messages.map(m => (
                   <div key={m.id} className={`flex ${m.sender === 'admin' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${m.sender === 'admin' ? 'bg-orange-500 text-white rounded-br-sm' : 'bg-slate-100 text-[#1e3a5f] rounded-bl-sm'}`}>
+                    <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${m.sender === 'admin' ? 'bg-orange-500 text-white rounded-br-sm' : 'bg-slate-100 text-[#10192b] rounded-bl-sm'}`}>
                       <p className="text-sm leading-relaxed">{m.message}</p>
                       <p className={`text-xs mt-1.5 ${m.sender === 'admin' ? 'text-orange-100' : 'text-slate-400'}`}>{m.sender_name} · {fmt(m.created_at)}</p>
                     </div>
@@ -868,7 +868,7 @@ function StayDetailModal({ stay: s, password, onClose, onUpdate }: {
                 <input value={roomNum} onChange={e => setRoomNum(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white" /></div>
               <div><label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Notes</label>
                 <textarea rows={2} value={notes} onChange={e => setNotes(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-orange-400" /></div>
-              <button onClick={handleSave} disabled={saving} className="w-full bg-[#1e3a5f] hover:bg-[#162d4a] disabled:opacity-60 text-white font-bold py-3 rounded-xl text-sm transition-colors">
+              <button onClick={handleSave} disabled={saving} className="w-full bg-[#10192b] hover:bg-[#0a1220] disabled:opacity-60 text-white font-bold py-3 rounded-xl text-sm transition-colors">
                 {saving ? 'Saving...' : saved ? '✅ Saved!' : 'Save Changes'}
               </button>
             </div>
@@ -906,7 +906,7 @@ function ExtendStayModal({ stay: s, onClose, onConfirm }: {
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 flex flex-col gap-4">
-        <h3 className="text-[#1e3a5f] font-black text-lg">Extend Stay</h3>
+        <h3 className="text-[#10192b] font-black text-lg">Extend Stay</h3>
         <p className="text-slate-500 text-sm">Current checkout: <strong>{s.expected_checkout}</strong> ({s.nights_total} nights)</p>
         <div>
           <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">New Checkout Date</label>
@@ -943,7 +943,7 @@ function CheckoutStayModal({ onClose, onConfirm }: {
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 flex flex-col gap-4">
-        <h3 className="text-[#1e3a5f] font-black text-lg">Confirm Checkout</h3>
+        <h3 className="text-[#10192b] font-black text-lg">Confirm Checkout</h3>
         <div>
           <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Actual Checkout Date</label>
           <input type="date" value={actualDate} onChange={e => setActualDate(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
@@ -1010,7 +1010,7 @@ function ReservationDetailModal({ res: r, password, onClose, onUpdate }: {
   const canEdit = !isCancelled && !isCheckedOut
 
   const fmtTs = (ts: string | null | undefined) => {
-    if (!ts) return '—'
+    if (!ts) return '-'
     return new Date(ts).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
   }
 
@@ -1118,13 +1118,13 @@ function ReservationDetailModal({ res: r, password, onClose, onUpdate }: {
             <div className="bg-slate-50 rounded-2xl p-5 flex flex-col gap-3">
               <InfoRow label="Name">{r.guest_first_name} {r.guest_last_name}</InfoRow>
               <InfoRow label="Email"><a href={`mailto:${r.guest_email}`} className="text-orange-500 hover:underline break-all">{r.guest_email}</a></InfoRow>
-              <InfoRow label="Phone"><a href={`tel:${r.guest_phone}`} className="text-orange-500 hover:underline">{r.guest_phone ?? '—'}</a></InfoRow>
+              <InfoRow label="Phone"><a href={`tel:${r.guest_phone}`} className="text-orange-500 hover:underline">{r.guest_phone ?? '-'}</a></InfoRow>
               {r.guest_type && <InfoRow label="Type">{GUEST_TYPE_LABELS[r.guest_type] ?? r.guest_type}</InfoRow>}
               {r.guest?.company && <InfoRow label="Company">{r.guest.company}</InfoRow>}
               {r.special_requests && (
                 <div className="border-t border-slate-200 pt-3 mt-1">
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Special Requests</p>
-                  <p className="text-[#1e3a5f] text-sm leading-relaxed">{r.special_requests}</p>
+                  <p className="text-[#10192b] text-sm leading-relaxed">{r.special_requests}</p>
                 </div>
               )}
             </div>
@@ -1134,14 +1134,14 @@ function ReservationDetailModal({ res: r, password, onClose, onUpdate }: {
             <div className="bg-slate-50 rounded-2xl p-5 flex flex-col gap-3">
               <InfoRow label="Hotel">{r.hotel_name_snapshot}</InfoRow>
               {r.hotel_address_snapshot && <InfoRow label="Address">{r.hotel_address_snapshot}</InfoRow>}
-              <InfoRow label="Room">{r.room_type_snapshot ?? '—'}</InfoRow>
+              <InfoRow label="Room">{r.room_type_snapshot ?? '-'}</InfoRow>
               <InfoRow label="Check-in">{r.checkin_date}</InfoRow>
               <InfoRow label="Check-out">{r.checkout_date}</InfoRow>
               <InfoRow label="Nights">{r.nights}</InfoRow>
               {r.estimated_arrival && <InfoRow label="Est. Arrival">{r.estimated_arrival}</InfoRow>}
               <div className="border-t border-slate-200 pt-3 mt-1 flex justify-between items-center">
                 <span className="text-slate-400 text-sm">${r.rate_per_night}/night × {r.nights}</span>
-                <span className="text-[#1e3a5f] font-black text-xl">${(r.total_amount ?? 0).toFixed(0)}</span>
+                <span className="text-[#10192b] font-black text-xl">${(r.total_amount ?? 0).toFixed(0)}</span>
               </div>
               <div className="flex justify-between text-xs text-slate-400">
                 <span>Commission ({r.commission_rate}%)</span>
@@ -1199,7 +1199,7 @@ function ReservationDetailModal({ res: r, password, onClose, onUpdate }: {
               )}
               {!isCancelled && !isCheckedOut && (
                 <button onClick={handleCancel} disabled={actionLoading} className={`w-full font-bold py-3 rounded-xl text-sm transition-all ${cancelStep ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-200' : 'bg-white hover:bg-red-50 text-red-500 border border-red-200'}`}>
-                  {actionLoading ? 'Cancelling...' : cancelStep ? '⚠ Confirm Cancel — Guest will be emailed' : 'Cancel Reservation'}
+                  {actionLoading ? 'Cancelling...' : cancelStep ? '⚠ Confirm Cancel: Guest will be emailed' : 'Cancel Reservation'}
                 </button>
               )}
             </div>
@@ -1217,7 +1217,7 @@ function ReservationDetailModal({ res: r, password, onClose, onUpdate }: {
               <div className="text-center text-slate-400 text-sm py-8">No messages yet. Send the first reply below.</div>
             ) : messages.map((m: any) => (
               <div key={m.id} className={`flex ${m.sender === 'admin' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${m.sender === 'admin' ? 'bg-orange-500 text-white rounded-br-sm' : 'bg-slate-100 text-[#1e3a5f] rounded-bl-sm'}`}>
+                <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${m.sender === 'admin' ? 'bg-orange-500 text-white rounded-br-sm' : 'bg-slate-100 text-[#10192b] rounded-bl-sm'}`}>
                   <p className="text-sm leading-relaxed">{m.message}</p>
                   <p className={`text-xs mt-1.5 ${m.sender === 'admin' ? 'text-orange-100' : 'text-slate-400'}`}>{m.sender_name} · {fmtTs(m.created_at)}</p>
                 </div>
@@ -1270,7 +1270,7 @@ function ReservationDetailModal({ res: r, password, onClose, onUpdate }: {
           </div>
           {editError && <p className="text-red-500 text-sm bg-red-50 rounded-xl px-3 py-2 border border-red-200">{editError}</p>}
           <p className="text-slate-400 text-xs">Saving recalculates nights, total, and commission. Guest receives an update email.</p>
-          <button type="submit" disabled={editSaving} className="w-full bg-[#1e3a5f] hover:bg-[#162d4a] disabled:opacity-60 text-white font-black py-3.5 rounded-xl text-sm transition-colors">
+          <button type="submit" disabled={editSaving} className="w-full bg-[#10192b] hover:bg-[#0a1220] disabled:opacity-60 text-white font-black py-3.5 rounded-xl text-sm transition-colors">
             {editSaving ? 'Saving...' : editSaved ? '✅ Saved! Guest notified.' : 'Save Changes'}
           </button>
         </form>
@@ -1290,7 +1290,7 @@ function ReservationDetailModal({ res: r, password, onClose, onUpdate }: {
             <div key={i} className="flex items-start gap-3">
               <div className={`w-3 h-3 rounded-full mt-1 flex-shrink-0 ${e.color}`} />
               <div>
-                <p className="text-[#1e3a5f] font-semibold text-sm">{e.label}</p>
+                <p className="text-[#10192b] font-semibold text-sm">{e.label}</p>
                 <p className="text-slate-400 text-xs">{fmtTs(e.ts)}{e.by ? ` · by ${e.by}` : ''}</p>
               </div>
             </div>
@@ -1508,7 +1508,7 @@ export default function Admin() {
   }
 
   const formatDate = (s: string) => {
-    if (!s) return '—'
+    if (!s) return '-'
     return new Date(s + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   }
 
@@ -1543,10 +1543,10 @@ export default function Admin() {
 
   if (!password) {
     return (
-      <div className="min-h-screen bg-[#0f2240] pt-16 flex items-center justify-center px-4">
+      <div className="min-h-screen bg-[#0f2240] flex items-center justify-center px-4">
         <div className="w-full max-w-sm">
           <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
-            <div className="bg-[#1e3a5f] px-8 py-8 text-center">
+            <div className="bg-[#10192b] px-8 py-8 text-center">
               <span className="text-white font-black text-3xl tracking-tight">Stayvoo</span>
               <p className="text-white/50 text-xs uppercase tracking-widest mt-1">Admin Dashboard</p>
             </div>
@@ -1556,7 +1556,7 @@ export default function Admin() {
                 <input type="password" required autoFocus value={inputPw} onChange={e => setInputPw(e.target.value)} placeholder="Enter admin password" className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
               </div>
               {loginError && <p className="text-red-500 text-sm bg-red-50 rounded-lg px-3 py-2">{loginError}</p>}
-              <button type="submit" disabled={loading} className="w-full bg-[#1e3a5f] hover:bg-[#162d4a] disabled:opacity-60 text-white font-bold py-3 rounded-xl text-sm transition-colors">
+              <button type="submit" disabled={loading} className="w-full bg-[#10192b] hover:bg-[#0a1220] disabled:opacity-60 text-white font-bold py-3 rounded-xl text-sm transition-colors">
                 {loading ? 'Checking...' : 'Login'}
               </button>
             </form>
@@ -1567,9 +1567,9 @@ export default function Admin() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 pt-16">
+    <div className="min-h-screen bg-slate-50">
       {/* Header */}
-      <div className="bg-[#1e3a5f] px-4 py-5">
+      <div className="bg-[#10192b] px-4 py-5">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div>
             <h1 className="text-white font-black text-xl">Stayvoo Admin</h1>
@@ -1602,13 +1602,13 @@ export default function Admin() {
             <button
               key={t.key}
               onClick={() => setActiveTab(t.key)}
-              className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-colors ${activeTab === t.key ? 'bg-[#1e3a5f] text-white' : 'bg-white text-slate-600 hover:bg-slate-50 shadow-sm'}`}
+              className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-colors ${activeTab === t.key ? 'bg-[#10192b] text-white' : 'bg-white text-slate-600 hover:bg-slate-50 shadow-sm'}`}
             >
               {t.label}
               {t.badge && <span className="ml-1.5 bg-orange-500 text-white text-xs px-1.5 py-0.5 rounded-full">{t.badge}</span>}
             </button>
           ))}
-          <button onClick={() => { loadData(password); loadStays(password); loadReservations(password, { date: resNavDate }) }} disabled={loading} className="ml-auto text-sm text-[#1e3a5f] hover:text-orange-500 font-semibold transition-colors">
+          <button onClick={() => { loadData(password); loadStays(password); loadReservations(password, { date: resNavDate }) }} disabled={loading} className="ml-auto text-sm text-[#10192b] hover:text-orange-500 font-semibold transition-colors">
             {loading ? 'Loading...' : '↻ Refresh'}
           </button>
         </div>
@@ -1651,7 +1651,7 @@ export default function Admin() {
             <div onClick={() => setSelectedReservation(res)} className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors border border-transparent hover:border-slate-200">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[#1e3a5f] font-bold text-sm">{res.guest_first_name} {res.guest_last_name}</span>
+                  <span className="text-[#10192b] font-bold text-sm">{res.guest_first_name} {res.guest_last_name}</span>
                   <span className="bg-orange-100 text-orange-700 text-xs font-bold px-1.5 py-0.5 rounded">Exclusive</span>
                   <span className={`text-xs font-bold px-1.5 py-0.5 rounded capitalize ${RES_STATUS_COLORS[res.status] ?? 'bg-slate-100 text-slate-600'}`}>{res.status.replace('_', ' ')}</span>
                 </div>
@@ -1662,7 +1662,7 @@ export default function Admin() {
                 </div>
               </div>
               <div className="text-right flex-shrink-0">
-                <div className="text-[#1e3a5f] font-bold text-sm">${res.total_amount.toFixed(0)}</div>
+                <div className="text-[#10192b] font-bold text-sm">${res.total_amount.toFixed(0)}</div>
                 <div className="text-slate-400 text-xs font-mono">{res.reservation_ref}</div>
               </div>
             </div>
@@ -1672,7 +1672,7 @@ export default function Admin() {
             <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
               <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2">
                 <span className="text-lg">{icon}</span>
-                <h3 className="text-[#1e3a5f] font-black text-sm">{title}</h3>
+                <h3 className="text-[#10192b] font-black text-sm">{title}</h3>
                 <span className="ml-auto text-xs text-slate-400 font-semibold">{items.length} total</span>
               </div>
               <div className="px-2 py-2">
@@ -1689,7 +1689,7 @@ export default function Admin() {
               <div className="flex items-center gap-2 flex-wrap">
                 <button onClick={() => navigateDate(-1)} className="p-2 rounded-lg hover:bg-slate-100 text-slate-600 font-bold text-sm transition-colors">← Prev</button>
                 <div className="flex-1 text-center">
-                  <p className="text-[#1e3a5f] font-black text-base">{fmtD(resNavDate)}</p>
+                  <p className="text-[#10192b] font-black text-base">{fmtD(resNavDate)}</p>
                   {resNavDate !== today && (
                     <button onClick={() => { setResNavDate(today); loadReservations(password, { date: today }) }} className="text-orange-500 text-xs font-semibold hover:underline">Jump to Today</button>
                   )}
@@ -1711,7 +1711,7 @@ export default function Admin() {
               <div className="flex gap-1 flex-wrap">
                 {(['all', 'pending', 'confirmed', 'checked_in', 'checked_out', 'cancelled'] as const).map(f => (
                   <button key={f} onClick={() => handleStatusFilter(f)}
-                    className={`px-3 py-2 rounded-lg text-xs font-bold transition-colors capitalize ${resStatusFilter === f ? 'bg-[#1e3a5f] text-white' : 'bg-white text-slate-500 hover:bg-slate-100 border border-slate-200'}`}
+                    className={`px-3 py-2 rounded-lg text-xs font-bold transition-colors capitalize ${resStatusFilter === f ? 'bg-[#10192b] text-white' : 'bg-white text-slate-500 hover:bg-slate-100 border border-slate-200'}`}
                   >
                     {f.replace('_', ' ')}
                   </button>
@@ -1724,7 +1724,7 @@ export default function Admin() {
             ) : isSearchMode ? (
               <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
                 <div className="px-5 py-3 border-b border-slate-100">
-                  <h3 className="text-[#1e3a5f] font-black text-sm">{reservations.length} result{reservations.length !== 1 ? 's' : ''}</h3>
+                  <h3 className="text-[#10192b] font-black text-sm">{reservations.length} result{reservations.length !== 1 ? 's' : ''}</h3>
                 </div>
                 <div className="px-2 py-2">
                   {reservations.length === 0 ? (
@@ -1747,10 +1747,10 @@ export default function Admin() {
         {activeTab === 'bookings' && <>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
             {[
-              { label: 'Total', value: total, color: 'text-[#1e3a5f]' },
+              { label: 'Total', value: total, color: 'text-[#10192b]' },
               { label: 'Pending', value: pending, color: 'text-orange-500' },
               { label: 'Confirmed', value: confirmed, color: 'text-green-600' },
-              { label: 'Today', value: todayCount, color: 'text-[#1e3a5f]' },
+              { label: 'Today', value: todayCount, color: 'text-[#10192b]' },
             ].map(s => (
               <div key={s.label} className="bg-white rounded-2xl shadow-sm p-5 text-center">
                 <div className={`font-black text-4xl ${s.color}`}>{s.value}</div>
@@ -1773,7 +1773,7 @@ export default function Admin() {
                 <button
                   key={f}
                   onClick={() => setBookingFilter(f)}
-                  className={`px-3 py-2 rounded-lg text-xs font-bold transition-colors capitalize ${bookingFilter === f ? 'bg-[#1e3a5f] text-white' : 'bg-white text-slate-500 hover:bg-slate-100 border border-slate-200'}`}
+                  className={`px-3 py-2 rounded-lg text-xs font-bold transition-colors capitalize ${bookingFilter === f ? 'bg-[#10192b] text-white' : 'bg-white text-slate-500 hover:bg-slate-100 border border-slate-200'}`}
                 >
                   {f}
                 </button>
@@ -1806,12 +1806,12 @@ export default function Admin() {
                       const borderColor = isPending ? 'border-orange-400 bg-orange-50' : isConfirmed ? 'border-green-400 bg-green-50' : 'border-transparent'
                       return (
                         <tr key={b.id} onClick={() => setSelectedBooking(b)} className={`border-b border-slate-100 last:border-0 border-l-4 cursor-pointer hover:bg-slate-50 transition-colors ${borderColor}`}>
-                          <td className="px-5 py-4"><span className="font-mono font-bold text-[#1e3a5f] text-xs">{b.booking_ref}</span></td>
+                          <td className="px-5 py-4"><span className="font-mono font-bold text-[#10192b] text-xs">{b.booking_ref}</span></td>
                           <td className="px-5 py-4">
-                            <div className="font-semibold text-[#1e3a5f]">{b.guest?.first_name} {b.guest?.last_name}</div>
+                            <div className="font-semibold text-[#10192b]">{b.guest?.first_name} {b.guest?.last_name}</div>
                             <div className="text-slate-400 text-xs">{b.guest?.phone}</div>
                           </td>
-                          <td className="px-5 py-4 hidden md:table-cell text-slate-600 max-w-[160px] truncate">{b.hotel?.name ?? '—'}</td>
+                          <td className="px-5 py-4 hidden md:table-cell text-slate-600 max-w-[160px] truncate">{b.hotel?.name ?? '-'}</td>
                           <td className="px-5 py-4 hidden lg:table-cell text-slate-600 whitespace-nowrap">
                             {formatDate(b.checkin_date)} → {formatDate(b.checkout_date)}
                             <div className="text-slate-400 text-xs">{b.nights} nights</div>
@@ -1843,7 +1843,7 @@ export default function Admin() {
         {activeTab === 'inquiries' && <>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
             {[
-              { label: 'Total', value: inqTotal, color: 'text-[#1e3a5f]' },
+              { label: 'Total', value: inqTotal, color: 'text-[#10192b]' },
               { label: 'New', value: inqNew, color: 'text-orange-500' },
               { label: 'Contacted', value: inqContacted, color: 'text-blue-600' },
               { label: 'Booked', value: inqBooked, color: 'text-green-600' },
@@ -1874,10 +1874,10 @@ export default function Admin() {
                     {inquiries.map(inq => (
                       <tr key={inq.id} onClick={() => setSelectedInquiry(inq)} className="border-b border-slate-100 last:border-0 cursor-pointer hover:bg-slate-50 transition-colors">
                         <td className="px-5 py-4 text-slate-500 text-xs whitespace-nowrap">
-                          {inq.created_at ? new Date(inq.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}
+                          {inq.created_at ? new Date(inq.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '-'}
                         </td>
                         <td className="px-5 py-4">
-                          <div className="font-semibold text-[#1e3a5f]">{inq.first_name} {inq.last_name}</div>
+                          <div className="font-semibold text-[#10192b]">{inq.first_name} {inq.last_name}</div>
                           <div className="text-slate-400 text-xs">{inq.phone}</div>
                         </td>
                         <td className="px-5 py-4 hidden sm:table-cell">
@@ -1903,7 +1903,7 @@ export default function Admin() {
             {[
               { label: 'Active', value: activeStays.length, color: 'text-green-600' },
               { label: 'Checking Out Soon', value: checkingSoon.length, color: 'text-orange-500' },
-              { label: 'Active Revenue', value: `$${thisMonthRevenue.toFixed(0)}`, color: 'text-[#1e3a5f]' },
+              { label: 'Active Revenue', value: `$${thisMonthRevenue.toFixed(0)}`, color: 'text-[#10192b]' },
               { label: 'Unpaid Commission', value: `$${unpaidCommission.toFixed(0)}`, color: 'text-red-500' },
             ].map(s => (
               <div key={s.label} className="bg-white rounded-2xl shadow-sm p-5 text-center">
@@ -1913,7 +1913,7 @@ export default function Admin() {
             ))}
           </div>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-[#1e3a5f] font-bold text-lg">All Stays</h2>
+            <h2 className="text-[#10192b] font-bold text-lg">All Stays</h2>
             <button onClick={() => { setCreateStayInquiry(null); setShowCreateStay(true) }} className="bg-orange-500 hover:bg-orange-600 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors">
               + New Stay
             </button>
@@ -1944,7 +1944,7 @@ export default function Admin() {
                       return (
                         <tr key={s.id} onClick={() => setSelectedStay(s)} className={`border-b border-slate-100 last:border-0 border-l-4 cursor-pointer hover:bg-slate-50 transition-colors ${borderColor}`}>
                           <td className="px-5 py-4">
-                            <div className="font-semibold text-[#1e3a5f]">{s.guest_first_name} {s.guest_last_name}</div>
+                            <div className="font-semibold text-[#10192b]">{s.guest_first_name} {s.guest_last_name}</div>
                             <div className="text-slate-400 text-xs">{s.guest_phone}</div>
                           </td>
                           <td className="px-5 py-4 hidden sm:table-cell text-slate-600 max-w-[140px] truncate">{s.hotel_name}</td>
@@ -1954,7 +1954,7 @@ export default function Admin() {
                             {isSoon && <div className="text-orange-500 text-xs font-bold">{daysLeft === 0 ? 'Today!' : `${daysLeft}d left`}</div>}
                           </td>
                           <td className="px-5 py-4 hidden lg:table-cell">
-                            <div className="text-[#1e3a5f] font-semibold">${s.total_amount.toFixed(0)}</div>
+                            <div className="text-[#10192b] font-semibold">${s.total_amount.toFixed(0)}</div>
                             <div className="text-slate-400 text-xs">comm: ${s.commission_amount.toFixed(0)} {s.commission_paid ? '✅' : ''}</div>
                           </td>
                           <td className="px-5 py-4">
@@ -1973,7 +1973,7 @@ export default function Admin() {
         {/* ── BILLING TAB ── */}
         {activeTab === 'billing' && <>
           <div className="flex items-center gap-4 mb-6">
-            <h2 className="text-[#1e3a5f] font-bold text-lg">Billing</h2>
+            <h2 className="text-[#10192b] font-bold text-lg">Billing</h2>
             <input
               type="month"
               value={billingMonth}
@@ -1987,8 +1987,8 @@ export default function Admin() {
             <>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
                 {[
-                  { label: 'Total Stays', value: billingData.total_stays, color: 'text-[#1e3a5f]' },
-                  { label: 'Total Revenue', value: `$${billingData.total_revenue.toFixed(0)}`, color: 'text-[#1e3a5f]' },
+                  { label: 'Total Stays', value: billingData.total_stays, color: 'text-[#10192b]' },
+                  { label: 'Total Revenue', value: `$${billingData.total_revenue.toFixed(0)}`, color: 'text-[#10192b]' },
                   { label: 'Commission Earned', value: `$${billingData.total_commission.toFixed(0)}`, color: 'text-green-600' },
                   { label: 'Pending', value: `$${billingData.commission_pending.toFixed(0)}`, color: 'text-orange-500' },
                 ].map(s => (
@@ -2006,12 +2006,12 @@ export default function Admin() {
                     <div key={h.hotel_name} className="bg-white rounded-2xl shadow-sm overflow-hidden">
                       <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
                         <div>
-                          <h3 className="text-[#1e3a5f] font-black text-base">{h.hotel_name}</h3>
+                          <h3 className="text-[#10192b] font-black text-base">{h.hotel_name}</h3>
                           <p className="text-slate-400 text-xs mt-0.5">{h.total_stays} stays · {h.active_stays} active · {h.completed_stays} completed</p>
                         </div>
                         <div className="flex items-center gap-3">
                           <div className="text-right">
-                            <div className="text-[#1e3a5f] font-black text-lg">${h.total_commission.toFixed(0)}</div>
+                            <div className="text-[#10192b] font-black text-lg">${h.total_commission.toFixed(0)}</div>
                             <div className="text-slate-400 text-xs">commission</div>
                           </div>
                           <button
@@ -2038,13 +2038,13 @@ export default function Admin() {
                             {h.stays.map(s => (
                               <tr key={s.id} className="border-b border-slate-50 last:border-0">
                                 <td className="px-5 py-3">
-                                  <div className="font-semibold text-[#1e3a5f]">{s.guest_first_name} {s.guest_last_name}</div>
+                                  <div className="font-semibold text-[#10192b]">{s.guest_first_name} {s.guest_last_name}</div>
                                   <div className="text-slate-400 text-xs">{s.nights_total} nights × ${s.rate_per_night}/night</div>
                                 </td>
                                 <td className="px-5 py-3 hidden md:table-cell text-slate-500 text-xs whitespace-nowrap">
                                   {formatDate(s.checkin_date)} → {formatDate(s.expected_checkout)}
                                 </td>
-                                <td className="px-5 py-3 text-right text-[#1e3a5f] font-semibold">${s.total_amount.toFixed(2)}</td>
+                                <td className="px-5 py-3 text-right text-[#10192b] font-semibold">${s.total_amount.toFixed(2)}</td>
                                 <td className="px-5 py-3 text-right text-slate-600">${s.commission_amount.toFixed(2)}</td>
                                 <td className="px-5 py-3 text-center">
                                   {s.commission_paid

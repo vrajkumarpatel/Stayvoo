@@ -50,7 +50,7 @@ export default function SearchBar({ inline = false }: Props) {
       `}>
         {/* Check-in */}
         <div className="flex-1 flex flex-col gap-1">
-          <label className="text-[#1e3a5f] text-xs font-bold uppercase tracking-wider px-1">
+          <label className="text-[#10192b] text-xs font-bold uppercase tracking-wider px-1">
             Check-in
           </label>
           <input
@@ -67,7 +67,7 @@ export default function SearchBar({ inline = false }: Props) {
 
         {/* Check-out */}
         <div className="flex-1 flex flex-col gap-1">
-          <label className="text-[#1e3a5f] text-xs font-bold uppercase tracking-wider px-1">
+          <label className="text-[#10192b] text-xs font-bold uppercase tracking-wider px-1">
             Check-out
           </label>
           <input
@@ -81,7 +81,7 @@ export default function SearchBar({ inline = false }: Props) {
 
         {/* Guests */}
         <div className="flex flex-col gap-1">
-          <label className="text-[#1e3a5f] text-xs font-bold uppercase tracking-wider px-1">
+          <label className="text-[#10192b] text-xs font-bold uppercase tracking-wider px-1">
             Guests
           </label>
           <select
@@ -97,7 +97,7 @@ export default function SearchBar({ inline = false }: Props) {
 
         {/* Length of stay */}
         <div className="flex flex-col gap-1">
-          <label className="text-[#1e3a5f] text-xs font-bold uppercase tracking-wider px-1">
+          <label className="text-[#10192b] text-xs font-bold uppercase tracking-wider px-1">
             Length of Stay
           </label>
           <select
@@ -116,7 +116,7 @@ export default function SearchBar({ inline = false }: Props) {
           <div className="flex gap-2">
             <button
               onClick={handleSearch}
-              className="flex-1 bg-[#1e3a5f] hover:bg-[#162d4a] text-white font-bold py-2.5 px-5 rounded-xl transition-colors text-sm whitespace-nowrap"
+              className="flex-1 bg-[#10192b] hover:bg-[#0a1220] text-white font-bold py-2.5 px-5 rounded-xl transition-colors text-sm whitespace-nowrap"
             >
               Search Hotels
             </button>
@@ -130,7 +130,7 @@ export default function SearchBar({ inline = false }: Props) {
         ) : isShort ? (
           <button
             onClick={handleSearch}
-            className="bg-[#1e3a5f] hover:bg-[#162d4a] text-white font-bold py-2.5 px-6 rounded-xl transition-colors text-sm whitespace-nowrap"
+            className="bg-[#10192b] hover:bg-[#0a1220] text-white font-bold py-2.5 px-6 rounded-xl transition-colors text-sm whitespace-nowrap"
           >
             Search Hotels →
           </button>

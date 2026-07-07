@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
+import { MessageCircle, Building2, KeyRound, ClipboardList } from 'lucide-react'
 import { getMyStay, getMyStayReservationMessages, sendMyStayReservationMessage, getMyStayMessages, sendMyStayMessage } from '../lib/api'
 
 const STATUS_COLORS: Record<string, string> = {
@@ -186,7 +187,7 @@ function ReservationCard({ reservation: r, token }: { reservation: any; token: s
       <div className="px-5 pt-4 pb-3">
         <div className="flex items-start justify-between gap-3 flex-wrap mb-3">
           <div>
-            <p className="text-[#1e3a5f] font-black text-base leading-tight">{r.hotel_name_snapshot}</p>
+            <p className="text-[#10192b] font-black text-base leading-tight">{r.hotel_name_snapshot}</p>
             {r.room_type_snapshot && (
               <p className="text-slate-400 text-xs mt-0.5">{r.room_type_snapshot}</p>
             )}
@@ -197,19 +198,19 @@ function ReservationCard({ reservation: r, token }: { reservation: any; token: s
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs mb-3">
           <div>
             <p className="text-slate-400 font-semibold uppercase tracking-wide">Check-in</p>
-            <p className="text-[#1e3a5f] font-bold">{r.checkin_date}</p>
+            <p className="text-[#10192b] font-bold">{r.checkin_date}</p>
           </div>
           <div>
             <p className="text-slate-400 font-semibold uppercase tracking-wide">Check-out</p>
-            <p className="text-[#1e3a5f] font-bold">{r.checkout_date}</p>
+            <p className="text-[#10192b] font-bold">{r.checkout_date}</p>
           </div>
           <div>
             <p className="text-slate-400 font-semibold uppercase tracking-wide">Nights</p>
-            <p className="text-[#1e3a5f] font-bold">{r.nights}</p>
+            <p className="text-[#10192b] font-bold">{r.nights}</p>
           </div>
           <div>
             <p className="text-slate-400 font-semibold uppercase tracking-wide">Total</p>
-            <p className="text-[#1e3a5f] font-bold">${Number(r.total_amount).toFixed(0)}</p>
+            <p className="text-[#10192b] font-bold">${Number(r.total_amount).toFixed(0)}</p>
           </div>
         </div>
 
@@ -233,9 +234,9 @@ function ReservationCard({ reservation: r, token }: { reservation: any; token: s
       <div className="border-t border-slate-100 px-5 py-2.5 bg-slate-50 flex items-center gap-3 flex-wrap">
         <button
           onClick={() => setShowMsgs(v => !v)}
-          className="text-[#1e3a5f] text-xs font-bold hover:text-orange-500 transition-colors"
+          className="text-[#10192b] text-xs font-bold hover:text-orange-500 transition-colors flex items-center gap-1"
         >
-          💬 {showMsgs ? 'Hide Messages' : 'Messages'}
+          <MessageCircle className="w-3.5 h-3.5" /> {showMsgs ? 'Hide Messages' : 'Messages'}
         </button>
         {isCheckedOut && (
           <Link to="/search" className="text-orange-500 text-xs font-bold hover:text-orange-600 transition-colors">
@@ -263,7 +264,7 @@ function InquiryCard({ inquiry, token }: { inquiry: any; token: string }) {
       <div className="px-5 pt-4 pb-3">
         <div className="flex items-start justify-between gap-3 flex-wrap mb-3">
           <div>
-            <p className="text-[#1e3a5f] font-black text-base">Extended Stay Inquiry</p>
+            <p className="text-[#10192b] font-black text-base">Extended Stay Inquiry</p>
             <p className="text-slate-400 text-xs mt-0.5">
               {inquiry.hotel_preference || 'No preference'} · {inquiry.num_rooms} room{inquiry.num_rooms !== 1 ? 's' : ''}
             </p>
@@ -274,15 +275,15 @@ function InquiryCard({ inquiry, token }: { inquiry: any; token: string }) {
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
           <div>
             <p className="text-slate-400 font-semibold uppercase tracking-wide">Start Date</p>
-            <p className="text-[#1e3a5f] font-bold">{inquiry.start_date}</p>
+            <p className="text-[#10192b] font-bold">{inquiry.start_date}</p>
           </div>
           <div>
             <p className="text-slate-400 font-semibold uppercase tracking-wide">Length</p>
-            <p className="text-[#1e3a5f] font-bold">{inquiry.length_of_stay}</p>
+            <p className="text-[#10192b] font-bold">{inquiry.length_of_stay}</p>
           </div>
           <div>
             <p className="text-slate-400 font-semibold uppercase tracking-wide">Type</p>
-            <p className="text-[#1e3a5f] font-bold">{inquiry.guest_type}</p>
+            <p className="text-[#10192b] font-bold">{inquiry.guest_type}</p>
           </div>
         </div>
       </div>
@@ -290,9 +291,9 @@ function InquiryCard({ inquiry, token }: { inquiry: any; token: string }) {
       <div className="border-t border-slate-100 px-5 py-2.5 bg-slate-50 flex items-center gap-3">
         <button
           onClick={() => setShowMsgs(v => !v)}
-          className="text-[#1e3a5f] text-xs font-bold hover:text-orange-500 transition-colors"
+          className="text-[#10192b] text-xs font-bold hover:text-orange-500 transition-colors flex items-center gap-1"
         >
-          💬 {showMsgs ? 'Hide Messages' : 'Messages'}
+          <MessageCircle className="w-3.5 h-3.5" /> {showMsgs ? 'Hide Messages' : 'Messages'}
         </button>
         <p className="text-slate-300 text-xs ml-auto">
           {new Date(inquiry.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
@@ -323,19 +324,19 @@ export default function GuestPortal() {
   }, [token])
 
   if (loading) return (
-    <div className="min-h-screen pt-16 flex items-center justify-center bg-slate-50">
+    <div className="min-h-screen flex items-center justify-center bg-slate-50">
       <div className="text-center">
-        <div className="text-5xl animate-pulse mb-4">🏨</div>
+        <Building2 className="w-12 h-12 mx-auto animate-pulse mb-4 text-slate-300" strokeWidth={1.5} />
         <p className="text-slate-500">Loading your reservations...</p>
       </div>
     </div>
   )
 
   if (error || !data) return (
-    <div className="min-h-screen pt-16 flex items-center justify-center bg-slate-50 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
       <div className="text-center max-w-sm">
-        <div className="text-5xl mb-4">🔑</div>
-        <h2 className="text-[#1e3a5f] font-black text-xl mb-2">
+        <KeyRound className="w-12 h-12 mx-auto mb-4 text-slate-300" strokeWidth={1.5} />
+        <h2 className="text-[#10192b] font-black text-xl mb-2">
           {error?.includes('expired') ? 'This link has expired' : 'Invalid link'}
         </h2>
         <p className="text-slate-500 text-sm mb-6 leading-relaxed">
@@ -356,13 +357,13 @@ export default function GuestPortal() {
   const hasInquiries = inquiries?.length > 0
 
   return (
-    <div className="min-h-screen bg-slate-50 pt-16">
-      <div className="bg-[#1e3a5f] py-8 px-4">
+    <div className="min-h-screen bg-slate-50">
+      <div className="bg-[#10192b] py-8 px-4">
         <div className="max-w-3xl mx-auto">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
               <p className="text-orange-400 text-xs font-bold uppercase tracking-widest mb-1">Guest Portal</p>
-              <h1 className="text-white font-black text-2xl">Welcome, {guest.first_name}!</h1>
+              <h1 className="font-display text-white font-black text-2xl">Welcome, {guest.first_name}!</h1>
               <p className="text-white/50 text-sm mt-0.5">{guest.email}</p>
             </div>
             <span className="bg-white/10 text-white/70 text-xs px-3 py-1.5 rounded-full">
@@ -388,8 +389,8 @@ export default function GuestPortal() {
       <div className="max-w-3xl mx-auto px-4 py-8">
         {hasReservations && (
           <section className="mb-8">
-            <h2 className="text-[#1e3a5f] font-black text-lg mb-4 flex items-center gap-2">
-              🏨 My Reservations
+            <h2 className="text-[#10192b] font-black text-lg mb-4 flex items-center gap-2">
+              <Building2 className="w-5 h-5" /> My Reservations
               <span className="text-slate-400 text-sm font-normal">({reservations.length})</span>
             </h2>
             <div className="flex flex-col gap-4">
@@ -402,8 +403,8 @@ export default function GuestPortal() {
 
         {hasInquiries && (
           <section className="mb-8">
-            <h2 className="text-[#1e3a5f] font-black text-lg mb-4 flex items-center gap-2">
-              📋 Extended Stay Inquiries
+            <h2 className="text-[#10192b] font-black text-lg mb-4 flex items-center gap-2">
+              <ClipboardList className="w-5 h-5" /> Extended Stay Inquiries
               <span className="text-slate-400 text-sm font-normal">({inquiries.length})</span>
             </h2>
             <div className="flex flex-col gap-4">
@@ -416,11 +417,11 @@ export default function GuestPortal() {
 
         {!hasReservations && !hasInquiries && (
           <div className="text-center py-16">
-            <div className="text-6xl mb-4">🏨</div>
-            <h2 className="text-[#1e3a5f] font-black text-xl mb-2">No reservations yet</h2>
+            <Building2 className="w-14 h-14 mx-auto mb-4 text-slate-300" strokeWidth={1.5} />
+            <h2 className="text-[#10192b] font-black text-xl mb-2">No reservations yet</h2>
             <p className="text-slate-500 text-sm mb-6">Start by browsing our exclusive partner hotels.</p>
             <div className="flex gap-3 justify-center">
-              <Link to="/search" className="bg-[#1e3a5f] hover:bg-[#162d4a] text-white font-bold px-6 py-3 rounded-xl text-sm transition-colors">
+              <Link to="/search" className="bg-[#10192b] hover:bg-[#0a1220] text-white font-bold px-6 py-3 rounded-xl text-sm transition-colors">
                 Search Hotels →
               </Link>
               <Link to="/exclusive" className="bg-orange-500 hover:bg-orange-600 text-white font-bold px-6 py-3 rounded-xl text-sm transition-colors">
@@ -432,8 +433,8 @@ export default function GuestPortal() {
 
         <div className="border-t border-slate-200 pt-6 mt-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm">
           <div className="flex gap-4">
-            <Link to="/search" className="text-[#1e3a5f] font-semibold hover:text-orange-500 transition-colors">Search Hotels</Link>
-            <Link to="/exclusive" className="text-[#1e3a5f] font-semibold hover:text-orange-500 transition-colors">Get a Quote</Link>
+            <Link to="/search" className="text-[#10192b] font-semibold hover:text-orange-500 transition-colors">Search Hotels</Link>
+            <Link to="/exclusive" className="text-[#10192b] font-semibold hover:text-orange-500 transition-colors">Get a Quote</Link>
           </div>
           <a href="tel:+18883528151" className="text-slate-400 text-xs hover:text-slate-600">
             Need help? Call +1 (888) 352-8151

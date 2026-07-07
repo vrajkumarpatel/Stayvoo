@@ -11,7 +11,7 @@ const WHO_BOOKS_THIS = [
   {
     icon: Stethoscope,
     title: 'Travel nurses',
-    body: '13-week contracts near Milwaukee-area hospitals — weekly rates, flexible extensions, no lease.',
+    body: '13-week contracts near Milwaukee-area hospitals: weekly rates, flexible extensions, no lease.',
   },
   {
     icon: HardHat,
@@ -21,7 +21,7 @@ const WHO_BOOKS_THIS = [
   {
     icon: HomeIcon,
     title: 'Relocations',
-    body: "New role, new city — a comfortable base while you find permanent housing.",
+    body: "New role, new city, a comfortable base while you find permanent housing.",
   },
   {
     icon: Briefcase,
@@ -54,7 +54,7 @@ export default function ExclusiveHotels() {
         <div>
           <SectionEyebrow>Extended stay</SectionEyebrow>
           <h1 className="font-serif font-bold text-navy text-4xl sm:text-5xl leading-tight mt-2">
-            A hotel that feels like a home — for a few weeks or a few months.
+            A hotel that feels like a home, for a few weeks or a few months.
           </h1>
           <p className="font-sans text-ink-muted text-base sm:text-lg mt-5 leading-relaxed">
             Whether it's a travel nursing contract, a project posting, a relocation, or a medical stay near a
@@ -106,7 +106,7 @@ export default function ExclusiveHotels() {
             <ChecklistItem>On-site laundry</ChecklistItem>
             <ChecklistItem>Fast, reliable Wi-Fi with room to work</ChecklistItem>
             <ChecklistItem>Housekeeping schedules that suit long stays</ChecklistItem>
-            <ChecklistItem>Weekly and monthly rate structures — not rack rate × 30</ChecklistItem>
+            <ChecklistItem>Weekly and monthly rate structures, not rack rate × 30</ChecklistItem>
             <ChecklistItem>Front desks that know our guests by name</ChecklistItem>
           </ul>
         </div>
@@ -116,7 +116,7 @@ export default function ExclusiveHotels() {
       <section className="py-20">
         <CtaBanner
           heading="Ready to move in for a while?"
-          body="Send the dates and headcount — we'll come back with your rate the same day."
+          body="Send the dates and headcount, we'll come back with your rate the same day."
           buttonLabel="Start a request"
           buttonHref="/contact"
         />

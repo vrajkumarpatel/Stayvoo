@@ -41,17 +41,17 @@ const WHY_STAYVOO = [
   {
     icon: ClipboardList,
     title: 'Room-block specialists',
-    body: 'Holds, cut-off dates, rooming lists, late arrivals — we handle the details so organizers don’t have to.',
+    body: 'Holds, cut-off dates, rooming lists, late arrivals: we handle the details so organizers don’t have to.',
   },
   {
     icon: KeyRound,
     title: 'Extended-stay expertise',
-    body: 'We know every room type in our partner properties — which have kitchenettes, in-room workspace, and laundry that actually works for a month-long stay.',
+    body: 'We know every room type in our partner properties: which have kitchenettes, in-room workspace, and laundry that actually works for a month-long stay.',
   },
   {
     icon: MapPin,
     title: 'Local and accountable',
-    body: 'Based in the Milwaukee area, serving Southeast Wisconsin and Chicagoland. When something needs fixing, we’re a phone call away — not a call center.',
+    body: 'Based in the Milwaukee area, serving Southeast Wisconsin and Chicagoland. When something needs fixing, we’re a phone call away, not a call center.',
   },
 ]
 
@@ -113,7 +113,7 @@ export default function Home() {
           </h1>
 
           <p className="font-sans text-paper/80 text-base sm:text-lg max-w-2xl mt-6 leading-relaxed">
-            Stayvoo places guests into our partner hotels in the Milwaukee area — from a single travel nurse on a
+            Stayvoo places guests into our partner hotels in the Milwaukee area, from a single travel nurse on a
             13-week contract to a full team room block. One brief. One negotiated rate. One person who answers.
           </p>
 
@@ -161,7 +161,7 @@ export default function Home() {
               Two audiences. One dedicated agency.
             </h2>
             <p className="font-sans text-ink-muted text-base sm:text-lg mt-4 max-w-2xl mx-auto leading-relaxed">
-              Stayvoo doesn't own hotels. We're the intermediary — negotiating rates, handling the coordination, and
+              Stayvoo doesn't own hotels. We're the intermediary, negotiating rates, handling the coordination, and
               taking the back-and-forth off your desk.
             </p>
           </div>
@@ -170,14 +170,14 @@ export default function Home() {
               image="/images/nurse-card.webp"
               eyebrow="For travelers & assignees"
               title="Extended stay"
-              body="Weeks or months of comfortable hotel living at weekly and monthly rates — travel nursing contracts, project work, relocations, medical stays."
+              body="Weeks or months of comfortable hotel living at weekly and monthly rates: travel nursing contracts, project work, relocations, medical stays."
               href="/exclusive"
             />
             <FeatureCard
               image="/images/events-card.webp"
               eyebrow="For companies & organizers"
               title="Groups & corporate"
-              body="Room blocks for crews, sports teams, weddings, and events across Southeast Wisconsin and Chicagoland — with a single point of contact."
+              body="Room blocks for crews, sports teams, weddings, and events across Southeast Wisconsin and Chicagoland, with a single point of contact."
               href="/groups"
             />
           </div>
@@ -192,7 +192,7 @@ export default function Home() {
             The agency model, done right.
           </h2>
           <p className="font-sans text-ink-muted text-base sm:text-lg mt-4 leading-relaxed">
-            Independent and commission-based — the hotel pays us, you don't. Our job is making your stay work, not
+            Independent and commission-based: the hotel pays us, you don't. Our job is making your stay work, not
             selling you the most expensive room.
           </p>
         </div>

@@ -16,7 +16,7 @@ const BLOCKS_WE_HANDLE = [
   {
     icon: Trophy,
     title: 'Sports teams & tournaments',
-    body: 'Team blocks for weekend tournaments and traveling clubs — consistent room types and secure late arrivals.',
+    body: 'Team blocks for weekend tournaments and traveling clubs, consistent room types and secure late arrivals.',
   },
   {
     icon: CalendarDays,
@@ -36,14 +36,14 @@ const BLOCKS_WE_HANDLE = [
   {
     icon: HardHat,
     title: 'Crew housing',
-    body: 'Multi-week blocks for construction, utility, and production crews — one bill, one contact.',
+    body: 'Multi-week blocks for construction, utility, and production crews: one bill, one contact.',
   },
 ]
 
 export default function GroupBooking() {
   useDocumentMeta(
     'Group Hotel Bookings | Milwaukee Area & Chicagoland | Stayvoo',
-    'Room blocks for weddings, sports teams, conferences, and corporate travel — one coordinator, one negotiated rate, one consolidated bill, in the Milwaukee Area and Chicagoland.'
+    'Room blocks for weddings, sports teams, conferences, and corporate travel: one coordinator, one negotiated rate, one consolidated bill, in the Milwaukee Area and Chicagoland.'
   )
 
   return (
@@ -54,10 +54,10 @@ export default function GroupBooking() {
         <div>
           <SectionEyebrow>Groups & corporate</SectionEyebrow>
           <h1 className="font-serif font-bold text-navy text-4xl sm:text-5xl leading-tight mt-2">
-            Room blocks, rooming lists, and rate negotiation — off your desk.
+            Room blocks, rooming lists, and rate negotiation, off your desk.
           </h1>
           <p className="font-sans text-ink-muted text-base sm:text-lg mt-5 leading-relaxed">
-            We're a group reservation specialist for the Milwaukee area and Chicagoland. Ten rooms or fifty — we
+            We're a group reservation specialist for the Milwaukee area and Chicagoland. Ten rooms or fifty, we
             handle the rate, the rooming list, the late arrivals, and the single consolidated bill.
           </p>
           <Link
@@ -103,7 +103,7 @@ export default function GroupBooking() {
             <ChecklistItem>Booking code or reservation list for your guests</ChecklistItem>
             <ChecklistItem>Rooming list management and updates</ChecklistItem>
             <ChecklistItem>Change and cancellation handling</ChecklistItem>
-            <ChecklistItem>Consolidated invoicing — one clear bill</ChecklistItem>
+            <ChecklistItem>Consolidated invoicing: one clear bill</ChecklistItem>
             <ChecklistItem>On-call coordinator during the arrival window</ChecklistItem>
           </ul>
         </div>
@@ -113,7 +113,7 @@ export default function GroupBooking() {
       <section className="py-20">
         <CtaBanner
           heading="Have a block to place?"
-          body="Share the dates and headcount range. We'll return matched rooms and a negotiated rate — same-day response."
+          body="Share the dates and headcount range. We'll return matched rooms and a negotiated rate, same-day response."
           buttonLabel="Start a request"
           buttonHref="/contact"
         />

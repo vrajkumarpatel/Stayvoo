@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { BedDouble, Users } from 'lucide-react'
 
 interface Room {
   id?: string
@@ -37,13 +38,15 @@ export default function RoomCard({ room, hotelId, checkin, checkout }: Props) {
   return (
     <div className="bg-white rounded-2xl shadow-md hover:shadow-lg transition-shadow overflow-hidden flex flex-col">
       <div className="h-36 bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
-        <span className="text-5xl">🛏️</span>
+        <BedDouble className="w-10 h-10 text-slate-400" strokeWidth={1.5} />
       </div>
 
       <div className="p-5 flex flex-col flex-1">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="font-bold text-[#1e3a5f] text-lg">{room.name}</h3>
-          <span className="text-slate-500 text-sm whitespace-nowrap">👥 Max {room.max_guests}</span>
+          <h3 className="font-bold text-[#10192b] text-lg">{room.name}</h3>
+          <span className="text-slate-500 text-sm whitespace-nowrap flex items-center gap-1">
+            <Users className="w-3.5 h-3.5" /> Max {room.max_guests}
+          </span>
         </div>
 
         {room.description && (
@@ -61,7 +64,7 @@ export default function RoomCard({ room, hotelId, checkin, checkout }: Props) {
         <div className="mt-4 pt-4 border-t border-slate-100 flex items-end justify-between gap-3">
           <div>
             <div className="flex items-baseline gap-1">
-              <span className="text-[#1e3a5f] font-black text-2xl">${room.price_per_night}</span>
+              <span className="text-[#10192b] font-black text-2xl">${room.price_per_night}</span>
               <span className="text-slate-400 text-sm">/night</span>
             </div>
             {nights > 1 && (

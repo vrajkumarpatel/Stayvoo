@@ -1,26 +1,23 @@
 import { useNavigate, Link } from 'react-router-dom'
+import {
+  Car, Wifi, Waves, Dumbbell, Coffee, PawPrint, ClipboardList,
+  Briefcase, UtensilsCrossed, Wine, Stethoscope, Check, Star, Sparkles,
+  MapPin, Building2, type LucideIcon,
+} from 'lucide-react'
 
-const AMENITY_ICONS: Record<string, string> = {
-  'Free Parking': '🚗',
-  'Free WiFi': '📶',
-  'Pool': '🏊',
-  'Fitness Center': '🏋️',
-  'Free Breakfast': '🍳',
-  'Pet Friendly': '🐾',
-  'Gym': '🏋️',
-  'Meeting Rooms': '📋',
-  'Business Center': '💼',
-  'Restaurant': '🍽️',
-  'Bar': '🍸',
-  'Nearby Hospital': '🏥',
-}
-
-function Stars({ count }: { count: number }) {
-  return (
-    <span className="text-amber-400 text-sm">
-      {'★'.repeat(Math.floor(count))}{'☆'.repeat(5 - Math.floor(count))}
-    </span>
-  )
+const AMENITY_ICONS: Record<string, LucideIcon> = {
+  'Free Parking': Car,
+  'Free WiFi': Wifi,
+  'Pool': Waves,
+  'Fitness Center': Dumbbell,
+  'Free Breakfast': Coffee,
+  'Pet Friendly': PawPrint,
+  'Gym': Dumbbell,
+  'Meeting Rooms': ClipboardList,
+  'Business Center': Briefcase,
+  'Restaurant': UtensilsCrossed,
+  'Bar': Wine,
+  'Nearby Hospital': Stethoscope,
 }
 
 interface Hotel {
@@ -61,12 +58,12 @@ export default function HotelCard({ hotel, large = false, twoButton = false, vie
       className={`bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col group ${large ? 'min-h-[420px]' : 'min-h-[360px]'}`}
     >
       {/* Photo — placeholder until real hotel photos are uploaded */}
-      <div className="relative h-[200px] rounded-t-xl bg-[#1e3a5f] flex flex-col items-center justify-center overflow-hidden">
-        <div className="text-white text-6xl select-none">🏨</div>
-        <div className="text-white text-xs mt-2 select-none">Photo coming soon</div>
+      <div className="relative h-[200px] rounded-t-xl bg-[#10192b] flex flex-col items-center justify-center overflow-hidden">
+        <Building2 className="w-12 h-12 text-white/40" strokeWidth={1.5} />
+        <div className="text-white/60 text-xs mt-2 select-none">Photo coming soon</div>
         {(hotel.exclusive || twoButton) && (
           <div className="absolute top-3 left-3 flex items-center gap-1 bg-orange-500 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow">
-            ⭐ Extended Stay Specialist
+            <Star className="w-3 h-3 fill-current" /> Extended Stay Specialist
           </div>
         )}
         {hotel.rating && hotel.review_count && hotel.review_count > 0 ? (
@@ -74,8 +71,8 @@ export default function HotelCard({ hotel, large = false, twoButton = false, vie
             ★ {hotel.rating.toFixed(1)} <span className="text-white/70">({hotel.review_count})</span>
           </div>
         ) : hotel.exclusive ? (
-          <div className="absolute top-3 right-3 bg-white/90 text-[#1e3a5f] text-xs font-bold px-2.5 py-1 rounded-full shadow-sm">
-            ✨ New
+          <div className="absolute top-3 right-3 bg-white/90 text-[#10192b] text-xs font-bold px-2.5 py-1 rounded-full shadow-sm flex items-center gap-1">
+            <Sparkles className="w-3 h-3" /> New
           </div>
         ) : null}
       </div>
@@ -83,23 +80,25 @@ export default function HotelCard({ hotel, large = false, twoButton = false, vie
       {/* Content */}
       <div className="flex flex-col flex-1 p-5">
         <div className="flex-1">
-          <Stars count={hotel.star_rating} />
-          <h3 className="text-[#1e3a5f] font-bold text-lg leading-snug mt-1 group-hover:text-orange-500 transition-colors">
+          <h3 className="text-[#10192b] font-bold text-lg leading-snug group-hover:text-orange-500 transition-colors">
             {hotel.name}
           </h3>
           <p className="text-slate-500 text-sm mt-1 flex items-start gap-1">
-            <span>📍</span>
+            <MapPin className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
             <span>{hotel.address}</span>
           </p>
 
           {/* Amenities */}
           <div className="flex flex-wrap gap-2 mt-3">
-            {topAmenities.map(a => (
-              <span key={a} className="flex items-center gap-1 text-xs text-slate-600 bg-slate-100 px-2 py-1 rounded-full">
-                <span>{AMENITY_ICONS[a] ?? '✓'}</span>
-                <span>{a}</span>
-              </span>
-            ))}
+            {topAmenities.map(a => {
+              const Icon = AMENITY_ICONS[a] ?? Check
+              return (
+                <span key={a} className="flex items-center gap-1 text-xs text-slate-600 bg-slate-100 px-2 py-1 rounded-full">
+                  <Icon className="w-3.5 h-3.5" />
+                  <span>{a}</span>
+                </span>
+              )
+            })}
           </div>
         </div>
 
@@ -107,11 +106,14 @@ export default function HotelCard({ hotel, large = false, twoButton = false, vie
         {twoButton ? (
           <div className="mt-4 pt-4 border-t border-slate-100">
             <div className="flex flex-wrap gap-1.5 mb-3">
-              {['Monthly billing ✅', 'Flexible dates ✅', 'Free parking ✅', 'Welcome kit ✅'].map(tag => (
-                <span key={tag} className="text-xs text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full">{tag}</span>
+              {['Monthly billing', 'Flexible dates', 'Free parking', 'Welcome kit'].map(tag => (
+                <span key={tag} className="flex items-center gap-1 text-xs text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full">
+                  <Check className="w-3 h-3 text-green-600" />
+                  {tag}
+                </span>
               ))}
             </div>
-            <p className="text-xs text-slate-400 mb-3">In the Milwaukee Area — near Milwaukee · Kenosha · Chicago</p>
+            <p className="text-xs text-slate-400 mb-3">In the Milwaukee Area, near Milwaukee · Kenosha · Chicago</p>
             <Link
               to="/contact"
               className="w-full bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold py-2.5 px-4 rounded-xl transition-colors text-center block"
@@ -121,12 +123,12 @@ export default function HotelCard({ hotel, large = false, twoButton = false, vie
           </div>
         ) : viewOnly ? (
           <div className="mt-4 pt-4 border-t border-slate-100">
-            <p className="text-xs text-slate-400">In the Milwaukee Area — Waukesha & Brookfield, Wisconsin</p>
+            <p className="text-xs text-slate-400">In the Milwaukee Area, Waukesha & Brookfield, Wisconsin</p>
           </div>
         ) : (
           <div className="mt-4 pt-4 border-t border-slate-100">
             <div className="flex items-center gap-2 mb-3">
-              <span className="text-[#1e3a5f] font-black text-xl">${hotel.price_per_night}</span>
+              <span className="text-[#10192b] font-black text-xl">${hotel.price_per_night}</span>
               <span className="text-slate-400 text-sm">/night</span>
             </div>
             {hotel.exclusive ? (
@@ -139,7 +141,7 @@ export default function HotelCard({ hotel, large = false, twoButton = false, vie
             ) : (
               <button
                 onClick={handleClick}
-                className="w-full bg-[#1e3a5f] hover:bg-[#162d4a] text-white text-sm font-bold py-2.5 px-4 rounded-xl transition-colors"
+                className="w-full bg-[#10192b] hover:bg-[#0a1220] text-white text-sm font-bold py-2.5 px-4 rounded-xl transition-colors"
               >
                 View Rooms →
               </button>

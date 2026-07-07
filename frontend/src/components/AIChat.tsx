@@ -38,7 +38,7 @@ function isGroupInquiry(text: string): boolean {
 }
 
 const GREETING_TEXT =
-  `Hi! I'm Stayvo 🏨\nHotels in Waukesha from $110/night.\nWhich works for you?\n\n• Choice Hotels — $110/night\n• Wyndham Waukesha — $115/night\n• Wyndham Brookfield — $120/night\n\nOr ask me anything!`
+  `Hi! I'm Stayvo 🏨\nHotels in Waukesha from $110/night.\nWhich works for you?\n\n• Choice Hotels: $110/night\n• Wyndham Waukesha: $115/night\n• Wyndham Brookfield: $120/night\n\nOr ask me anything!`
 
 const QUICK_REPLIES = [
   { label: 'Cheapest Option', message: 'What is the cheapest option?' },
@@ -73,7 +73,7 @@ function BookingCardUI({ card }: { card: BookingCard }) {
       <div className="font-bold text-[#10192b] text-sm mb-2 flex items-center gap-1.5"><Building2 className="w-4 h-4" /> {card.hotelName}</div>
       <div className="flex flex-col gap-1 text-xs text-slate-600 mb-3">
         <div className="font-semibold text-base text-[#10192b]">From ${card.price}/night</div>
-        <div className="flex items-center gap-1.5 text-green-700"><CheckCircle2 className="w-3.5 h-3.5" /> Pay at hotel — no charge today</div>
+        <div className="flex items-center gap-1.5 text-green-700"><CheckCircle2 className="w-3.5 h-3.5" /> Pay at hotel, no charge today</div>
         <div className="flex items-center gap-1.5 text-orange-600"><Gift className="w-3.5 h-3.5" /> Welcome kit included</div>
       </div>
       <Link

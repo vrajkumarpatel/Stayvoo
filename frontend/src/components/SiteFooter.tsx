@@ -9,7 +9,7 @@ export default function SiteFooter() {
           <LogoFullWhite className="h-9 w-auto" />
           <p className="font-sans text-sm leading-relaxed max-w-xs">
             An extended-stay and group booking agency serving the Milwaukee area and Chicagoland. We match travelers
-            and organizations with the right partner hotel — from a single long stay to a multi-room block.
+            and organizations with the right partner hotel, from a single long stay to a multi-room block.
           </p>
         </div>
 

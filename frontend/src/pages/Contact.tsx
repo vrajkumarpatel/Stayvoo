@@ -63,7 +63,7 @@ export default function Contact() {
 
   useDocumentMeta(
     'Contact & Get a Quote | Stayvoo | Milwaukee Area & Chicagoland',
-    "Tell us your dates, headcount, and stay type — Stayvoo responds same-day with a negotiated rate for extended stays and group room blocks in the Milwaukee Area and Chicagoland."
+    "Tell us your dates, headcount, and stay type. Stayvoo responds same-day with a negotiated rate for extended stays and group room blocks in the Milwaukee Area and Chicagoland."
   )
 
   useEffect(() => {
@@ -123,10 +123,10 @@ export default function Contact() {
         length_of_stay,
         start_date,
         special_requirements: special_requirements || undefined,
-        source: 'website — contact page',
+        source: 'website - contact page',
         sms_consent: form.sms_consent,
       })
-      setSuccess({ ref: result.id?.slice(0, 8).toUpperCase() ?? '—', email: form.email })
+      setSuccess({ ref: result.id?.slice(0, 8).toUpperCase() ?? '-', email: form.email })
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -300,7 +300,7 @@ export default function Contact() {
               <a href="tel:+18883528151" className="hover:text-navy transition-colors">
                 +1 (888) 352-8151
               </a>
-              <p>Milwaukee Area &amp; Chicagoland — Serving all of Southeast Wisconsin</p>
+              <p>Milwaukee Area &amp; Chicagoland, Serving all of Southeast Wisconsin</p>
             </div>
           </div>
 

@@ -794,7 +794,7 @@ async def test_email(_: None = Depends(_verify_admin)):
         from_email=(from_email, "Stayvoo"),
         to_emails="vp431030@gmail.com",
         subject="Stayvoo Email Test",
-        html_content="<p>Test email from Stayvoo — SendGrid is working correctly!</p>",
+        html_content="<p>Test email from Stayvoo, SendGrid is working correctly!</p>",
     )
     try:
         sg = SendGridAPIClient(api_key)

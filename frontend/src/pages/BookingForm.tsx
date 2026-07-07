@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate, Link } from 'react-router-dom'
 import { loadStripe } from '@stripe/stripe-js'
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js'
 import { getHotel, createReservation, checkGuest } from '../lib/api'
+import { CheckCircle2, Building2, Frown, BedDouble } from 'lucide-react'
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string | undefined
 const stripePromise = PUBLISHABLE_KEY ? loadStripe(PUBLISHABLE_KEY) : null
@@ -25,7 +26,7 @@ const CARD_ELEMENT_OPTIONS = {
   style: {
     base: {
       fontSize: '14px',
-      color: '#1e293b',
+      color: '#241f1a',
       fontFamily: 'Arial, sans-serif',
       '::placeholder': { color: '#94a3b8' },
     },
@@ -246,7 +247,7 @@ function BookingFormInner({ hotel, room, checkin, checkout, total }: InnerProps)
         <div className="border border-slate-200 rounded-xl overflow-hidden">
           <div className="bg-slate-50 px-4 py-3 border-b border-slate-200">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-sm font-bold text-[#1e3a5f]">Hold Your Room — No Charge Today</span>
+              <span className="text-sm font-bold text-[#10192b]">Hold Your Room, No Charge Today</span>
               <div className="flex items-center gap-1.5 text-slate-400">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
@@ -255,7 +256,7 @@ function BookingFormInner({ hotel, room, checkin, checkout, total }: InnerProps)
               </div>
             </div>
             <p className="text-slate-500 text-xs leading-relaxed">
-              We save your card details to hold your room reservation. Your card will <strong>not be charged now</strong> — you pay the hotel directly at check-in. Card is only used if you no-show without cancelling (hotel policy).
+              We save your card details to hold your room reservation. Your card will <strong>not be charged now</strong>, you pay the hotel directly at check-in. Card is only used if you no-show without cancelling (hotel policy).
             </p>
           </div>
           <div className="px-4 py-3">
@@ -265,8 +266,8 @@ function BookingFormInner({ hotel, room, checkin, checkout, total }: InnerProps)
             />
           </div>
           <div className="bg-green-50 border-t border-green-100 px-4 py-2.5 flex items-center gap-2">
-            <span className="text-green-600 text-sm font-bold">✅ 100% Free to Reserve</span>
-            <span className="text-green-600 text-xs">— No charge until check-in</span>
+            <span className="text-green-600 text-sm font-bold flex items-center gap-1"><CheckCircle2 className="w-4 h-4" /> 100% Free to Reserve</span>
+            <span className="text-green-600 text-xs">No charge until check-in</span>
           </div>
         </div>
       )}
@@ -274,11 +275,11 @@ function BookingFormInner({ hotel, room, checkin, checkout, total }: InnerProps)
       {/* Trust badges */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="flex items-center gap-2 bg-green-50 border border-green-100 text-green-700 text-sm font-semibold px-4 py-3 rounded-xl flex-1">
-          <span>✅</span>
+          <CheckCircle2 className="w-4 h-4" />
           <span>Pay at hotel at check-in</span>
         </div>
         <div className="flex items-center gap-2 bg-green-50 border border-green-100 text-green-700 text-sm font-semibold px-4 py-3 rounded-xl flex-1">
-          <span>✅</span>
+          <CheckCircle2 className="w-4 h-4" />
           <span>No booking fees ever</span>
         </div>
       </div>
@@ -306,7 +307,7 @@ function BookingFormInner({ hotel, room, checkin, checkout, total }: InnerProps)
         disabled={submitting || !form.smsConsent || (stripePromise !== null && !cardComplete)}
         className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-black py-4 rounded-xl text-base transition-colors shadow-lg shadow-orange-200"
       >
-        {submitting ? 'Processing...' : `Confirm Booking — $${total.toFixed(0)} total`}
+        {submitting ? 'Processing...' : `Confirm Booking: $${total.toFixed(0)} total`}
       </button>
       <p className="text-slate-400 text-xs text-center">We'll confirm your reservation within 30 minutes via SMS</p>
     </form>
@@ -346,28 +347,28 @@ export default function BookingForm() {
   const total = room ? room.price_per_night * nights : 0
 
   if (loading) return (
-    <div className="min-h-screen pt-16 flex items-center justify-center bg-slate-50">
+    <div className="min-h-screen flex items-center justify-center bg-slate-50">
       <div className="text-center">
-        <div className="text-5xl animate-pulse mb-4">🏨</div>
+        <Building2 className="w-12 h-12 mx-auto animate-pulse mb-4 text-slate-300" strokeWidth={1.5} />
         <p className="text-slate-500">Loading booking details...</p>
       </div>
     </div>
   )
 
   if (error || !hotel || !room) return (
-    <div className="min-h-screen pt-16 flex items-center justify-center bg-slate-50">
+    <div className="min-h-screen flex items-center justify-center bg-slate-50">
       <div className="text-center">
-        <div className="text-5xl mb-4">😕</div>
-        <p className="text-[#1e3a5f] font-bold text-lg">{error ?? 'Unable to load booking details'}</p>
+        <Frown className="w-12 h-12 mx-auto mb-4 text-slate-300" strokeWidth={1.5} />
+        <p className="text-[#10192b] font-bold text-lg">{error ?? 'Unable to load booking details'}</p>
         <Link to="/" className="mt-4 inline-block text-orange-500 font-semibold hover:text-orange-600">← Back to Home</Link>
       </div>
     </div>
   )
 
   return (
-    <div className="min-h-screen bg-slate-50 pt-16">
+    <div className="min-h-screen bg-slate-50">
       {/* Header bar */}
-      <div className="bg-[#1e3a5f] py-6 px-4">
+      <div className="bg-[#10192b] py-6 px-4">
         <div className="max-w-4xl mx-auto flex items-center gap-3">
           <Link to={`/hotels/${hotel.id}`} className="text-white/60 hover:text-white text-sm">← Back</Link>
           <span className="text-white/30">/</span>
@@ -380,7 +381,7 @@ export default function BookingForm() {
 
           {/* Left: Form */}
           <div className="lg:col-span-3">
-            <h1 className="text-[#1e3a5f] font-black text-2xl mb-6">Guest Details</h1>
+            <h1 className="text-[#10192b] font-black text-2xl mb-6">Guest Details</h1>
 
             {stripePromise ? (
               <Elements stripe={stripePromise}>
@@ -406,34 +407,34 @@ export default function BookingForm() {
           {/* Right: Booking summary */}
           <div className="lg:col-span-2">
             <div className="sticky top-24">
-              <h2 className="text-[#1e3a5f] font-bold text-lg mb-4">Booking Summary</h2>
+              <h2 className="text-[#10192b] font-bold text-lg mb-4">Booking Summary</h2>
               <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-                <div className="h-36 bg-gradient-to-br from-[#1e3a5f] to-[#2a4f7c] flex items-center justify-center">
-                  <span className="text-6xl opacity-30">🏨</span>
+                <div className="h-36 bg-gradient-to-br from-[#10192b] to-[#1c3350] flex items-center justify-center">
+                  <Building2 className="w-14 h-14 opacity-30 text-white" strokeWidth={1.5} />
                 </div>
                 <div className="p-5 flex flex-col gap-4">
                   <div>
-                    <p className="text-[#1e3a5f] font-black text-lg leading-tight">{hotel.name}</p>
+                    <p className="text-[#10192b] font-black text-lg leading-tight">{hotel.name}</p>
                     <p className="text-slate-500 text-sm mt-0.5">{hotel.address}</p>
                   </div>
 
                   <div className="flex items-center gap-2 bg-orange-50 rounded-xl px-3 py-2">
-                    <span className="text-orange-500 text-sm">🛏️</span>
-                    <span className="text-[#1e3a5f] font-semibold text-sm">{room.name}</span>
+                    <BedDouble className="w-4 h-4 text-orange-500" />
+                    <span className="text-[#10192b] font-semibold text-sm">{room.name}</span>
                   </div>
 
                   <div className="flex flex-col gap-2 text-sm">
                     <div className="flex justify-between text-slate-600">
                       <span>Check-in</span>
-                      <span className="font-semibold text-[#1e3a5f]">{checkin}</span>
+                      <span className="font-semibold text-[#10192b]">{checkin}</span>
                     </div>
                     <div className="flex justify-between text-slate-600">
                       <span>Check-out</span>
-                      <span className="font-semibold text-[#1e3a5f]">{checkout}</span>
+                      <span className="font-semibold text-[#10192b]">{checkout}</span>
                     </div>
                     <div className="flex justify-between text-slate-600">
                       <span>Duration</span>
-                      <span className="font-semibold text-[#1e3a5f]">{nights} {nights === 1 ? 'night' : 'nights'}</span>
+                      <span className="font-semibold text-[#10192b]">{nights} {nights === 1 ? 'night' : 'nights'}</span>
                     </div>
                   </div>
 
@@ -449,8 +450,8 @@ export default function BookingForm() {
                   </div>
 
                   <div className="border-t border-slate-200 pt-3 flex justify-between items-center">
-                    <span className="text-[#1e3a5f] font-bold">Total</span>
-                    <span className="text-[#1e3a5f] font-black text-2xl">${total.toFixed(0)}</span>
+                    <span className="text-[#10192b] font-bold">Total</span>
+                    <span className="text-[#10192b] font-black text-2xl">${total.toFixed(0)}</span>
                   </div>
 
                   <p className="text-slate-400 text-xs text-center">Due at hotel · No charge today</p>

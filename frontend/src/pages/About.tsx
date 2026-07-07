@@ -61,7 +61,7 @@ export default function About() {
           </div>
           <div className="flex flex-col gap-5">
             <p className="font-sans text-ink-muted text-[15px] leading-relaxed">
-              Every booking gets one coordinator, start to finish — from first brief through the final invoice.
+              Every booking gets one coordinator, start to finish, from first brief through the final invoice.
               You'll have a direct number, and the person who answers will already know your reservation.
             </p>
             <p className="font-sans text-ink-muted text-[15px] leading-relaxed">
@@ -70,7 +70,7 @@ export default function About() {
               show.
             </p>
             <p className="font-sans text-ink-muted text-[15px] leading-relaxed">
-              Terms are spelled out in plain language before you commit — rates, changes, and cancellation, up front.
+              Terms are spelled out in plain language before you commit: rates, changes, and cancellation, up front.
               No surprises on the bill.
             </p>
           </div>

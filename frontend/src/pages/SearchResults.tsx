@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
+import { Frown, Building2 } from 'lucide-react'
 import HotelCard from '../components/HotelCard'
 import SearchBar from '../components/SearchBar'
 import { searchHotels } from '../lib/api'
@@ -35,7 +36,7 @@ export default function SearchResults() {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Search bar header */}
-      <div className="bg-[#1e3a5f] py-8 px-4">
+      <div className="bg-[#10192b] py-8 px-4">
         <div className="max-w-6xl mx-auto">
           <SearchBar inline />
         </div>
@@ -64,7 +65,7 @@ export default function SearchResults() {
         {!loading && !error && meta && (
           <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
             <div>
-              <h1 className="text-[#1e3a5f] font-black text-2xl">
+              <h1 className="text-[#10192b] font-black text-2xl">
                 {meta.total ?? results.length} Hotels Available
               </h1>
               <p className="text-slate-500 text-sm mt-0.5">
@@ -89,7 +90,7 @@ export default function SearchResults() {
 
         {error && (
           <div className="bg-red-50 border border-red-100 rounded-2xl p-8 text-center">
-            <div className="text-4xl mb-3">😕</div>
+            <Frown className="w-9 h-9 mx-auto mb-3 text-red-300" strokeWidth={1.5} />
             <p className="text-red-600 font-semibold">{error}</p>
             <Link to="/" className="mt-4 inline-block text-orange-500 font-semibold hover:text-orange-600">← Back to Home</Link>
           </div>
@@ -97,8 +98,8 @@ export default function SearchResults() {
 
         {!loading && !error && results.length === 0 && (
           <div className="bg-white rounded-2xl p-12 text-center shadow-sm">
-            <div className="text-5xl mb-4">🏨</div>
-            <h2 className="text-[#1e3a5f] font-bold text-xl">No hotels found</h2>
+            <Building2 className="w-11 h-11 mx-auto mb-4 text-slate-300" strokeWidth={1.5} />
+            <h2 className="text-[#10192b] font-bold text-xl">No hotels found</h2>
             <p className="text-slate-500 mt-2">Try different dates or fewer guests.</p>
             <Link to="/" className="mt-5 inline-block bg-orange-500 text-white font-bold px-6 py-2.5 rounded-xl hover:bg-orange-600 transition-colors">← New Search</Link>
           </div>
@@ -109,7 +110,7 @@ export default function SearchResults() {
             {/* Exclusive hotels first */}
             {results.some((h: any) => h.exclusive) && (
               <div className="mb-10">
-                <h2 className="text-[#1e3a5f] font-bold text-lg mb-4 flex items-center gap-2">
+                <h2 className="text-[#10192b] font-bold text-lg mb-4 flex items-center gap-2">
                   <span>⭐</span> Exclusive Partner Hotels
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -123,7 +124,7 @@ export default function SearchResults() {
             {/* Other hotels */}
             {results.some((h: any) => !h.exclusive) && (
               <div>
-                <h2 className="text-[#1e3a5f] font-bold text-lg mb-4">Other Options Nearby</h2>
+                <h2 className="text-[#10192b] font-bold text-lg mb-4">Other Options Nearby</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {results.filter((h: any) => !h.exclusive).map((h: any) => (
                     <HotelCard key={h.id ?? h.hotel_id} hotel={h} />

@@ -51,11 +51,11 @@ def _booking_summary_rows(b: dict) -> str:
     hotel = b.get("hotel") or {}
     room = b.get("room") or {}
     rows = [
-        ("Hotel", hotel.get("name", "—")),
-        ("Room", room.get("name", "—")),
-        ("Check-in", b.get("checkin_date", "—")),
-        ("Check-out", b.get("checkout_date", "—")),
-        ("Nights", str(b.get("nights", "—"))),
+        ("Hotel", hotel.get("name", "-")),
+        ("Room", room.get("name", "-")),
+        ("Check-in", b.get("checkin_date", "-")),
+        ("Check-out", b.get("checkout_date", "-")),
+        ("Nights", str(b.get("nights", "-"))),
         ("Total", f"${float(b.get('total_amount', 0)):.0f} (due at hotel)"),
     ]
     html = ""
@@ -82,7 +82,7 @@ def _send_sync(to_email: str, subject: str, html: str) -> None:
     api_key = os.getenv("SENDGRID_API_KEY")
     from_email = os.getenv("SENDGRID_FROM_EMAIL", FROM_EMAIL)
     if not api_key:
-        logger.warning("SENDGRID_API_KEY not set — skipping email to %s", to_email)
+        logger.warning("SENDGRID_API_KEY not set, skipping email to %s", to_email)
         return
     message = Mail(
         from_email=(from_email, FROM_NAME),
@@ -139,7 +139,7 @@ async def send_booking_received(b: dict) -> None:
       </p>
     </div>
     {portal_block}"""
-    await _send(to_email, f"Booking Request Received — {ref}", _base_html("Booking Received", body))
+    await _send(to_email, f"Booking Request Received: {ref}", _base_html("Booking Received", body))
 
 
 async def send_booking_confirmed(b: dict) -> None:
@@ -149,7 +149,7 @@ async def send_booking_confirmed(b: dict) -> None:
         return
     first = guest.get("first_name", "there")
     ref = b.get("booking_ref", "")
-    pms = b.get("pms_confirmation") or "—"
+    pms = b.get("pms_confirmation") or "-"
     hotel = b.get("hotel") or {}
     nights = int(b.get("nights") or 0)
     portal_url = b.get("portal_url")
@@ -160,7 +160,7 @@ async def send_booking_confirmed(b: dict) -> None:
       <a href="{portal_url}" style="display:inline-block;background:{ACCENT_COLOR};color:#fff;font-size:14px;font-weight:700;text-decoration:none;padding:12px 28px;border-radius:8px;">
         View My Reservations →
       </a>
-      <p style="margin:6px 0 0;color:#94a3b8;font-size:11px;">Bookmark this link — it's your personal stay portal</p>
+      <p style="margin:6px 0 0;color:#94a3b8;font-size:11px;">Bookmark this link, it's your personal stay portal</p>
     </div>"""
     welcome_kit_block = ""
     if nights >= 7:
@@ -195,7 +195,7 @@ async def send_booking_confirmed(b: dict) -> None:
     </table>
     {welcome_kit_block}
     {portal_block}"""
-    await _send(to_email, f"Confirmed! Your Stay at {hotel.get('name', 'Hotel')} — {ref}", _base_html("Booking Confirmed", body))
+    await _send(to_email, f"Confirmed! Your Stay at {hotel.get('name', 'Hotel')}: {ref}", _base_html("Booking Confirmed", body))
 
 
 async def send_pre_arrival_email(b: dict) -> None:
@@ -224,17 +224,17 @@ async def send_pre_arrival_email(b: dict) -> None:
       <li>Standard check-in is 3PM (early check-in subject to availability)</li>
       <li>Bring a photo ID and the card you'll use to cover incidentals</li>
       {welcome_kit_reminder}
-      <li>Free parking on site — no validation needed</li>
+      <li>Free parking on site, no validation needed</li>
     </ul>
     <table width="100%" cellpadding="0" cellspacing="0">
       {_booking_summary_rows(b)}
     </table>
     <div style="margin-top:24px;padding:14px 20px;background:#f8fafc;border-radius:10px;border-left:4px solid {ACCENT_COLOR};">
       <p style="margin:0;color:#475569;font-size:13px;">
-        Questions or changes? Call or text <strong>{SUPPORT_PHONE}</strong> — we reply fast.
+        Questions or changes? Call or text <strong>{SUPPORT_PHONE}</strong>, we reply fast.
       </p>
     </div>"""
-    await _send(to_email, f"Your Stay at {hotel.get('name', 'Hotel')} is Tomorrow — Ref {ref}", _base_html("Pre-Arrival Reminder", body))
+    await _send(to_email, f"Your Stay at {hotel.get('name', 'Hotel')} is Tomorrow: Ref {ref}", _base_html("Pre-Arrival Reminder", body))
 
 
 async def send_post_stay_email(b: dict) -> None:
@@ -254,7 +254,7 @@ async def send_post_stay_email(b: dict) -> None:
     <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:20px;margin-bottom:20px;text-align:center;">
       <p style="margin:0 0 8px;color:{BRAND_COLOR};font-size:15px;font-weight:700;">How was your stay?</p>
       <p style="margin:0;color:#475569;font-size:13px;">
-        Reply to this email or call <strong>{SUPPORT_PHONE}</strong> — your feedback helps us serve you better next time.
+        Reply to this email or call <strong>{SUPPORT_PHONE}</strong>, your feedback helps us serve you better next time.
       </p>
     </div>
     <table width="100%" cellpadding="0" cellspacing="0">
@@ -263,10 +263,10 @@ async def send_post_stay_email(b: dict) -> None:
     <div style="margin-top:24px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:16px;text-align:center;">
       <p style="margin:0;color:{BRAND_COLOR};font-size:14px;font-weight:700;">Coming back to Waukesha soon?</p>
       <p style="margin:6px 0 0;color:#475569;font-size:13px;">
-        Visit <a href="https://stayvoo.com" style="color:{ACCENT_COLOR};font-weight:600;">stayvoo.com</a> — we'll get you the best rate every time.
+        Visit <a href="https://stayvoo.com" style="color:{ACCENT_COLOR};font-weight:600;">stayvoo.com</a>, we'll get you the best rate every time.
       </p>
     </div>"""
-    await _send(to_email, f"Thanks for staying with Stayvoo — {ref}", _base_html("Post-Stay Thank You", body))
+    await _send(to_email, f"Thanks for staying with Stayvoo: {ref}", _base_html("Post-Stay Thank You", body))
 
 
 async def send_inquiry_notification(inq: dict) -> None:
@@ -288,12 +288,12 @@ async def send_inquiry_notification(inq: dict) -> None:
     <table width="100%" cellpadding="0" cellspacing="0">
       {"".join(f'<tr><td style="padding:7px 0;color:#64748b;font-size:14px;border-bottom:1px solid #f1f5f9;width:40%;">{lbl}</td><td style="padding:7px 0;color:{BRAND_COLOR};font-size:14px;font-weight:600;border-bottom:1px solid #f1f5f9;">{val}</td></tr>' for lbl, val in [
         ("Name", f"{first} {last}"),
-        ("Email", inq.get("email", "—")),
-        ("Phone", inq.get("phone", "—")),
-        ("Guest Type", inq.get("guest_type", "—")),
-        ("Rooms Needed", str(inq.get("num_rooms", "—"))),
-        ("Length of Stay", inq.get("length_of_stay", "—")),
-        ("Start Date", str(inq.get("start_date", "—"))),
+        ("Email", inq.get("email", "-")),
+        ("Phone", inq.get("phone", "-")),
+        ("Guest Type", inq.get("guest_type", "-")),
+        ("Rooms Needed", str(inq.get("num_rooms", "-"))),
+        ("Length of Stay", inq.get("length_of_stay", "-")),
+        ("Start Date", str(inq.get("start_date", "-"))),
         ("Hotel Preference", inq.get("hotel_preference") or "No preference"),
         ("Special Requirements", inq.get("special_requirements") or "None"),
       ])}
@@ -304,7 +304,7 @@ async def send_inquiry_notification(inq: dict) -> None:
         View in admin: <a href="https://stayvoo.com/admin" style="color:{ACCENT_COLOR};">stayvoo.com/admin</a>
       </p>
     </div>"""
-    await _send(to_email, f"New Extended Stay Inquiry — {guest_type}", _base_html("New Inquiry", body))
+    await _send(to_email, f"New Extended Stay Inquiry: {guest_type}", _base_html("New Inquiry", body))
 
 
 async def send_inquiry_auto_reply(inq: dict) -> None:
@@ -338,17 +338,17 @@ async def send_inquiry_auto_reply(inq: dict) -> None:
     <h3 style="margin:0 0 8px;color:{BRAND_COLOR};font-size:15px;">Your Inquiry Details:</h3>
     <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
       {"".join(f'<tr><td style="padding:7px 0;color:#64748b;font-size:14px;border-bottom:1px solid #f1f5f9;width:40%;">{lbl}</td><td style="padding:7px 0;color:{BRAND_COLOR};font-size:14px;font-weight:600;border-bottom:1px solid #f1f5f9;">{val}</td></tr>' for lbl, val in [
-        ("Guest Type", inq.get("guest_type", "—")),
-        ("Rooms Needed", str(inq.get("num_rooms", "—"))),
-        ("Length of Stay", inq.get("length_of_stay", "—")),
-        ("Start Date", str(inq.get("start_date", "—"))),
+        ("Guest Type", inq.get("guest_type", "-")),
+        ("Rooms Needed", str(inq.get("num_rooms", "-"))),
+        ("Length of Stay", inq.get("length_of_stay", "-")),
+        ("Start Date", str(inq.get("start_date", "-"))),
       ])}
     </table>
     <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px;text-align:center;">
       <p style="margin:0;color:#166534;font-size:14px;">
         Questions? Call or text us: <strong><a href="tel:{SUPPORT_PHONE}" style="color:{BRAND_COLOR};">{SUPPORT_PHONE}</a></strong>
       </p>
-      <p style="margin:6px 0 0;color:#166534;font-size:13px;">We look forward to hosting you! — Stayvoo Team</p>
+      <p style="margin:6px 0 0;color:#166534;font-size:13px;">We look forward to hosting you! Stayvoo Team</p>
     </div>"""
     portal_url = inq.get("portal_url")
     if portal_url:
@@ -378,7 +378,7 @@ async def send_admin_message(inq: dict, message_text: str) -> None:
       <p style="margin:0;color:#9a3412;font-size:14px;">
         Reply to this email or call <strong><a href="tel:{SUPPORT_PHONE}" style="color:{BRAND_COLOR};">{SUPPORT_PHONE}</a></strong>
       </p>
-      <p style="margin:6px 0 0;color:#9a3412;font-size:13px;">— Stayvoo Team</p>
+      <p style="margin:6px 0 0;color:#9a3412;font-size:13px;">Stayvoo Team</p>
     </div>"""
     await _send(to_email, f"Re: Your Stayvoo Inquiry INQ-{inq_id}", _base_html("Message from Stayvoo", body))
 
@@ -404,7 +404,7 @@ async def send_stay_expiry_reminder(stay: dict) -> None:
       <p style="margin:0;color:#1d4ed8;font-size:14px;font-weight:600;">Need to extend your stay?</p>
       <p style="margin:6px 0 0;color:#1e40af;font-size:13px;">
         Call or text us at <strong><a href="tel:{SUPPORT_PHONE}" style="color:{BRAND_COLOR};">{SUPPORT_PHONE}</a></strong>
-        or reply to this email — we'll check availability and lock in your extension.
+        or reply to this email, we'll check availability and lock in your extension.
       </p>
     </div>"""
     await _send(to_email, f"Your stay at {hotel_name} ends in 14 days", _base_html("Stay Expiry Reminder", body))
@@ -454,7 +454,7 @@ async def send_hotel_invoice_email(hotel_name: str, hotel_email: str, month: str
       Questions? Email <a href="mailto:hello@stayvoo.com" style="color:{ACCENT_COLOR};">hello@stayvoo.com</a>
       or call <strong>{SUPPORT_PHONE}</strong>.
     </p>"""
-    await _send(hotel_email, f"Stayvoo Commission Invoice — {month}", _base_html("Monthly Invoice", body))
+    await _send(hotel_email, f"Stayvoo Commission Invoice: {month}", _base_html("Monthly Invoice", body))
 
 
 async def send_guest_login_email(guest: dict, portal_url: str) -> None:
@@ -510,7 +510,7 @@ async def send_stay_message_to_guest(
         Or call us at <strong><a href="tel:{SUPPORT_PHONE}" style="color:{BRAND_COLOR};">{SUPPORT_PHONE}</a></strong>
       </p>
     </div>"""
-    await _send(to_email, f"Message from Stayvoo — {hotel_name}", _base_html("Message from Stayvoo", body))
+    await _send(to_email, f"Message from Stayvoo: {hotel_name}", _base_html("Message from Stayvoo", body))
 
 
 async def send_guest_message_alert(
@@ -521,7 +521,7 @@ async def send_guest_message_alert(
     record_id: str,
 ) -> None:
     to_email = os.getenv("SENDGRID_FROM_EMAIL", "hello@stayvoo.com")
-    short_id = record_id[:8].upper() if record_id else "—"
+    short_id = record_id[:8].upper() if record_id else "-"
     body = f"""
     <h2 style="margin:0 0 16px;color:{BRAND_COLOR};font-size:20px;font-weight:900;">
       Guest Message Received
@@ -530,7 +530,7 @@ async def send_guest_message_alert(
       <p style="margin:0;color:{ACCENT_COLOR};font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">
         From: {guest_name} ({guest_email})
       </p>
-      <p style="margin:4px 0 0;color:#9a3412;font-size:12px;">{record_type.upper()} — {short_id}</p>
+      <p style="margin:4px 0 0;color:#9a3412;font-size:12px;">{record_type.upper()}: {short_id}</p>
     </div>
     <div style="background:#f8fafc;border-left:4px solid {BRAND_COLOR};border-radius:0 10px 10px 0;padding:16px 20px;margin-bottom:16px;">
       <p style="margin:0;color:#1e293b;font-size:15px;line-height:1.6;">{message_text}</p>
@@ -538,16 +538,16 @@ async def send_guest_message_alert(
     <p style="margin:0;color:#64748b;font-size:13px;">
       Reply via the admin panel: <a href="https://stayvoo.com/admin" style="color:{ACCENT_COLOR};">stayvoo.com/admin</a>
     </p>"""
-    await _send(to_email, f"Guest Message — {guest_name}", _base_html("Guest Message", body))
+    await _send(to_email, f"Guest Message: {guest_name}", _base_html("Guest Message", body))
 
 
 def _res_summary_rows(r: dict) -> str:
     rows = [
-        ("Hotel", r.get("hotel_name_snapshot", "—")),
-        ("Room", r.get("room_type_snapshot", "—")),
-        ("Check-in", r.get("checkin_date", "—")),
-        ("Check-out", r.get("checkout_date", "—")),
-        ("Nights", str(r.get("nights", "—"))),
+        ("Hotel", r.get("hotel_name_snapshot", "-")),
+        ("Room", r.get("room_type_snapshot", "-")),
+        ("Check-in", r.get("checkin_date", "-")),
+        ("Check-out", r.get("checkout_date", "-")),
+        ("Nights", str(r.get("nights", "-"))),
         ("Total", f"${float(r.get('total_amount', 0)):.0f} (due at hotel)"),
     ]
     html = ""
@@ -596,7 +596,7 @@ async def send_reservation_received(r: dict) -> None:
       </p>
     </div>
     {portal_block}"""
-    await _send(to_email, f"Booking Request Received — {ref}", _base_html("Booking Received", body))
+    await _send(to_email, f"Booking Request Received: {ref}", _base_html("Booking Received", body))
 
 
 async def send_reservation_confirmed(r: dict) -> None:
@@ -605,7 +605,7 @@ async def send_reservation_confirmed(r: dict) -> None:
         return
     first = r.get("guest_first_name", "there")
     ref = r.get("reservation_ref", "")
-    pms = r.get("pms_confirmation") or "—"
+    pms = r.get("pms_confirmation") or "-"
     hotel_name = r.get("hotel_name_snapshot", "Hotel")
     nights = int(r.get("nights") or 0)
     portal_url = r.get("portal_url")
@@ -616,7 +616,7 @@ async def send_reservation_confirmed(r: dict) -> None:
       <a href="{portal_url}" style="display:inline-block;background:{ACCENT_COLOR};color:#fff;font-size:14px;font-weight:700;text-decoration:none;padding:12px 28px;border-radius:8px;">
         View My Reservations →
       </a>
-      <p style="margin:6px 0 0;color:#94a3b8;font-size:11px;">Bookmark this link — it's your personal stay portal</p>
+      <p style="margin:6px 0 0;color:#94a3b8;font-size:11px;">Bookmark this link, it's your personal stay portal</p>
     </div>"""
     welcome_kit_block = ""
     if nights >= 7:
@@ -652,7 +652,7 @@ async def send_reservation_confirmed(r: dict) -> None:
     </table>
     {welcome_kit_block}
     {portal_block}"""
-    await _send(to_email, f"Confirmed! Your Stay at {hotel_name} — {ref}", _base_html("Booking Confirmed", body))
+    await _send(to_email, f"Confirmed! Your Stay at {hotel_name}: {ref}", _base_html("Booking Confirmed", body))
 
 
 async def send_reservation_cancelled(r: dict) -> None:
@@ -663,7 +663,7 @@ async def send_reservation_cancelled(r: dict) -> None:
     ref = r.get("reservation_ref", "")
     hotel_name = r.get("hotel_name_snapshot", "Hotel")
     body = f"""
-    <h2 style="margin:0 0 6px;color:{BRAND_COLOR};font-size:20px;font-weight:900;">Reservation Cancelled — {ref}</h2>
+    <h2 style="margin:0 0 6px;color:{BRAND_COLOR};font-size:20px;font-weight:900;">Reservation Cancelled: {ref}</h2>
     <p style="margin:0 0 20px;color:#475569;font-size:15px;line-height:1.6;">
       Hi {first}, your reservation at <strong>{hotel_name}</strong> has been cancelled.
       No charge was made to your card.
@@ -679,7 +679,7 @@ async def send_reservation_cancelled(r: dict) -> None:
         or call <strong>{SUPPORT_PHONE}</strong>.
       </p>
     </div>"""
-    await _send(to_email, f"Reservation Cancelled — {ref} | {hotel_name}", _base_html("Reservation Cancelled", body))
+    await _send(to_email, f"Reservation Cancelled: {ref} | {hotel_name}", _base_html("Reservation Cancelled", body))
 
 
 async def send_invoice_email(b: dict) -> None:
@@ -704,7 +704,7 @@ async def send_invoice_email(b: dict) -> None:
       </tr>
       <tr>
         <td style="padding:10px 12px;font-size:14px;color:#475569;border:1px solid #e2e8f0;">
-          {hotel.get('name', '')} — {room.get('name', '')}<br>
+          {hotel.get('name', '')}, {room.get('name', '')}<br>
           <span style="color:#94a3b8;font-size:12px;">{b.get('checkin_date')} → {b.get('checkout_date')} · {nights} night{'s' if nights != 1 else ''} × ${rate:.0f}/night</span>
         </td>
         <td style="padding:10px 12px;font-size:14px;color:#475569;border:1px solid #e2e8f0;text-align:right;">${total:.2f}</td>
@@ -722,4 +722,4 @@ async def send_invoice_email(b: dict) -> None:
       Payment was collected directly by {hotel.get('name', 'the hotel')} at check-in.
       This document is for your records only.
     </p>"""
-    await _send(to_email, f"Stayvoo Invoice — {ref}", _base_html("Invoice", body))
+    await _send(to_email, f"Stayvoo Invoice: {ref}", _base_html("Invoice", body))
