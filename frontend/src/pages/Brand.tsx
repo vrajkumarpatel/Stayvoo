@@ -126,7 +126,7 @@ export default function Brand() {
           <section className="border-t border-slate-300 pt-8">
             <h2 className="text-xl font-semibold mb-1" style={{ color: NAVY }}>Wordmark</h2>
             <p className="text-slate-500 mb-6 max-w-2xl">
-              Libre Baskerville Bold + IBM Plex Sans Medium tagline, paths only. Roofline is a single stroke path — shallow rise, off-center peak, chimney notch on the descent — reused identically in the monogram below.
+              Libre Baskerville Bold + IBM Plex Sans Medium tagline, paths only. Roofline is a single stroke path — steep ~27° rise to an off-center peak, chimney notch on the shallower descent, tapered pen-stroke tips at both eaves — reused identically in the monogram below.
             </p>
             <div className="flex flex-wrap gap-10">
               <Swatch bg={PAPER} src="/brand/logo-full.svg" size={140} sizeLabel="full size — light bg" />

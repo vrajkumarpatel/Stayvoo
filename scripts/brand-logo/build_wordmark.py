@@ -14,7 +14,7 @@ TAG_TRACK_UNITS = 120
 TAG_GAP_BELOW_DESCENDER = 130
 PAD = 60
 
-STROKE_WEIGHT = 0.6 * o_wall_thickness(bask)
+STROKE_WEIGHT = 0.475 * o_wall_thickness(bask)
 
 
 def word_positions():
@@ -45,8 +45,7 @@ def roofline_for_oo(o1_origin, o2_origin):
     right = o2_origin + o_ink[2]
     top_of_o = o_ink[3]
     o_height = o_ink[3] - o_ink[1]
-    d, span_left, span_right, peak_y, base_y = pitched_roofline_path(left, right, top_of_o, o_height)
-    return d, span_left, span_right, peak_y, base_y
+    return pitched_roofline_path(left, right, top_of_o, o_height, STROKE_WEIGHT)
 
 
 def tagline_paths_and_metrics():
@@ -91,20 +90,20 @@ def build(with_tagline, dark):
     o2_origin = positions[6]["x"]
 
     body_xml = normal_glyph_paths(positions, skip_indices=set())
-    roof_d, span_left, span_right, peak_y, base_y = roofline_for_oo(o1_origin, o2_origin)
+    roof = roofline_for_oo(o1_origin, o2_origin)
 
     s_ink = glyph_ink_bbox(bask, "S")
     word_left_ink = positions[0]["x"] + s_ink[0]
     last_o_right = positions[6]["x"] + glyph_ink_bbox(bask, "o")[2]
     word_bottom_desc = -260.0
-    word_top = max(780.0, peak_y + STROKE_WEIGHT / 2.0)
+    word_top = max(780.0, roof["peak_y"] + STROKE_WEIGHT / 2.0)
 
     word_color = PAPER if dark else NAVY
     tag_color = PAPER if dark else ACCENT
     tag_opacity = "0.7" if dark else "1"
 
-    content_left = min(word_left_ink, span_left)
-    content_right = max(last_o_right, span_right)
+    content_left = min(word_left_ink, roof["visual_left"])
+    content_right = max(last_o_right, roof["visual_right"])
 
     if with_tagline:
         tag_xml, tag_left_ink, tag_right_ink, cap_top_local = tagline_paths_and_metrics()
@@ -134,7 +133,11 @@ def build(with_tagline, dark):
 <g fill="{word_color}">
 {chr(10).join(body_xml)}
 </g>
-<path d="{roof_d}" fill="none" stroke="{BRAND_ORANGE}" stroke-width="{STROKE_WEIGHT:.2f}" stroke-linecap="butt" stroke-linejoin="miter"/>
+<g fill="{BRAND_ORANGE}">
+<path d="{roof['main_d']}" fill="none" stroke="{BRAND_ORANGE}" stroke-width="{STROKE_WEIGHT:.2f}" stroke-linecap="butt" stroke-linejoin="miter"/>
+<path d="{roof['left_taper_d']}"/>
+<path d="{roof['right_taper_d']}"/>
+</g>
 {tag_block}</g>
 </svg>
 '''

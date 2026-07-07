@@ -164,16 +164,24 @@ def bbox_of(pts):
 
 
 def pitched_roofline_path(
-    left, right, top_of_o, o_height,
-    eave_ratio=0.08, gap_ratio=0.12, peak_rise_ratio=0.475, peak_offset_ratio=0.06,
-    chimney_t=0.42, chimney_w_ratio=0.09, chimney_h_ratio=0.20, include_chimney=True,
+    left, right, top_of_o, o_height, stroke_weight,
+    eave_ratio=0.08, gap_ratio=0.12, peak_rise_ratio=0.68, peak_offset_ratio=0.08,
+    chimney_t=0.42, chimney_w_ratio=0.09, chimney_h_of_peak_ratio=0.25,
+    include_chimney=True, taper_len_mult=2.4,
 ):
-    """Single source of truth for the roofline: an OPEN (stroke-only) path.
-    Shallow rise from the left eave to an off-center peak (slightly left of the oo
-    gap), then descends to the right eave; a small rectangular chimney notch
-    (up/across/down) sits on the descending slope unless include_chimney=False
-    (used for the 16px favicon cut, where the notch doesn't survive).
-    Returns (d, span_left, span_right, peak_y, base_y).
+    """Single source of truth for the roofline.
+
+    A steep, confident rise from the left eave to an off-center peak (slightly
+    left of the oo gap, ~27deg), a shallower descent to the right eave with a
+    small rectangular chimney notch (up/across/down, sized off peak height)
+    unless include_chimney=False (16px favicon cut, where the notch doesn't
+    survive). The main line is a plain stroke (fill:none) — plain SVG strokes
+    can't taper, so the two eave ends get small solid-filled triangular caps
+    in the same color that extend the stroke's flat butt-cap into a fine
+    point, faking a brush/pen taper without any gradient or opacity trick.
+
+    Returns a dict: main_d, left_taper_d, right_taper_d, span_left, span_right,
+    visual_left, visual_right (span extended by the taper tips), peak_y, base_y.
     """
     span = right - left
     eave = eave_ratio * span
@@ -182,6 +190,7 @@ def pitched_roofline_path(
 
     base_y = top_of_o + gap_ratio * o_height
     peak_y = top_of_o + peak_rise_ratio * o_height
+    peak_rise = peak_y - base_y
     center_x = (span_left + span_right) / 2.0
     peak_x = center_x - peak_offset_ratio * (span_right - span_left)
 
@@ -194,7 +203,7 @@ def pitched_roofline_path(
         ax = peak_pt[0] + (right_pt[0] - peak_pt[0]) * t
         ay = peak_pt[1] + (right_pt[1] - peak_pt[1]) * t
         chimney_w = chimney_w_ratio * span
-        chimney_h = chimney_h_ratio * o_height
+        chimney_h = chimney_h_of_peak_ratio * peak_rise
         bx, by = ax, ay + chimney_h
         cx2, cy2 = bx + chimney_w, by
         t2 = (cx2 - peak_pt[0]) / (right_pt[0] - peak_pt[0])
@@ -204,8 +213,35 @@ def pitched_roofline_path(
     else:
         pts = [left_pt, peak_pt, right_pt]
 
-    d = f"M{pts[0][0]:.2f} {pts[0][1]:.2f} " + " ".join(f"L{p[0]:.2f} {p[1]:.2f}" for p in pts[1:])
-    return d, span_left, span_right, peak_y, base_y
+    main_d = f"M{pts[0][0]:.2f} {pts[0][1]:.2f} " + " ".join(f"L{p[0]:.2f} {p[1]:.2f}" for p in pts[1:])
+
+    def taper_triangle(p_end, p_prev):
+        dx, dy = p_end[0] - p_prev[0], p_end[1] - p_prev[1]
+        length = math.hypot(dx, dy)
+        ux, uy = dx / length, dy / length
+        nx, ny = -uy, ux
+        hw = stroke_weight / 2.0
+        taper_len = taper_len_mult * stroke_weight
+        tip = (p_end[0] + ux * taper_len, p_end[1] + uy * taper_len)
+        b1 = (p_end[0] + nx * hw, p_end[1] + ny * hw)
+        b2 = (p_end[0] - nx * hw, p_end[1] - ny * hw)
+        d = f"M{b1[0]:.2f} {b1[1]:.2f} L{tip[0]:.2f} {tip[1]:.2f} L{b2[0]:.2f} {b2[1]:.2f} Z"
+        return d, tip
+
+    left_taper_d, left_tip = taper_triangle(pts[0], pts[1])
+    right_taper_d, right_tip = taper_triangle(pts[-1], pts[-2])
+
+    return {
+        "main_d": main_d,
+        "left_taper_d": left_taper_d,
+        "right_taper_d": right_taper_d,
+        "span_left": span_left,
+        "span_right": span_right,
+        "visual_left": min(span_left, left_tip[0]),
+        "visual_right": max(span_right, right_tip[0]),
+        "peak_y": peak_y,
+        "base_y": base_y,
+    }
 
 
 def get_svg_path(ttf, gname):

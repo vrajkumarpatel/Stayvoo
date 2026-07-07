@@ -12,7 +12,7 @@ SIDE = 512.0
 CORNER_R = 0.15 * SIDE
 FILL_WIDTH_RATIO = 0.65
 
-STROKE_WEIGHT = 0.6 * o_wall_thickness(bask)
+STROKE_WEIGHT = 0.475 * o_wall_thickness(bask)
 STROKE_WEIGHT_16 = STROKE_WEIGHT * 1.35  # small-size rule: thicken slightly when the chimney is dropped
 
 
@@ -34,16 +34,16 @@ def build(include_chimney, stroke_weight, out_name):
     bottom_of_o = o_ink[1]
     o_height = o_ink[3] - o_ink[1]
 
-    roof_d, span_left, span_right, peak_y, base_y = pitched_roofline_path(
-        left, right, top_of_o, o_height, include_chimney=include_chimney
+    roof = pitched_roofline_path(
+        left, right, top_of_o, o_height, stroke_weight, include_chimney=include_chimney
     )
 
     o1_xml = f'<path d="{d_o}" transform="translate({o1_origin:.2f},0)"/>'
     o2_xml = f'<path d="{d_o}" transform="translate({o2_origin:.2f},0)"/>'
 
-    content_left = span_left
-    content_right = span_right
-    content_top = peak_y + stroke_weight / 2.0
+    content_left = roof["visual_left"]
+    content_right = roof["visual_right"]
+    content_top = roof["peak_y"] + stroke_weight / 2.0
     content_bottom = bottom_of_o
     content_w = content_right - content_left
 
@@ -63,7 +63,11 @@ def build(include_chimney, stroke_weight, out_name):
 {o1_xml}
 {o2_xml}
 </g>
-<path d="{roof_d}" fill="none" stroke="{BRAND_ORANGE}" stroke-width="{stroke_weight:.2f}" stroke-linecap="butt" stroke-linejoin="miter"/>
+<g fill="{BRAND_ORANGE}">
+<path d="{roof['main_d']}" fill="none" stroke="{BRAND_ORANGE}" stroke-width="{stroke_weight:.2f}" stroke-linecap="butt" stroke-linejoin="miter"/>
+<path d="{roof['left_taper_d']}"/>
+<path d="{roof['right_taper_d']}"/>
+</g>
 </g>
 </svg>
 '''

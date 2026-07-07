@@ -39,8 +39,16 @@ render(f"{BRAND_DIR}\\logo-full.svg", f"{BRAND_DIR}\\logo-full-1024.png", w=1024
 render(f"{BRAND_DIR}\\monogram.svg", f"{BRAND_DIR}\\monogram-512.png", w=512, h=512)
 render(f"{BRAND_DIR}\\monogram.svg", f"{BRAND_DIR}\\monogram-1024.png", w=1024, h=1024)
 
-# --- email lockup: full lockup on paper/white background, 400px wide ---
+# --- email lockup: full lockup on paper/white background, 400px wide, flattened to plain RGB ---
 render(f"{BRAND_DIR}\\logo-full.svg", f"{BRAND_DIR}\\logo-email.png", w=400, background="#F8FAFD")
+
+from PIL import Image
+_email_path = f"{BRAND_DIR}\\logo-email.png"
+_im = Image.open(_email_path)
+_rgb = Image.new("RGB", _im.size, (248, 250, 253))
+_rgb.paste(_im, mask=_im.split()[-1])
+_rgb.save(_email_path)
+print("flattened", _email_path, "to RGB")
 
 
 # --- pack favicon.ico (16/32/48) ---
