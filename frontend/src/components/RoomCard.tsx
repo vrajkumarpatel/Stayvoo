@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { BedDouble, Users } from 'lucide-react'
 
 interface Room {
@@ -21,19 +21,10 @@ interface Props {
   checkout?: string
 }
 
-export default function RoomCard({ room, hotelId, checkin, checkout }: Props) {
-  const navigate = useNavigate()
-  const roomId = room.id ?? room.room_id ?? ''
-  const nights = checkin && checkout
-    ? Math.max(1, Math.round((new Date(checkout).getTime() - new Date(checkin).getTime()) / 86400000))
-    : 1
-
-  const handleBook = () => {
-    const params = new URLSearchParams({ hotel_id: hotelId, room_id: roomId })
-    if (checkin) params.set('checkin', checkin)
-    if (checkout) params.set('checkout', checkout)
-    navigate(`/book?${params}`)
-  }
+export default function RoomCard({ room, hotelName, checkin, checkout }: Props) {
+  const quoteParams = new URLSearchParams({ hotel: hotelName })
+  if (checkin) quoteParams.set('checkin', checkin)
+  if (checkout) quoteParams.set('checkout', checkout)
 
   return (
     <div className="bg-white rounded-2xl shadow-md hover:shadow-lg transition-shadow overflow-hidden flex flex-col">
@@ -63,28 +54,23 @@ export default function RoomCard({ room, hotelId, checkin, checkout }: Props) {
 
         <div className="mt-4 pt-4 border-t border-slate-100 flex items-end justify-between gap-3">
           <div>
-            <div className="flex items-baseline gap-1">
-              <span className="text-[#10192b] font-black text-2xl">${room.price_per_night}</span>
-              <span className="text-slate-400 text-sm">/night</span>
-            </div>
-            {nights > 1 && (
-              <div className="text-slate-500 text-xs mt-0.5">
-                Total: <strong>${(room.price_per_night * nights).toFixed(0)}</strong> for {nights} nights
-              </div>
-            )}
+            <p className="text-slate-500 text-xs">Request a quote for your rate</p>
             {room.available_count > 0 && room.available_count < 5 && (
               <div className="text-red-500 text-xs font-semibold mt-1">
                 Only {room.available_count} left!
               </div>
             )}
           </div>
-          <button
-            onClick={handleBook}
-            disabled={room.available_count < 1}
-            className="bg-orange-500 hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold py-2.5 px-5 rounded-xl text-sm transition-colors"
-          >
-            {room.available_count < 1 ? 'Sold Out' : 'Book This Room'}
-          </button>
+          {room.available_count < 1 ? (
+            <span className="bg-slate-100 text-slate-400 font-bold py-2.5 px-5 rounded-xl text-sm">Sold Out</span>
+          ) : (
+            <Link
+              to={`/contact?${quoteParams}`}
+              className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2.5 px-5 rounded-xl text-sm transition-colors"
+            >
+              Request a quote
+            </Link>
+          )}
         </div>
       </div>
     </div>

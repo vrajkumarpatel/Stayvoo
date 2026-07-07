@@ -71,16 +71,21 @@ export default function Contact() {
     const type = params.get('type')
     const checkin = params.get('checkin')
     const checkout = params.get('checkout')
+    const hotel = params.get('hotel')
     setForm(f => ({
       ...f,
       ...(type && TYPE_PARAM_MAP[type] ? { stay_type: TYPE_PARAM_MAP[type] } : {}),
       ...(checkin ? { checkin } : {}),
       ...(checkout ? { checkout } : {}),
+      ...(hotel && !f.brief ? { brief: `Interested in ${hotel}.` } : {}),
     }))
   }, [location.search])
 
   const set = (key: keyof typeof EMPTY) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm(f => ({ ...f, [key]: e.target.value }))
+
+  const formValid =
+    form.full_name.trim() !== '' && form.email.trim() !== '' && form.city.trim() !== '' && form.sms_consent
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -280,11 +285,16 @@ export default function Contact() {
 
               <button
                 type="submit"
-                disabled={submitting || !form.sms_consent}
-                className="w-full inline-flex items-center justify-center rounded-control bg-brand-orange hover:bg-brand-orange-dark disabled:opacity-60 text-navy font-sans text-sm font-medium py-3.5 transition-colors"
+                disabled={submitting || !formValid}
+                className="w-full inline-flex items-center justify-center rounded-control bg-brand-orange hover:bg-brand-orange-dark disabled:opacity-60 disabled:cursor-not-allowed text-navy font-sans text-sm font-medium py-3.5 transition-colors"
               >
                 {submitting ? 'Sending...' : 'Send request'}
               </button>
+              {!formValid && !submitting && (
+                <p className="text-center font-sans text-xs text-ink-muted -mt-2">
+                  Fill the required fields to send
+                </p>
+              )}
             </form>
           )}
         </div>

@@ -7,7 +7,6 @@ const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 interface BookingCard {
   hotelName: string
   hotelId: string
-  price: number
 }
 
 interface Message {
@@ -38,7 +37,7 @@ function isGroupInquiry(text: string): boolean {
 }
 
 const GREETING_TEXT =
-  `Hi! I'm Stayvo 🏨\nHotels in Waukesha from $110/night.\nWhich works for you?\n\n• Choice Hotels: $110/night\n• Wyndham Waukesha: $115/night\n• Wyndham Brookfield: $120/night\n\nOr ask me anything!`
+  `Hi! I'm the Stayvoo AI Assistant 🏨\nWe have 3 partner hotels in the Milwaukee Area (Waukesha & Brookfield).\nTell me your dates and headcount and I'll get you a negotiated rate.\n\nOr ask me anything!`
 
 const QUICK_REPLIES = [
   { label: 'Cheapest Option', message: 'What is the cheapest option?' },
@@ -72,15 +71,14 @@ function BookingCardUI({ card }: { card: BookingCard }) {
     <div className="bg-white border-2 border-orange-100 rounded-2xl p-4 shadow-sm w-full mt-1.5">
       <div className="font-bold text-[#10192b] text-sm mb-2 flex items-center gap-1.5"><Building2 className="w-4 h-4" /> {card.hotelName}</div>
       <div className="flex flex-col gap-1 text-xs text-slate-600 mb-3">
-        <div className="font-semibold text-base text-[#10192b]">From ${card.price}/night</div>
-        <div className="flex items-center gap-1.5 text-green-700"><CheckCircle2 className="w-3.5 h-3.5" /> Pay at hotel, no charge today</div>
-        <div className="flex items-center gap-1.5 text-orange-600"><Gift className="w-3.5 h-3.5" /> Welcome kit included</div>
+        <div className="flex items-center gap-1.5 text-green-700"><CheckCircle2 className="w-3.5 h-3.5" /> Rates negotiated for your dates</div>
+        <div className="flex items-center gap-1.5 text-orange-600"><Gift className="w-3.5 h-3.5" /> Welcome kit included for extended stays</div>
       </div>
       <Link
-        to={`/book?hotel_id=${card.hotelId}`}
+        to={`/contact?hotel=${encodeURIComponent(card.hotelName)}`}
         className="flex items-center justify-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white font-black text-sm py-3 rounded-xl transition-colors w-full"
       >
-        Book Now →
+        Request a Quote →
       </Link>
     </div>
   )
@@ -238,7 +236,7 @@ export default function AIChat() {
       if (data.show_booking_card && data.hotel_name) {
         const hotelId = resolveHotelId(data.hotel_name)
         if (hotelId) {
-          bookingCard = { hotelName: data.hotel_name, hotelId, price: data.price ?? 110 }
+          bookingCard = { hotelName: data.hotel_name, hotelId }
         }
       }
 
@@ -281,7 +279,7 @@ export default function AIChat() {
                 <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-400 rounded-full border-2 border-[#10192b]" />
               </div>
               <div>
-                <p className="text-white font-bold text-sm leading-none">Stayvo AI Assistant</p>
+                <p className="text-white font-bold text-sm leading-none">Stayvoo AI Assistant</p>
                 <p className="text-white/50 text-xs mt-0.5">Usually replies instantly</p>
               </div>
             </div>
@@ -341,7 +339,7 @@ export default function AIChat() {
                 <div className="bg-white rounded-2xl rounded-bl-sm shadow-sm">
                   <TypingDots />
                 </div>
-                <span className="text-slate-400 text-[10px] px-1">Stayvo is typing...</span>
+                <span className="text-slate-400 text-[10px] px-1">Stayvoo is typing...</span>
               </div>
             )}
             <div ref={bottomRef} />

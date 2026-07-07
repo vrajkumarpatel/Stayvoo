@@ -4,11 +4,19 @@ import { Frown, Building2 } from 'lucide-react'
 import HotelCard from '../components/HotelCard'
 import SearchBar from '../components/SearchBar'
 import { searchHotels } from '../lib/api'
+import { useDocumentMeta } from '../hooks/useDocumentMeta'
+
+const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0]
+const dayAfter = new Date(Date.now() + 172800000).toISOString().split('T')[0]
 
 export default function SearchResults() {
+  useDocumentMeta(
+    'Search Partner Hotels | Stayvoo | Milwaukee Area & Chicagoland',
+    'Search Stayvoo partner hotels in the Milwaukee Area and Chicagoland by date and headcount.'
+  )
   const [searchParams] = useSearchParams()
-  const checkin = searchParams.get('checkin_date') ?? ''
-  const checkout = searchParams.get('checkout_date') ?? ''
+  const checkin = searchParams.get('checkin_date') ?? tomorrow
+  const checkout = searchParams.get('checkout_date') ?? dayAfter
   const guests = Number(searchParams.get('guests') ?? 1)
 
   const [results, setResults] = useState<any[]>([])
@@ -17,7 +25,6 @@ export default function SearchResults() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!checkin || !checkout) { setLoading(false); return }
     setLoading(true)
     setError(null)
     searchHotels({ checkin_date: checkin, checkout_date: checkout, guests })
@@ -115,7 +122,7 @@ export default function SearchResults() {
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {results.filter((h: any) => h.exclusive).map((h: any) => (
-                    <HotelCard key={h.id ?? h.hotel_id} hotel={h} />
+                    <HotelCard key={h.id ?? h.hotel_id} hotel={h} checkin={checkin} checkout={checkout} />
                   ))}
                 </div>
               </div>
@@ -127,7 +134,7 @@ export default function SearchResults() {
                 <h2 className="text-[#10192b] font-bold text-lg mb-4">Other Options Nearby</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {results.filter((h: any) => !h.exclusive).map((h: any) => (
-                    <HotelCard key={h.id ?? h.hotel_id} hotel={h} />
+                    <HotelCard key={h.id ?? h.hotel_id} hotel={h} checkin={checkin} checkout={checkout} />
                   ))}
                 </div>
               </div>

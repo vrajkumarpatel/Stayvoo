@@ -2,8 +2,14 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Building2 } from 'lucide-react'
 import { guestLogin } from '../lib/api'
+import { useDocumentMeta } from '../hooks/useDocumentMeta'
+import SiteFooter from '../components/SiteFooter'
 
 export default function MyReservations() {
+  useDocumentMeta(
+    'My Reservations | Stayvoo',
+    'Access your Stayvoo reservations and messages with a secure email link.'
+  )
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
@@ -25,7 +31,8 @@ export default function MyReservations() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
+    <>
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
         {!sent ? (
           <div className="bg-white rounded-3xl shadow-xl overflow-hidden">
@@ -113,5 +120,7 @@ export default function MyReservations() {
         )}
       </div>
     </div>
+    <SiteFooter />
+    </>
   )
 }

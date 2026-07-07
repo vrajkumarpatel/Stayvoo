@@ -25,18 +25,46 @@ const ROUTES: {
   outDir: string
   jsonLd?: object
   preloadImage?: string
+  title?: string
+  description?: string
 }[] = [
   { routePath: '/', Component: Home, outDir: '', jsonLd: TRAVEL_AGENCY_SCHEMA, preloadImage: '/images/hero-bg.webp' },
-  { routePath: '/contact', Component: Contact, outDir: 'contact' },
-  { routePath: '/exclusive', Component: ExclusiveHotels, outDir: 'exclusive', preloadImage: '/images/exclusive-hero.webp' },
-  { routePath: '/groups', Component: GroupBooking, outDir: 'groups', preloadImage: '/images/groups-hero.webp' },
-  { routePath: '/about', Component: About, outDir: 'about' },
+  {
+    routePath: '/contact',
+    Component: Contact,
+    outDir: 'contact',
+    title: 'Contact & Get a Quote | Stayvoo | Milwaukee Area & Chicagoland',
+    description: "Tell us your dates, headcount, and stay type. Stayvoo responds same-day with a negotiated rate for extended stays and group room blocks in the Milwaukee Area and Chicagoland.",
+  },
+  {
+    routePath: '/exclusive',
+    Component: ExclusiveHotels,
+    outDir: 'exclusive',
+    preloadImage: '/images/exclusive-hero.webp',
+    title: 'Extended Stay Rates | Milwaukee Area Hotels | Stayvoo',
+    description: 'Weekly and monthly rates for travel nurses, relocations, project assignments, and medical stays at partner hotels in the Milwaukee Area and Chicagoland.',
+  },
+  {
+    routePath: '/groups',
+    Component: GroupBooking,
+    outDir: 'groups',
+    preloadImage: '/images/groups-hero.webp',
+    title: 'Group Hotel Bookings | Milwaukee Area & Chicagoland | Stayvoo',
+    description: 'Room blocks for weddings, sports teams, conferences, and corporate travel: one coordinator, one negotiated rate, one consolidated bill, in the Milwaukee Area and Chicagoland.',
+  },
+  {
+    routePath: '/about',
+    Component: About,
+    outDir: 'about',
+    title: 'About Stayvoo | Extended Stay & Group Booking Agency | Milwaukee & Chicagoland',
+    description: 'Stayvoo is a commission-based booking agency serving the Milwaukee Area and Chicagoland, working with a small set of partner hotels we know room by room for extended stays and group room blocks.',
+  },
 ]
 
 const distDir = path.resolve(process.cwd(), 'dist')
 const template = fs.readFileSync(path.join(distDir, 'index.html'), 'utf-8')
 
-for (const { routePath, Component, outDir, jsonLd, preloadImage } of ROUTES) {
+for (const { routePath, Component, outDir, jsonLd, preloadImage, title, description } of ROUTES) {
   const appHtml = renderToStaticMarkup(
     <StaticRouter location={routePath}>
       <Navbar />
@@ -45,6 +73,17 @@ for (const { routePath, Component, outDir, jsonLd, preloadImage } of ROUTES) {
   )
 
   let pageHtml = template.replace('<div id="root"></div>', `<div id="root">${appHtml}</div>`)
+
+  if (title) {
+    pageHtml = pageHtml
+      .replace(/<title>[^<]*<\/title>/, `<title>${title}</title>`)
+      .replace(/(<meta property="og:title" content=")[^"]*(")/, `$1${title}$2`)
+  }
+  if (description) {
+    pageHtml = pageHtml
+      .replace(/(<meta name="description" content=")[^"]*(")/, `$1${description}$2`)
+      .replace(/(<meta property="og:description" content=")[^"]*(")/, `$1${description}$2`)
+  }
 
   let headExtras = ''
   if (jsonLd) {

@@ -1,11 +1,10 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Navbar from './components/Navbar'
 import AIChat from './components/AIChat'
 import Home from './pages/Home'
 import ExclusiveHotels from './pages/ExclusiveHotels'
 import HotelDetail from './pages/HotelDetail'
 import SearchResults from './pages/SearchResults'
-import BookingForm from './pages/BookingForm'
 import Confirmation from './pages/Confirmation'
 import Admin from './pages/Admin'
 import GroupBooking from './pages/GroupBooking'
@@ -27,7 +26,6 @@ export default function App() {
         <Route path="/groups" element={<GroupBooking />} />
         <Route path="/hotels/:id" element={<HotelDetail />} />
         <Route path="/search" element={<SearchResults />} />
-        <Route path="/book" element={<BookingForm />} />
         <Route path="/confirmation" element={<Confirmation />} />
         <Route path="/admin" element={<Admin />} />
         <Route path="/privacy" element={<Privacy />} />
@@ -37,6 +35,7 @@ export default function App() {
         <Route path="/my-stay/:token" element={<GuestPortal />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/brand" element={<Brand />} />
+        <Route path="*" element={<Navigate to="/contact" replace />} />
       </Routes>
       <AIChat />
     </BrowserRouter>

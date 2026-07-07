@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { MessageCircle, Building2, KeyRound, ClipboardList } from 'lucide-react'
 import { getMyStay, getMyStayReservationMessages, sendMyStayReservationMessage, getMyStayMessages, sendMyStayMessage } from '../lib/api'
+import { useDocumentMeta } from '../hooks/useDocumentMeta'
 
 const STATUS_COLORS: Record<string, string> = {
   pending: 'bg-amber-100 text-amber-700',
@@ -310,6 +311,10 @@ function InquiryCard({ inquiry, token }: { inquiry: any; token: string }) {
 }
 
 export default function GuestPortal() {
+  useDocumentMeta(
+    'Guest Portal | Stayvoo',
+    'View your Stayvoo reservations and message your coordinator.'
+  )
   const { token } = useParams<{ token: string }>()
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { getReservation } from '../lib/api'
 import { CheckCircle2, Handshake, MessageCircle, Gift, Frown, CalendarPlus, type LucideIcon } from 'lucide-react'
+import { useDocumentMeta } from '../hooks/useDocumentMeta'
 
 interface Step { icon: LucideIcon; title: string; desc: string; done?: boolean }
 
@@ -44,6 +45,10 @@ function Checkmark() {
 }
 
 export default function Confirmation() {
+  useDocumentMeta(
+    'Reservation Confirmation | Stayvoo',
+    'Your Stayvoo reservation confirmation details.'
+  )
   const [searchParams] = useSearchParams()
   const ref = searchParams.get('ref') ?? ''
 

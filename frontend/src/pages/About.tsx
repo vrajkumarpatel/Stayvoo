@@ -20,8 +20,8 @@ const FEATURES = [
 
 export default function About() {
   useDocumentMeta(
-    'About Stayvoo | Extended Stay Hotel Specialist | Milwaukee Area',
-    'Stayvoo is a commission-based booking agency in the Milwaukee area, working with a small set of partner hotels we know room by room for extended stays and group blocks.'
+    'About Stayvoo | Extended Stay & Group Booking Agency | Milwaukee & Chicagoland',
+    'Stayvoo is a commission-based booking agency serving the Milwaukee Area and Chicagoland, working with a small set of partner hotels we know room by room for extended stays and group room blocks.'
   )
 
   return (

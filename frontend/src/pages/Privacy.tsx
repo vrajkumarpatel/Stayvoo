@@ -1,6 +1,11 @@
 import { Link } from 'react-router-dom'
+import { useDocumentMeta } from '../hooks/useDocumentMeta'
 
 export default function Privacy() {
+  useDocumentMeta(
+    'Privacy Policy | Stayvoo',
+    'How Stayvoo collects, uses, and protects guest information.'
+  )
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="max-w-2xl mx-auto px-4 py-16">

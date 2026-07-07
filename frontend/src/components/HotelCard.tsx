@@ -1,8 +1,7 @@
-import { useNavigate, Link } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import {
   Car, Wifi, Waves, Dumbbell, Coffee, PawPrint, ClipboardList,
-  Briefcase, UtensilsCrossed, Wine, Stethoscope, Check, Star, Sparkles,
-  MapPin, Building2, type LucideIcon,
+  Briefcase, UtensilsCrossed, Wine, Stethoscope, Check, MapPin, type LucideIcon,
 } from 'lucide-react'
 
 const AMENITY_ICONS: Record<string, LucideIcon> = {
@@ -39,17 +38,19 @@ interface Props {
   large?: boolean
   twoButton?: boolean
   viewOnly?: boolean
+  checkin?: string
+  checkout?: string
 }
 
-export default function HotelCard({ hotel, large = false, twoButton = false, viewOnly = false }: Props) {
-  const navigate = useNavigate()
+export default function HotelCard({ hotel, large = false, twoButton = false, viewOnly = false, checkin, checkout }: Props) {
   const hotelId = hotel.id ?? hotel.hotel_id ?? ''
   const isMock = hotelId.startsWith('mock-')
+  const detailHref = !isMock && hotelId ? `/hotels/${hotelId}` : '/exclusive'
 
-  const handleClick = () => {
-    if (!isMock && hotelId) navigate(`/hotels/${hotelId}`)
-    else navigate('/exclusive')
-  }
+  const contactParams = new URLSearchParams({ hotel: hotel.name })
+  if (checkin) contactParams.set('checkin', checkin)
+  if (checkout) contactParams.set('checkout', checkout)
+  const contactHref = `/contact?${contactParams}`
 
   const topAmenities = hotel.amenities.slice(0, 3)
 
@@ -58,28 +59,28 @@ export default function HotelCard({ hotel, large = false, twoButton = false, vie
       className={`bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col group ${large ? 'min-h-[420px]' : 'min-h-[360px]'}`}
     >
       {/* Photo — placeholder until real hotel photos are uploaded */}
-      <div className="relative h-[200px] rounded-t-xl bg-[#10192b] flex flex-col items-center justify-center overflow-hidden">
-        <Building2 className="w-12 h-12 text-white/40" strokeWidth={1.5} />
-        <div className="text-white/60 text-xs mt-2 select-none">Photo coming soon</div>
+      <div className="relative h-[200px] rounded-t-xl bg-[#10192b] flex items-center justify-center overflow-hidden">
+        <img src="/brand/monogram.svg" alt="" className="w-16 h-16 opacity-30" />
         {(hotel.exclusive || twoButton) && (
-          <div className="absolute top-3 left-3 flex items-center gap-1 bg-orange-500 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow">
-            <Star className="w-3 h-3 fill-current" /> Extended Stay Specialist
+          <div className="absolute top-3 left-3 flex flex-col gap-1.5">
+            <span className="bg-white/90 text-[#10192b] text-xs font-semibold px-2.5 py-1 rounded-full shadow-sm">
+              Extended stay ready
+            </span>
+            <span className="bg-white/90 text-[#10192b] text-xs font-semibold px-2.5 py-1 rounded-full shadow-sm">
+              Group blocks
+            </span>
           </div>
         )}
-        {hotel.rating && hotel.review_count && hotel.review_count > 0 ? (
+        {hotel.rating && hotel.review_count && hotel.review_count > 0 && (
           <div className="absolute top-3 right-3 bg-black/50 text-white text-xs font-semibold px-2 py-1 rounded-full">
             ★ {hotel.rating.toFixed(1)} <span className="text-white/70">({hotel.review_count})</span>
           </div>
-        ) : hotel.exclusive ? (
-          <div className="absolute top-3 right-3 bg-white/90 text-[#10192b] text-xs font-bold px-2.5 py-1 rounded-full shadow-sm flex items-center gap-1">
-            <Sparkles className="w-3 h-3" /> New
-          </div>
-        ) : null}
+        )}
       </div>
 
       {/* Content */}
       <div className="flex flex-col flex-1 p-5">
-        <div className="flex-1">
+        <Link to={detailHref} className="flex-1 block">
           <h3 className="text-[#10192b] font-bold text-lg leading-snug group-hover:text-orange-500 transition-colors">
             {hotel.name}
           </h3>
@@ -100,7 +101,7 @@ export default function HotelCard({ hotel, large = false, twoButton = false, vie
               )
             })}
           </div>
-        </div>
+        </Link>
 
         {/* CTA section */}
         {twoButton ? (
@@ -115,7 +116,7 @@ export default function HotelCard({ hotel, large = false, twoButton = false, vie
             </div>
             <p className="text-xs text-slate-400 mb-3">In the Milwaukee Area, near Milwaukee · Kenosha · Chicago</p>
             <Link
-              to="/contact"
+              to={contactHref}
               className="w-full bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold py-2.5 px-4 rounded-xl transition-colors text-center block"
             >
               Get Extended Stay Rate →
@@ -127,24 +128,21 @@ export default function HotelCard({ hotel, large = false, twoButton = false, vie
           </div>
         ) : (
           <div className="mt-4 pt-4 border-t border-slate-100">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-[#10192b] font-black text-xl">${hotel.price_per_night}</span>
-              <span className="text-slate-400 text-sm">/night</span>
-            </div>
+            <p className="text-xs text-slate-400 mb-3">Rates are negotiated — request a quote for your dates.</p>
             {hotel.exclusive ? (
-              <button
-                onClick={handleClick}
-                className="w-full bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold py-2.5 px-4 rounded-xl transition-colors"
+              <Link
+                to={contactHref}
+                className="block text-center w-full bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold py-2.5 px-4 rounded-xl transition-colors"
               >
-                Get Exclusive Rate →
-              </button>
+                Request a Quote →
+              </Link>
             ) : (
-              <button
-                onClick={handleClick}
-                className="w-full bg-[#10192b] hover:bg-[#0a1220] text-white text-sm font-bold py-2.5 px-4 rounded-xl transition-colors"
+              <Link
+                to={detailHref}
+                className="block text-center w-full bg-[#10192b] hover:bg-[#0a1220] text-white text-sm font-bold py-2.5 px-4 rounded-xl transition-colors"
               >
                 View Rooms →
-              </button>
+              </Link>
             )}
           </div>
         )}

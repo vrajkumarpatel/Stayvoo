@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import RoomCard from '../components/RoomCard'
 import { getHotel } from '../lib/api'
+import { useDocumentMeta } from '../hooks/useDocumentMeta'
 
 const AMENITY_ICONS: Record<string, LucideIcon> = {
   'Free Parking': Car, 'Free WiFi': Wifi, 'Pool': Waves, 'Fitness Center': Dumbbell,
@@ -35,6 +36,11 @@ export default function HotelDetail() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activePhoto, setActivePhoto] = useState(0)
+
+  useDocumentMeta(
+    hotel ? `${hotel.name} | Stayvoo | Milwaukee Area & Chicagoland` : 'Partner Hotel | Stayvoo',
+    hotel ? `Extended stay and group rates at ${hotel.name}, a Stayvoo partner hotel in the Milwaukee Area.` : 'Stayvoo partner hotel details.'
+  )
 
   useEffect(() => {
     if (!id) return
@@ -123,11 +129,9 @@ export default function HotelDetail() {
                     <MapPin className="w-4 h-4" />{hotel.address}
                   </p>
                 </div>
-                {hotel.phone && (
-                  <a href={`tel:${hotel.phone}`} className="flex items-center gap-2 bg-[#10192b] text-white font-semibold px-4 py-2.5 rounded-xl text-sm hover:bg-[#0a1220] transition-colors whitespace-nowrap">
-                    <Phone className="w-4 h-4" /> {hotel.phone}
-                  </a>
-                )}
+                <a href="tel:+18883528151" className="flex items-center gap-2 bg-[#10192b] text-white font-semibold px-4 py-2.5 rounded-xl text-sm hover:bg-[#0a1220] transition-colors whitespace-nowrap">
+                  <Phone className="w-4 h-4" /> +1 (888) 352-8151
+                </a>
               </div>
 
               {hotel.description && (
@@ -230,7 +234,7 @@ export default function HotelDetail() {
 
               {/* Why book direct */}
               <div className="bg-[#10192b] rounded-2xl p-5">
-                <h3 className="text-white font-bold text-lg mb-4">Why Book Direct?</h3>
+                <h3 className="text-white font-bold text-lg mb-4">Why Book With Stayvoo?</h3>
                 <ul className="flex flex-col gap-3">
                   {WHY_BOOK_DIRECT.map(([Icon, text]) => (
                     <li key={text} className="flex items-start gap-2 text-white/70 text-sm">
@@ -246,7 +250,7 @@ export default function HotelDetail() {
                 <p className="text-[#10192b] font-semibold text-sm mb-1">Need help booking?</p>
                 <p className="text-slate-500 text-xs mb-3">We'll confirm within 30 minutes</p>
                 <a
-                  href="tel:+12625550100"
+                  href="tel:+18883528151"
                   className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-colors"
                 >
                   <Phone className="w-4 h-4" /> Call Us
