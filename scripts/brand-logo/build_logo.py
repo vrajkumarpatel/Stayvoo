@@ -165,20 +165,23 @@ def bbox_of(pts):
 
 def pitched_roofline_path(
     left, right, top_of_o, o_height, stroke_weight,
-    eave_ratio=0.08, gap_ratio=0.12, peak_rise_ratio=0.68, peak_offset_ratio=0.08,
-    chimney_t=0.42, chimney_w_ratio=0.09, chimney_h_of_peak_ratio=0.25,
+    eave_ratio=0.08, gap_ratio=0.12, peak_rise_ratio=1.01, peak_offset_ratio=0.0,
+    chimney_t=0.45, chimney_w_ratio=0.10, chimney_h_of_peak_ratio=0.35,
     include_chimney=True, taper_len_mult=2.4,
 ):
     """Single source of truth for the roofline.
 
-    A steep, confident rise from the left eave to an off-center peak (slightly
-    left of the oo gap, ~27deg), a shallower descent to the right eave with a
-    small rectangular chimney notch (up/across/down, sized off peak height)
-    unless include_chimney=False (16px favicon cut, where the notch doesn't
-    survive). The main line is a plain stroke (fill:none) — plain SVG strokes
-    can't taper, so the two eave ends get small solid-filled triangular caps
-    in the same color that extend the stroke's flat butt-cap into a fine
-    point, faking a brush/pen taper without any gradient or opacity trick.
+    A steep, confident rise from the left eave to a centered peak (~34deg,
+    matching the approved reference), descending symmetrically to the right
+    eave with a small zigzag notch — up (vertical), across (diagonal,
+    parallel to the roofline's own slope, not horizontal — this is what
+    gives it the lightning-bolt look rather than a flat-topped chimney
+    stack), down (vertical) — unless include_chimney=False (16px favicon
+    cut, where the notch doesn't survive). The main line is a plain stroke
+    (fill:none) — plain SVG strokes can't taper, so the two eave ends get
+    small solid-filled triangular caps in the same color that extend the
+    stroke's flat butt-cap into a fine point, faking a brush/pen taper
+    without any gradient or opacity trick.
 
     Returns a dict: main_d, left_taper_d, right_taper_d, span_left, span_right,
     visual_left, visual_right (span extended by the taper tips), peak_y, base_y.
@@ -202,10 +205,12 @@ def pitched_roofline_path(
         t = chimney_t
         ax = peak_pt[0] + (right_pt[0] - peak_pt[0]) * t
         ay = peak_pt[1] + (right_pt[1] - peak_pt[1]) * t
+        slope_dydx = (right_pt[1] - peak_pt[1]) / (right_pt[0] - peak_pt[0])
         chimney_w = chimney_w_ratio * span
         chimney_h = chimney_h_of_peak_ratio * peak_rise
         bx, by = ax, ay + chimney_h
-        cx2, cy2 = bx + chimney_w, by
+        cx2 = bx + chimney_w
+        cy2 = by + chimney_w * slope_dydx
         t2 = (cx2 - peak_pt[0]) / (right_pt[0] - peak_pt[0])
         dy = peak_pt[1] + (right_pt[1] - peak_pt[1]) * t2
         d_pt = (cx2, dy)
