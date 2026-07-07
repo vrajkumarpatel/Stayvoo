@@ -275,7 +275,9 @@ export default function AIChat() {
           <div className="bg-[#10192b] px-4 py-3 flex items-center justify-between flex-shrink-0">
             <div className="flex items-center gap-3">
               <div className="relative">
-                <div className="w-9 h-9 bg-orange-500 rounded-full flex items-center justify-center"><Building2 className="w-5 h-5 text-white" /></div>
+                <div className="w-9 h-9 rounded-full overflow-hidden">
+                  <img src="/brand/monogram.svg" alt="" className="w-full h-full object-cover" />
+                </div>
                 <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-400 rounded-full border-2 border-[#10192b]" />
               </div>
               <div>
