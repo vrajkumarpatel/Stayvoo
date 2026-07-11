@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, extract
 from database import get_db
 from models import Stay, Hotel, HotelInvoice
+from services.audit import record_change
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["stays"])
@@ -202,6 +203,7 @@ async def update_stay(
         raise HTTPException(status_code=404, detail="Stay not found")
 
     update_data = payload.model_dump(exclude_none=True)
+    before = {k: getattr(s, k) for k in update_data}
     for k, v in update_data.items():
         setattr(s, k, v)
 
@@ -215,6 +217,7 @@ async def update_stay(
         s.commission_amount = round(total * float(s.commission_rate) / 100, 2)
 
     s.updated_at = datetime.utcnow()
+    await record_change(db, "stay", s.id, {k: (before[k], getattr(s, k)) for k in update_data})
     await db.commit()
     await db.refresh(s)
     return stay_to_dict(s)
@@ -232,11 +235,13 @@ async def checkout_stay(
     if not s:
         raise HTTPException(status_code=404, detail="Stay not found")
 
+    old_status = s.status
     s.actual_checkout = payload.actual_checkout
     s.status = "checked_out"
     if payload.notes:
         s.notes = ((s.notes or "") + f"\n[Checkout]: {payload.notes}").strip()
     s.updated_at = datetime.utcnow()
+    await record_change(db, "stay", s.id, {"status": (old_status, "checked_out")})
     await db.commit()
     await db.refresh(s)
     return stay_to_dict(s)

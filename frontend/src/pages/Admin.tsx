@@ -12,6 +12,8 @@ import {
 import { ModalShell, ModalHeader } from '../components/admin/shared'
 import InvoiceSendModal, { InvoiceStatusBadge } from '../components/admin/InvoiceSendModal'
 import TodayTab, { type TodayData } from '../components/admin/TodayTab'
+import GlobalSearch from '../components/admin/GlobalSearch'
+import AuditHistory from '../components/admin/AuditHistory'
 
 const STORAGE_KEY = 'stayvoo_admin_pw'
 
@@ -126,7 +128,7 @@ function SectionHeader({ title }: { title: string }) {
 function BookingDetailModal({ booking: b, password, onClose, onUpdate }: {
   booking: Booking; password: string; onClose: () => void; onUpdate: (b: Booking) => void
 }) {
-  const [innerTab, setInnerTab] = useState<'details' | 'messages' | 'edit'>('details')
+  const [innerTab, setInnerTab] = useState<'details' | 'messages' | 'edit' | 'history'>('details')
   const [pmsInput, setPmsInput] = useState('')
   const [confirming, setConfirming] = useState(false)
   const [confirmError, setConfirmError] = useState('')
@@ -242,6 +244,7 @@ function BookingDetailModal({ booking: b, password, onClose, onUpdate }: {
     { key: 'details', label: 'Details' },
     { key: 'messages', label: 'Messages' },
     ...(!isCancelled ? [{ key: 'edit', label: 'Edit' }] : []),
+    { key: 'history', label: 'History' },
   ] as const
 
   return (
@@ -439,6 +442,14 @@ function BookingDetailModal({ booking: b, password, onClose, onUpdate }: {
           </button>
         </form>
       )}
+
+      {/* HISTORY TAB */}
+      {innerTab === 'history' && (
+        <div className="overflow-y-auto flex-1 px-6 py-6">
+          <SectionHeader title="Edit History" />
+          <AuditHistory entityType="booking" entityId={b.id} password={password} />
+        </div>
+      )}
     </ModalShell>
   )
 }
@@ -447,7 +458,7 @@ function InquiryDetailModal({ inq, password, onClose, onUpdate, onConvertToStay 
   inq: Inquiry; password: string; onClose: () => void
   onUpdate: (i: Inquiry) => void; onConvertToStay: (i: Inquiry) => void
 }) {
-  const [innerTab, setInnerTab] = useState<'details' | 'messages'>('details')
+  const [innerTab, setInnerTab] = useState<'details' | 'messages' | 'history'>('details')
   const [status, setStatus] = useState(inq.status)
   const [notes, setNotes] = useState(inq.notes ?? '')
   const [saving, setSaving] = useState(false)
@@ -476,6 +487,21 @@ function InquiryDetailModal({ inq, password, onClose, onUpdate, onConvertToStay 
     setSaving(true)
     try {
       const updated = await updateAdminInquiry(inq.id, { status, notes }, password)
+      onUpdate(updated)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch (err: any) {
+      alert(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleStatusChange = async (newStatus: string) => {
+    setStatus(newStatus)
+    setSaving(true)
+    try {
+      const updated = await updateAdminInquiry(inq.id, { status: newStatus, notes }, password)
       onUpdate(updated)
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
@@ -518,7 +544,7 @@ function InquiryDetailModal({ inq, password, onClose, onUpdate, onConvertToStay 
 
       {/* Inner tabs */}
       <div className="flex border-b border-slate-100 flex-shrink-0 px-4 gap-1">
-        {(['details', 'messages'] as const).map(t => (
+        {(['details', 'messages', 'history'] as const).map(t => (
           <button key={t} onClick={() => setInnerTab(t)} className={`py-3 px-5 text-base font-bold capitalize border-b-[3px] transition-all min-h-[44px] rounded-t-xl ${innerTab === t ? 'border-orange-500 text-orange-600 bg-orange-50' : 'border-transparent text-slate-400 hover:text-slate-700 hover:bg-slate-50'}`}>
             {t}
           </button>
@@ -557,8 +583,8 @@ function InquiryDetailModal({ inq, password, onClose, onUpdate, onConvertToStay 
               <SectionHeader title="Update" />
               <div className="bg-slate-50 rounded-2xl p-5 flex flex-col gap-4">
                 <div>
-                  <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block mb-1.5">Status</label>
-                  <select value={status} onChange={e => setStatus(e.target.value)} className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400">
+                  <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block mb-1.5">Status <span className="normal-case font-normal text-slate-400">(auto-saves)</span></label>
+                  <select value={status} onChange={e => handleStatusChange(e.target.value)} disabled={saving} className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400">
                     {INQUIRY_STATUSES.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
                   </select>
                 </div>
@@ -610,6 +636,13 @@ function InquiryDetailModal({ inq, password, onClose, onUpdate, onConvertToStay 
                 {sending ? '...' : 'Send'}
               </button>
             </div>
+          </div>
+        )}
+
+        {innerTab === 'history' && (
+          <div className="px-6 py-6">
+            <SectionHeader title="Edit History" />
+            <AuditHistory entityType="inquiry" entityId={inq.id} password={password} />
           </div>
         )}
       </div>
@@ -769,6 +802,16 @@ function StayDetailModal({ stay: s, password, onClose, onUpdate }: {
     }
   }
 
+  const handleNotesBlur = async () => {
+    if (notes === (s.notes ?? '')) return
+    try {
+      const updated = await updateAdminStay(s.id, { notes: notes || null }, password)
+      onUpdate(updated)
+    } catch (err: any) {
+      alert(err.message)
+    }
+  }
+
   const handleExtend = async (newCheckout: string, extNotes: string) => {
     try {
       const updated = await updateAdminStay(s.id, {
@@ -859,8 +902,8 @@ function StayDetailModal({ stay: s, password, onClose, onUpdate }: {
                 <input value={pms} onChange={e => setPms(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white" /></div>
               <div><label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Room Number</label>
                 <input value={roomNum} onChange={e => setRoomNum(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white" /></div>
-              <div><label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Notes</label>
-                <textarea rows={2} value={notes} onChange={e => setNotes(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-orange-400" /></div>
+              <div><label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Notes <span className="normal-case font-normal text-slate-400">(auto-saves on blur)</span></label>
+                <textarea rows={2} value={notes} onChange={e => setNotes(e.target.value)} onBlur={handleNotesBlur} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-orange-400" /></div>
               <button onClick={handleSave} disabled={saving} className="w-full bg-[#10192b] hover:bg-[#0a1220] disabled:opacity-60 text-white font-bold py-3 rounded-xl text-sm transition-colors">
                 {saving ? 'Saving...' : saved ? '✅ Saved!' : 'Save Changes'}
               </button>
@@ -876,6 +919,10 @@ function StayDetailModal({ stay: s, password, onClose, onUpdate }: {
               </button>
             </div>
           )}
+          <div>
+            <SectionHeader title="Edit History" />
+            <AuditHistory entityType="stay" entityId={s.id} password={password} />
+          </div>
         </div>
       </ModalShell>
 
@@ -968,8 +1015,9 @@ const RES_STATUS_COLORS: Record<string, string> = {
   cancelled: 'bg-red-100 text-red-600',
 }
 
-function ReservationDetailModal({ res: r, password, onClose, onUpdate }: {
+function ReservationDetailModal({ res: r, password, onClose, onUpdate, onViewBilling }: {
   res: Reservation; password: string; onClose: () => void; onUpdate: (r: Reservation) => void
+  onViewBilling: (hotelName: string, month: string) => void
 }) {
   const [innerTab, setInnerTab] = useState<'details' | 'messages' | 'edit' | 'history'>('details')
   const [pmsInput, setPmsInput] = useState('')
@@ -1162,6 +1210,19 @@ function ReservationDetailModal({ res: r, password, onClose, onUpdate }: {
             </div>
           )}
           <div>
+            <SectionHeader title="Billing & Invoice" />
+            <button
+              onClick={() => onViewBilling(r.hotel_name_snapshot, r.checkin_date.slice(0, 7))}
+              className="w-full text-left bg-slate-50 hover:bg-slate-100 rounded-2xl p-4 flex items-center justify-between transition-colors"
+            >
+              <div>
+                <p className="text-[#10192b] font-bold text-sm">{r.hotel_name_snapshot} · {r.checkin_date.slice(0, 7)}</p>
+                <p className="text-slate-400 text-xs">Commission {r.commission_paid ? 'paid' : 'pending'} · ${r.commission_amount.toFixed(2)}</p>
+              </div>
+              <span className="text-orange-500 text-sm font-bold">View in Billing →</span>
+            </button>
+          </div>
+          <div>
             <SectionHeader title="Actions" />
             <div className="flex flex-col gap-3">
               {isPending && (
@@ -1291,6 +1352,8 @@ function ReservationDetailModal({ res: r, password, onClose, onUpdate }: {
           {!r.confirmed_at && !r.cancelled_at && !r.checked_out_at && (
             <p className="text-slate-400 text-sm text-center py-4">No status changes yet.</p>
           )}
+          <SectionHeader title="Edit History" />
+          <AuditHistory entityType="reservation" entityId={r.id} password={password} />
         </div>
       )}
     </ModalShell>
@@ -1323,6 +1386,9 @@ export default function Admin() {
   const [showCreateStay, setShowCreateStay] = useState(false)
   const [bookingSearch, setBookingSearch] = useState('')
   const [bookingFilter, setBookingFilter] = useState<'all' | 'pending' | 'confirmed' | 'cancelled'>('all')
+  const [inqNeedsResponseOnly, setInqNeedsResponseOnly] = useState(false)
+  const [resArrivingSoonOnly, setResArrivingSoonOnly] = useState(false)
+  const [billingUnpaidOnly, setBillingUnpaidOnly] = useState(false)
   const [billingMonth, setBillingMonth] = useState(() => {
     const n = new Date()
     return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`
@@ -1573,6 +1639,12 @@ export default function Admin() {
             <h1 className="text-white font-black text-xl">Stayvoo Admin</h1>
             <p className="text-white/50 text-xs mt-0.5">Click any row to view details</p>
           </div>
+          <GlobalSearch
+            password={password}
+            onSelectReservation={setSelectedReservation}
+            onSelectBooking={setSelectedBooking}
+            onSelectInquiry={setSelectedInquiry}
+          />
           <div className="flex items-center gap-2">
             <button onClick={handleTestEmail} disabled={testingEmail} title="Test email service" className="bg-white/10 hover:bg-white/20 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors">
               {testingEmail ? '...' : '📧 Test Email'}
@@ -1656,6 +1728,13 @@ export default function Admin() {
 
           const isSearchMode = resSearch.length > 1 || resStatusFilter !== 'all'
 
+          const soonCutoff = new Date()
+          soonCutoff.setDate(soonCutoff.getDate() + 3)
+          const arrivingSoon = reservations.filter(res =>
+            (res.status === 'pending' || res.status === 'confirmed') &&
+            new Date(res.checkin_date + 'T00:00:00') <= soonCutoff
+          )
+
           const ResRow = ({ res }: { res: Reservation }) => (
             <div onClick={() => setSelectedReservation(res)} className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors border border-transparent hover:border-slate-200">
               <div className="flex-1 min-w-0">
@@ -1725,11 +1804,27 @@ export default function Admin() {
                     {f.replace('_', ' ')}
                   </button>
                 ))}
+                <button onClick={() => setResArrivingSoonOnly(v => !v)}
+                  className={`px-3 py-2 rounded-lg text-xs font-bold transition-colors ${resArrivingSoonOnly ? 'bg-orange-500 text-white' : 'bg-white text-slate-500 hover:bg-slate-100 border border-slate-200'}`}
+                >
+                  Arriving Soon
+                </button>
               </div>
             </div>
 
             {!resLoaded ? (
               <div className="bg-white rounded-2xl shadow-sm p-10 text-center text-slate-400">Loading reservations...</div>
+            ) : resArrivingSoonOnly ? (
+              <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+                <div className="px-5 py-3 border-b border-slate-100">
+                  <h3 className="text-[#10192b] font-black text-sm">{arrivingSoon.length} arriving within 3 days</h3>
+                </div>
+                <div className="px-2 py-2">
+                  {arrivingSoon.length === 0 ? (
+                    <p className="text-slate-400 text-sm text-center py-4">Nobody arriving in the next 3 days.</p>
+                  ) : arrivingSoon.map((r: Reservation) => <ResRow key={r.id} res={r} />)}
+                </div>
+              </div>
             ) : isSearchMode ? (
               <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
                 <div className="px-5 py-3 border-b border-slate-100">
@@ -1863,6 +1958,14 @@ export default function Admin() {
               </div>
             ))}
           </div>
+          <div className="flex items-center gap-2 mb-4">
+            <button
+              onClick={() => setInqNeedsResponseOnly(v => !v)}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors ${inqNeedsResponseOnly ? 'bg-orange-500 text-white' : 'bg-white text-slate-600 shadow-sm hover:bg-slate-50'}`}
+            >
+              Needs Response, Oldest First
+            </button>
+          </div>
           <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
             {inquiries.length === 0 ? (
               <div className="p-10 text-center text-slate-400">No inquiries yet.</div>
@@ -1880,7 +1983,11 @@ export default function Admin() {
                     </tr>
                   </thead>
                   <tbody>
-                    {inquiries.map(inq => (
+                    {(inqNeedsResponseOnly
+                      ? inquiries.filter(i => i.status === 'new' || i.status === 'contacted')
+                          .slice().sort((a, b) => (a.created_at ?? '').localeCompare(b.created_at ?? ''))
+                      : inquiries
+                    ).map(inq => (
                       <tr key={inq.id} onClick={() => setSelectedInquiry(inq)} className="border-b border-slate-100 last:border-0 cursor-pointer hover:bg-slate-50 transition-colors">
                         <td className="px-5 py-4 text-slate-500 text-xs whitespace-nowrap">
                           {inq.created_at ? new Date(inq.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '-'}
@@ -1981,7 +2088,7 @@ export default function Admin() {
 
         {/* ── BILLING TAB ── */}
         {activeTab === 'billing' && <>
-          <div className="flex items-center gap-4 mb-6">
+          <div className="flex items-center gap-4 mb-6 flex-wrap">
             <h2 className="text-[#10192b] font-bold text-lg">Billing</h2>
             <input
               type="month"
@@ -1989,6 +2096,11 @@ export default function Admin() {
               onChange={e => setBillingMonth(e.target.value)}
               className="border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
             />
+            <button onClick={() => setBillingUnpaidOnly(v => !v)}
+              className={`px-3 py-2 rounded-lg text-xs font-bold transition-colors ${billingUnpaidOnly ? 'bg-orange-500 text-white' : 'bg-white text-slate-500 hover:bg-slate-100 border border-slate-200'}`}
+            >
+              Unpaid Only
+            </button>
           </div>
           {billingLoading ? (
             <div className="p-10 text-center text-slate-400">Loading billing data...</div>
@@ -2011,7 +2123,7 @@ export default function Admin() {
                 <div className="bg-white rounded-2xl shadow-sm p-10 text-center text-slate-400">No stays recorded for {billingMonth}.</div>
               ) : (
                 <div className="flex flex-col gap-4">
-                  {billingData.by_hotel.map(h => (
+                  {billingData.by_hotel.filter(h => !billingUnpaidOnly || h.commission_pending > 0).map(h => (
                     <div key={h.hotel_name} className="bg-white rounded-2xl shadow-sm overflow-hidden">
                       <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
                         <div>
@@ -2078,7 +2190,16 @@ export default function Admin() {
 
       {/* Modals */}
       {selectedReservation && (
-        <ReservationDetailModal res={selectedReservation} password={password} onClose={() => setSelectedReservation(null)} onUpdate={handleReservationUpdate} />
+        <ReservationDetailModal
+          res={selectedReservation} password={password}
+          onClose={() => setSelectedReservation(null)}
+          onUpdate={handleReservationUpdate}
+          onViewBilling={(_hotelName, month) => {
+            setBillingMonth(month)
+            setActiveTab('billing')
+            setSelectedReservation(null)
+          }}
+        />
       )}
       {selectedBooking && (
         <BookingDetailModal booking={selectedBooking} password={password} onClose={() => setSelectedBooking(null)} onUpdate={handleBookingUpdate} />

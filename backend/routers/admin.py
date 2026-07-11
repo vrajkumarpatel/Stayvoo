@@ -9,11 +9,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
 from sqlalchemy.orm import selectinload
 from database import get_db
-from models import Booking, Room, Stay, Guest, StayMessage, Reservation, ReservationMessage, Inquiry, HotelInvoice
+from models import Booking, Room, Stay, Guest, StayMessage, Reservation, ReservationMessage, Inquiry, HotelInvoice, AuditLog
 from routers.bookings import booking_to_dict
 from routers.reservations import reservation_to_dict
 from routers.inquiries import inquiry_to_dict
 from routers.stays import invoice_to_dict
+from services.audit import record_change
 from services.notifications import (
     notify_guest_confirmed,
     notify_pre_arrival,
@@ -94,8 +95,10 @@ async def confirm_booking(
     _: None = Depends(_verify_admin),
 ):
     booking = await _load_booking(booking_id, db)
+    old_status = booking.status
     booking.pms_confirmation = payload.pms_confirmation
     booking.status = "confirmed"
+    await record_change(db, "booking", booking.id, {"status": (old_status, "confirmed")})
 
     # Auto-create Stay record if not already exists for this booking
     stay_check = await db.execute(select(Stay).where(Stay.booking_id == booking.id))
@@ -153,6 +156,7 @@ async def cancel_booking(
     booking = await _load_booking(booking_id, db)
     if booking.status == "cancelled":
         raise HTTPException(status_code=400, detail="Booking is already cancelled")
+    old_status = booking.status
 
     # Re-credit availability
     room_result = await db.execute(select(Room).where(Room.id == booking.room_id))
@@ -161,6 +165,7 @@ async def cancel_booking(
         room.available_count += 1
 
     booking.status = "cancelled"
+    await record_change(db, "booking", booking.id, {"status": (old_status, "cancelled")})
     await db.commit()
 
     booking = await _load_booking(booking_id, db)
@@ -350,6 +355,12 @@ async def update_booking(
     _: None = Depends(_verify_admin),
 ):
     booking = await _load_booking(booking_id, db)
+    before = {
+        "checkin_date": str(booking.checkin_date), "checkout_date": str(booking.checkout_date),
+        "room_rate": str(booking.room_rate), "special_requests": booking.special_requests,
+        "guest_phone": booking.guest.phone if booking.guest else None,
+        "guest_email": booking.guest.email if booking.guest else None,
+    }
 
     if payload.checkin_date:
         booking.checkin_date = date.fromisoformat(payload.checkin_date)
@@ -374,6 +385,15 @@ async def update_booking(
 
     booking.last_modified_at = datetime.utcnow()
     booking.last_modified_by = "admin"
+
+    await record_change(db, "booking", booking.id, {
+        "checkin_date": (before["checkin_date"], str(booking.checkin_date)),
+        "checkout_date": (before["checkout_date"], str(booking.checkout_date)),
+        "room_rate": (before["room_rate"], str(booking.room_rate)),
+        "special_requests": (before["special_requests"], booking.special_requests),
+        "guest_phone": (before["guest_phone"], booking.guest.phone if booking.guest else None),
+        "guest_email": (before["guest_email"], booking.guest.email if booking.guest else None),
+    })
     await db.commit()
 
     booking = await _load_booking(booking_id, db)
@@ -500,9 +520,11 @@ async def confirm_reservation(
     _: None = Depends(_verify_admin),
 ):
     r = await _load_reservation(reservation_id, db)
+    old_status = r.status
     r.pms_confirmation = payload.pms_confirmation
     r.status = "confirmed"
     r.confirmed_at = datetime.utcnow()
+    await record_change(db, "reservation", r.id, {"status": (old_status, "confirmed")})
     await db.commit()
 
     r = await _load_reservation(reservation_id, db)
@@ -527,6 +549,7 @@ async def cancel_reservation(
         raise HTTPException(status_code=400, detail="Already cancelled")
     if r.status == "checked_out":
         raise HTTPException(status_code=400, detail="Cannot cancel a checked-out reservation")
+    old_status = r.status
 
     # Re-credit room availability
     if r.room_source_id:
@@ -537,6 +560,7 @@ async def cancel_reservation(
 
     r.status = "cancelled"
     r.cancelled_at = datetime.utcnow()
+    await record_change(db, "reservation", r.id, {"status": (old_status, "cancelled")})
     await db.commit()
 
     r = await _load_reservation(reservation_id, db)
@@ -564,6 +588,11 @@ async def update_reservation(
 ):
     from decimal import Decimal
     r = await _load_reservation(reservation_id, db)
+    before = {
+        "checkin_date": str(r.checkin_date), "checkout_date": str(r.checkout_date),
+        "rate_per_night": str(r.rate_per_night), "special_requests": r.special_requests,
+        "guest_phone": r.guest_phone, "guest_email": r.guest_email,
+    }
 
     if payload.checkin_date:
         r.checkin_date = date.fromisoformat(payload.checkin_date)
@@ -593,6 +622,15 @@ async def update_reservation(
 
     r.last_modified_at = datetime.utcnow()
     r.last_modified_by = "admin"
+
+    await record_change(db, "reservation", r.id, {
+        "checkin_date": (before["checkin_date"], str(r.checkin_date)),
+        "checkout_date": (before["checkout_date"], str(r.checkout_date)),
+        "rate_per_night": (before["rate_per_night"], str(r.rate_per_night)),
+        "special_requests": (before["special_requests"], r.special_requests),
+        "guest_phone": (before["guest_phone"], r.guest_phone),
+        "guest_email": (before["guest_email"], r.guest_email),
+    })
     await db.commit()
 
     r = await _load_reservation(reservation_id, db)
@@ -626,6 +664,7 @@ async def checkin_reservation(
     r = await _load_reservation(reservation_id, db)
     if r.status != "confirmed":
         raise HTTPException(status_code=400, detail="Only confirmed reservations can be checked in")
+    await record_change(db, "reservation", r.id, {"status": (r.status, "checked_in")})
     r.status = "checked_in"
     await db.commit()
     r = await _load_reservation(reservation_id, db)
@@ -641,6 +680,7 @@ async def checkout_reservation(
     r = await _load_reservation(reservation_id, db)
     if r.status != "checked_in":
         raise HTTPException(status_code=400, detail="Only checked-in reservations can be checked out")
+    await record_change(db, "reservation", r.id, {"status": (r.status, "checked_out")})
     r.status = "checked_out"
     r.checked_out_at = datetime.utcnow()
     await db.commit()
@@ -776,6 +816,91 @@ async def billing_reservations(
         "commission_pending": total_commission - comm_paid_total,
         "by_hotel": summary,
     }
+
+
+@router.get("/search")
+async def global_search(
+    q: str,
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(_verify_admin),
+):
+    q = q.strip()
+    if not q or len(q) < 2:
+        return {"guests": [], "reservations": [], "bookings": [], "inquiries": []}
+    like = f"%{q}%"
+
+    guests_result = await db.execute(
+        select(Guest).where(
+            or_(
+                Guest.first_name.ilike(like), Guest.last_name.ilike(like),
+                Guest.email.ilike(like), Guest.phone.ilike(like),
+            )
+        ).limit(10)
+    )
+    guests = [
+        {"id": str(g.id), "first_name": g.first_name, "last_name": g.last_name, "email": g.email, "phone": g.phone}
+        for g in guests_result.scalars().all()
+    ]
+
+    res_result = await db.execute(
+        select(Reservation).options(selectinload(Reservation.guest)).where(
+            or_(
+                Reservation.guest_first_name.ilike(like), Reservation.guest_last_name.ilike(like),
+                Reservation.guest_email.ilike(like), Reservation.reservation_ref.ilike(like),
+                Reservation.pms_confirmation.ilike(like), Reservation.hotel_name_snapshot.ilike(like),
+            )
+        ).order_by(Reservation.created_at.desc()).limit(10)
+    )
+    reservations = [reservation_to_dict(r) for r in res_result.scalars().all()]
+
+    bookings_result = await db.execute(
+        select(Booking).options(selectinload(Booking.guest), selectinload(Booking.hotel), selectinload(Booking.room))
+        .join(Guest, Booking.guest_id == Guest.id)
+        .where(
+            or_(
+                Guest.first_name.ilike(like), Guest.last_name.ilike(like),
+                Guest.email.ilike(like), Booking.booking_ref.ilike(like),
+                Booking.pms_confirmation.ilike(like),
+            )
+        ).order_by(Booking.created_at.desc()).limit(10)
+    )
+    bookings = [booking_to_dict(b) for b in bookings_result.scalars().all()]
+
+    inq_result = await db.execute(
+        select(Inquiry).where(
+            or_(
+                Inquiry.first_name.ilike(like), Inquiry.last_name.ilike(like),
+                Inquiry.email.ilike(like), Inquiry.phone.ilike(like),
+            )
+        ).order_by(Inquiry.created_at.desc()).limit(10)
+    )
+    inquiries = [inquiry_to_dict(i) for i in inq_result.scalars().all()]
+
+    return {"guests": guests, "reservations": reservations, "bookings": bookings, "inquiries": inquiries}
+
+
+@router.get("/audit-log")
+async def get_audit_log(
+    entity_type: Optional[str] = None,
+    entity_id: Optional[str] = None,
+    limit: int = 50,
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(_verify_admin),
+):
+    q = select(AuditLog).order_by(AuditLog.changed_at.desc()).limit(min(limit, 200))
+    if entity_type:
+        q = q.where(AuditLog.entity_type == entity_type)
+    if entity_id:
+        q = q.where(AuditLog.entity_id == entity_id)
+    result = await db.execute(q)
+    return [
+        {
+            "id": str(a.id), "entity_type": a.entity_type, "entity_id": str(a.entity_id),
+            "field": a.field, "old_value": a.old_value, "new_value": a.new_value,
+            "changed_by": a.changed_by, "changed_at": a.changed_at.isoformat() if a.changed_at else None,
+        }
+        for a in result.scalars().all()
+    ]
 
 
 @router.get("/today")

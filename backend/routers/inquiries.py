@@ -13,6 +13,7 @@ from models import Inquiry, Message
 from services.guests import get_or_create_guest
 from services.email_service import send_inquiry_notification, send_inquiry_auto_reply, send_admin_message
 from services.notifications import notify_new_inquiry
+from services.audit import record_change
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["inquiries"])
@@ -146,10 +147,15 @@ async def update_inquiry(
     inq = result.scalar_one_or_none()
     if not inq:
         raise HTTPException(status_code=404, detail="Inquiry not found")
+    old_status, old_notes = inq.status, inq.notes
     if payload.status is not None:
         inq.status = payload.status
     if payload.notes is not None:
         inq.notes = payload.notes
+    await record_change(db, "inquiry", inq.id, {
+        "status": (old_status, inq.status),
+        "notes": (old_notes, inq.notes),
+    })
     await db.commit()
     await db.refresh(inq)
     return inquiry_to_dict(inq)

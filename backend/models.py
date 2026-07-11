@@ -263,6 +263,19 @@ class Reservation(Base):
     messages = relationship("ReservationMessage", back_populates="reservation", cascade="all, delete-orphan")
 
 
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    entity_type = Column(String, nullable=False)  # "booking" | "reservation" | "stay" | "inquiry"
+    entity_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    field = Column(String, nullable=False)
+    old_value = Column(String, nullable=True)
+    new_value = Column(String, nullable=True)
+    changed_by = Column(String, default="admin")
+    changed_at = Column(DateTime, default=datetime.utcnow)
+
+
 class HotelInvoice(Base):
     __tablename__ = "hotel_invoices"
 

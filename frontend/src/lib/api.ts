@@ -248,6 +248,25 @@ export async function getAdminBilling(month: string, password: string) {
   return r.json()
 }
 
+export async function globalAdminSearch(q: string, password: string) {
+  const r = await fetch(`${BASE}/admin/search?q=${encodeURIComponent(q)}`, {
+    headers: { 'x-admin-password': password },
+  })
+  if (r.status === 401) throw new Error('Invalid password')
+  if (!r.ok) throw new Error('Search failed')
+  return r.json()
+}
+
+export async function getAdminAuditLog(password: string, entityType: string, entityId: string) {
+  const q = new URLSearchParams({ entity_type: entityType, entity_id: entityId })
+  const r = await fetch(`${BASE}/admin/audit-log?${q}`, {
+    headers: { 'x-admin-password': password },
+  })
+  if (r.status === 401) throw new Error('Invalid password')
+  if (!r.ok) throw new Error('Failed to fetch audit log')
+  return r.json()
+}
+
 export async function getAdminToday(password: string) {
   const r = await fetch(`${BASE}/admin/today`, {
     headers: { 'x-admin-password': password },
