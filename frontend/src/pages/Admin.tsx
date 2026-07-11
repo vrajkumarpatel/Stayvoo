@@ -14,6 +14,9 @@ import InvoiceSendModal, { InvoiceStatusBadge } from '../components/admin/Invoic
 import TodayTab, { type TodayData } from '../components/admin/TodayTab'
 import GlobalSearch from '../components/admin/GlobalSearch'
 import AuditHistory from '../components/admin/AuditHistory'
+import HotelsTab from '../components/admin/HotelsTab'
+import CommissionRatesTab from '../components/admin/CommissionRatesTab'
+import GuestsTab from '../components/admin/GuestsTab'
 
 const STORAGE_KEY = 'stayvoo_admin_pw'
 
@@ -1375,7 +1378,7 @@ export default function Admin() {
   const [resLoaded, setResLoaded] = useState(false)
   const [loading, setLoading] = useState(false)
   const [staysLoaded, setStaysLoaded] = useState(false)
-  const [activeTab, setActiveTab] = useState<'today' | 'reservations' | 'bookings' | 'inquiries' | 'stays' | 'billing'>('today')
+  const [activeTab, setActiveTab] = useState<'today' | 'reservations' | 'bookings' | 'inquiries' | 'stays' | 'billing' | 'hotels' | 'rates' | 'guests'>('today')
   const [todayData, setTodayData] = useState<TodayData | null>(null)
   const [todayLoading, setTodayLoading] = useState(false)
   const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null)
@@ -1669,6 +1672,9 @@ export default function Admin() {
             { key: 'inquiries', label: 'Inquiries', badge: inqNew > 0 ? `${inqNew} new` : undefined },
             { key: 'stays', label: 'Active Stays', badge: activeStays.length > 0 ? String(activeStays.length) : undefined },
             { key: 'billing', label: 'Billing', badge: undefined },
+            { key: 'hotels', label: 'Hotels', badge: undefined },
+            { key: 'rates', label: 'Commission Rates', badge: undefined },
+            { key: 'guests', label: 'Guests', badge: undefined },
           ] as const).map(t => (
             <button
               key={t.key}
@@ -2186,6 +2192,15 @@ export default function Admin() {
             <div className="p-10 text-center text-slate-400">Select a month to view billing data.</div>
           )}
         </>}
+
+        {/* ── HOTELS TAB ── */}
+        {activeTab === 'hotels' && <HotelsTab password={password} />}
+
+        {/* ── COMMISSION RATES TAB ── */}
+        {activeTab === 'rates' && <CommissionRatesTab password={password} />}
+
+        {/* ── GUESTS TAB ── */}
+        {activeTab === 'guests' && <GuestsTab password={password} />}
       </div>
 
       {/* Modals */}

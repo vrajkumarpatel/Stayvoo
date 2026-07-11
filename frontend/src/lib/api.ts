@@ -248,6 +248,77 @@ export async function getAdminBilling(month: string, password: string) {
   return r.json()
 }
 
+export async function getAdminHotels(password: string) {
+  const r = await fetch(`${BASE}/admin/hotels`, { headers: { 'x-admin-password': password } })
+  if (r.status === 401) throw new Error('Invalid password')
+  if (!r.ok) throw new Error('Failed to fetch hotels')
+  return r.json()
+}
+
+export async function updateAdminHotel(id: string, data: Record<string, unknown>, password: string) {
+  const r = await fetch(`${BASE}/admin/hotels/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'x-admin-password': password },
+    body: JSON.stringify(data),
+  })
+  if (r.status === 401) throw new Error('Invalid password')
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}))
+    throw new Error((err as any).detail ?? 'Update failed')
+  }
+  return r.json()
+}
+
+export async function getAdminCommissionRates(password: string) {
+  const r = await fetch(`${BASE}/admin/commission-rates`, { headers: { 'x-admin-password': password } })
+  if (r.status === 401) throw new Error('Invalid password')
+  if (!r.ok) throw new Error('Failed to fetch commission rates')
+  return r.json()
+}
+
+export async function updateAdminCommissionRate(hotelSource: string, data: Record<string, unknown>, password: string) {
+  const r = await fetch(`${BASE}/admin/commission-rates/${hotelSource}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'x-admin-password': password },
+    body: JSON.stringify(data),
+  })
+  if (r.status === 401) throw new Error('Invalid password')
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}))
+    throw new Error((err as any).detail ?? 'Update failed')
+  }
+  return r.json()
+}
+
+export async function getAdminGuests(password: string, search?: string) {
+  const q = search ? `?search=${encodeURIComponent(search)}` : ''
+  const r = await fetch(`${BASE}/admin/guests${q}`, { headers: { 'x-admin-password': password } })
+  if (r.status === 401) throw new Error('Invalid password')
+  if (!r.ok) throw new Error('Failed to fetch guests')
+  return r.json()
+}
+
+export async function getAdminGuest360(id: string, password: string) {
+  const r = await fetch(`${BASE}/admin/guests/${id}`, { headers: { 'x-admin-password': password } })
+  if (r.status === 401) throw new Error('Invalid password')
+  if (!r.ok) throw new Error('Failed to fetch guest')
+  return r.json()
+}
+
+export async function updateAdminGuest(id: string, data: Record<string, unknown>, password: string) {
+  const r = await fetch(`${BASE}/admin/guests/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'x-admin-password': password },
+    body: JSON.stringify(data),
+  })
+  if (r.status === 401) throw new Error('Invalid password')
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}))
+    throw new Error((err as any).detail ?? 'Update failed')
+  }
+  return r.json()
+}
+
 export async function globalAdminSearch(q: string, password: string) {
   const r = await fetch(`${BASE}/admin/search?q=${encodeURIComponent(q)}`, {
     headers: { 'x-admin-password': password },
