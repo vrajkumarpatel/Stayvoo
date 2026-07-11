@@ -36,7 +36,7 @@ export default function SiteFooter() {
       <div className="border-t border-white/10">
         <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-center justify-between gap-2 font-sans text-xs text-paper/50">
           <p>© 2026 Stayvoo LLC. All rights reserved.</p>
-          <p>Commission-based booking agency · Milwaukee Area &amp; Chicagoland</p>
+          <p>Extended-stay &amp; group booking agency · Milwaukee Area &amp; Chicagoland</p>
         </div>
       </div>
     </footer>

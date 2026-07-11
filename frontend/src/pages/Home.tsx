@@ -17,7 +17,7 @@ const TRAVEL_AGENCY_SCHEMA = {
 }
 
 const STATS: [string, string][] = [
-  ['3', 'Partner Hotels'],
+  ['13-week', 'Stays welcome'],
   ['Same-day', 'Response'],
   ['$0', 'Booking Fees'],
 ]
