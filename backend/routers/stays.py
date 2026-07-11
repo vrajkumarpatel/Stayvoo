@@ -4,11 +4,11 @@ import logging
 from datetime import date, datetime
 from typing import Optional
 from fastapi import APIRouter, Depends, Header, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, extract
 from database import get_db
-from models import Stay, Hotel
+from models import Stay, Hotel, HotelInvoice
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["stays"])
@@ -50,6 +50,22 @@ def stay_to_dict(s: Stay) -> dict:
         "status": s.status,
         "created_at": s.created_at.isoformat() if s.created_at else None,
         "updated_at": s.updated_at.isoformat() if s.updated_at else None,
+    }
+
+
+def invoice_to_dict(inv: HotelInvoice) -> dict:
+    return {
+        "id": str(inv.id),
+        "hotel_name": inv.hotel_name,
+        "month": inv.month,
+        "sent_to": inv.sent_to,
+        "cc_email": inv.cc_email,
+        "sent_at": inv.sent_at.isoformat() if inv.sent_at else None,
+        "sendgrid_message_id": inv.sendgrid_message_id,
+        "delivery_status": inv.delivery_status,
+        "delivered_at": inv.delivered_at.isoformat() if inv.delivered_at else None,
+        "opened_at": inv.opened_at.isoformat() if inv.opened_at else None,
+        "bounced_at": inv.bounced_at.isoformat() if inv.bounced_at else None,
     }
 
 
@@ -99,6 +115,8 @@ class CheckoutIn(BaseModel):
 
 class InvoiceIn(BaseModel):
     hotel_name: str
+    recipient_email: EmailStr
+    cc_email: Optional[EmailStr] = None
 
 
 @router.get("/admin/stays")
@@ -252,6 +270,18 @@ async def billing_summary(
             by_hotel[key] = {"hotel_name": key, "hotel_id": str(s.hotel_id) if s.hotel_id else None, "stays": []}
         by_hotel[key]["stays"].append(stay_to_dict(s))
 
+    hotels_result = await db.execute(select(Hotel).where(Hotel.name.in_(by_hotel.keys())))
+    hotel_email_by_name = {h.name: h.email for h in hotels_result.scalars().all()}
+
+    invoices_result = await db.execute(
+        select(HotelInvoice)
+        .where(HotelInvoice.month == month, HotelInvoice.hotel_name.in_(by_hotel.keys()))
+        .order_by(HotelInvoice.sent_at.desc())
+    )
+    latest_invoice_by_hotel: dict = {}
+    for inv in invoices_result.scalars().all():
+        latest_invoice_by_hotel.setdefault(inv.hotel_name, invoice_to_dict(inv))
+
     summary = []
     for data in by_hotel.values():
         sl = data["stays"]
@@ -261,6 +291,7 @@ async def billing_summary(
         summary.append({
             "hotel_name": data["hotel_name"],
             "hotel_id": data["hotel_id"],
+            "hotel_email": hotel_email_by_name.get(data["hotel_name"]),
             "total_stays": len(sl),
             "active_stays": sum(1 for s in sl if s["status"] in ("active", "extended", "upcoming")),
             "completed_stays": sum(1 for s in sl if s["status"] == "checked_out"),
@@ -269,6 +300,7 @@ async def billing_summary(
             "commission_paid": comm_paid,
             "commission_pending": commission - comm_paid,
             "stays": sl,
+            "latest_invoice": latest_invoice_by_hotel.get(data["hotel_name"]),
         })
 
     total_revenue = sum(h["total_revenue"] for h in summary)
@@ -293,16 +325,12 @@ async def send_invoice(
     db: AsyncSession = Depends(get_db),
     _: None = Depends(_verify_admin),
 ):
-    from services.email_service import send_hotel_invoice_email
+    from services.email_service import send_hotel_invoice_email_tracked
 
     try:
         year, month_num = (int(x) for x in month.split("-"))
     except Exception:
         raise HTTPException(status_code=400, detail="Month must be YYYY-MM format")
-
-    hotel_result = await db.execute(select(Hotel).where(Hotel.name == payload.hotel_name))
-    hotel = hotel_result.scalar_one_or_none()
-    hotel_email = hotel.email if hotel and hotel.email else os.getenv("SENDGRID_FROM_EMAIL", "hello@stayvoo.com")
 
     stays_result = await db.execute(
         select(Stay).where(
@@ -317,16 +345,36 @@ async def send_invoice(
     total_revenue = sum(float(s["total_amount"]) for s in stays_dicts)
     total_commission = sum(float(s["commission_amount"]) for s in stays_dicts)
 
-    await send_hotel_invoice_email(payload.hotel_name, hotel_email, month, {
-        "stays": stays_dicts,
-        "total_revenue": total_revenue,
-        "total_commission": total_commission,
-    })
+    result = await send_hotel_invoice_email_tracked(
+        payload.hotel_name, payload.recipient_email, month,
+        {"stays": stays_dicts, "total_revenue": total_revenue, "total_commission": total_commission},
+        cc_email=payload.cc_email,
+    )
+
+    invoice = HotelInvoice(
+        id=uuid.uuid4(),
+        hotel_name=payload.hotel_name,
+        month=month,
+        sent_to=payload.recipient_email,
+        cc_email=payload.cc_email,
+        sendgrid_message_id=result["message_id"],
+        delivery_status="queued" if result["success"] else "error",
+        total_revenue=total_revenue,
+        total_commission=total_commission,
+    )
+    db.add(invoice)
+    await db.commit()
+
+    if not result["success"]:
+        raise HTTPException(status_code=502, detail=f"Invoice send failed: {result['error']}")
 
     return {
         "status": "sent",
         "hotel_name": payload.hotel_name,
-        "hotel_email": hotel_email,
+        "sent_to": payload.recipient_email,
+        "cc_email": payload.cc_email,
         "month": month,
         "total_stays": len(stays),
+        "sendgrid_message_id": result["message_id"],
+        "invoice_id": str(invoice.id),
     }

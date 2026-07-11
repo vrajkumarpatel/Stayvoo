@@ -9,7 +9,7 @@ from sqlalchemy.orm import selectinload
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from database import setup_db, Base, get_db
 from models import Hotel, Room, Booking, Stay, CommissionRate, Reservation, ReservationMessage
-from routers import hotels, bookings, admin, search, chat, inquiries, stays, guests, reservations
+from routers import hotels, bookings, admin, search, chat, inquiries, stays, guests, reservations, webhooks
 
 logger = logging.getLogger(__name__)
 
@@ -437,6 +437,7 @@ app.include_router(chat.router)
 app.include_router(inquiries.router)
 app.include_router(stays.router)
 app.include_router(guests.router)
+app.include_router(webhooks.router)
 
 
 @app.get("/")

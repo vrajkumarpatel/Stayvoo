@@ -542,11 +542,17 @@ export async function sendMyStayReservationMessage(token: string, reservationId:
   return r.json()
 }
 
-export async function sendHotelInvoice(hotelName: string, month: string, password: string) {
+export async function sendHotelInvoice(
+  hotelName: string,
+  month: string,
+  recipientEmail: string,
+  ccEmail: string | undefined,
+  password: string
+) {
   const r = await fetch(`${BASE}/admin/billing/invoice/${month}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-admin-password': password },
-    body: JSON.stringify({ hotel_name: hotelName }),
+    body: JSON.stringify({ hotel_name: hotelName, recipient_email: recipientEmail, cc_email: ccEmail || undefined }),
   })
   if (r.status === 401) throw new Error('Invalid password')
   if (!r.ok) {

@@ -779,28 +779,17 @@ async def billing_reservations(
 @router.get("/test-email")
 @router.post("/test-email")
 async def test_email(_: None = Depends(_verify_admin)):
-    """Diagnostic endpoint — sends a test email via SendGrid and returns result."""
-    import asyncio
-    from sendgrid import SendGridAPIClient
-    from sendgrid.helpers.mail import Mail
+    """Diagnostic endpoint — sends a test email via the shared, allowlist-gated send path."""
+    from services.email_service import _send_tracked
 
-    api_key = os.getenv("SENDGRID_API_KEY")
-    from_email = os.getenv("SENDGRID_FROM_EMAIL", "hello@stayvoo.com")
-
-    if not api_key:
+    if not os.getenv("SENDGRID_API_KEY"):
         return {"status": "error", "issue": "SENDGRID_API_KEY is not set in Railway environment variables"}
 
-    message = Mail(
-        from_email=(from_email, "Stayvoo"),
-        to_emails="vp431030@gmail.com",
-        subject="Stayvoo Email Test",
-        html_content="<p>Test email from Stayvoo, SendGrid is working correctly!</p>",
+    result = await _send_tracked(
+        "vp431030@gmail.com",
+        "Stayvoo Email Test",
+        "<p>Test email from Stayvoo, SendGrid is working correctly!</p>",
     )
-    try:
-        sg = SendGridAPIClient(api_key)
-        response = await asyncio.to_thread(sg.send, message)
-        logger.info("Test email sent via SendGrid (status %s)", response.status_code)
-        return {"status": "sent", "to": "vp431030@gmail.com", "from": from_email, "sendgrid_status": response.status_code}
-    except Exception as e:
-        logger.error("Test email failed: %s", e)
-        return {"status": "error", "issue": str(e)}
+    if result["success"]:
+        return {"status": "sent", "to": "vp431030@gmail.com", "sendgrid_message_id": result["message_id"]}
+    return {"status": "error", "issue": result["error"]}

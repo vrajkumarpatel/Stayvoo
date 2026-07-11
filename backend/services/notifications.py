@@ -1,6 +1,7 @@
 import os
 import logging
 from dotenv import load_dotenv
+from services.allowlist import is_sms_allowed, log_blocked
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -9,6 +10,10 @@ logger = logging.getLogger(__name__)
 def _send_sms(to: str, body: str) -> bool:
     if not to:
         logger.warning("SMS skipped: no recipient phone number")
+        return False
+
+    if not is_sms_allowed(to):
+        log_blocked("SMS", to)
         return False
 
     sid = os.getenv("TWILIO_ACCOUNT_SID", "")

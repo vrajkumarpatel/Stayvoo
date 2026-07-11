@@ -3,6 +3,7 @@ import asyncio
 import logging
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
+from services.allowlist import is_email_allowed, log_blocked
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +80,9 @@ def _ref_badge(ref: str) -> str:
 
 
 def _send_sync(to_email: str, subject: str, html: str) -> None:
+    if not is_email_allowed(to_email):
+        log_blocked("email", to_email, subject)
+        return
     api_key = os.getenv("SENDGRID_API_KEY")
     from_email = os.getenv("SENDGRID_FROM_EMAIL", FROM_EMAIL)
     if not api_key:
@@ -100,6 +104,45 @@ async def _send(to_email: str, subject: str, html: str) -> None:
         await asyncio.to_thread(_send_sync, to_email, subject, html)
     except Exception as e:
         logger.error("Failed to send email to %s: %s", to_email, e)
+
+
+def _send_tracked_sync(to_email: str, subject: str, html: str, cc_email: str | None = None) -> dict:
+    """Like _send_sync, but surfaces real success/failure/message-id instead of swallowing everything.
+    Used only by flows that need to persist a delivery record (e.g. hotel invoice sends)."""
+    if not is_email_allowed(to_email):
+        log_blocked("email", to_email, subject)
+        return {"success": False, "message_id": None, "error": "Recipient blocked by allowlist lockdown"}
+
+    api_key = os.getenv("SENDGRID_API_KEY")
+    from_email = os.getenv("SENDGRID_FROM_EMAIL", FROM_EMAIL)
+    if not api_key:
+        return {"success": False, "message_id": None, "error": "SENDGRID_API_KEY is not configured"}
+
+    message = Mail(
+        from_email=(from_email, FROM_NAME),
+        to_emails=to_email,
+        subject=subject,
+        html_content=html,
+    )
+    if cc_email:
+        from sendgrid.helpers.mail import Cc
+        message.add_cc(Cc(cc_email))
+
+    try:
+        sg = SendGridAPIClient(api_key)
+        response = sg.send(message)
+        message_id = response.headers.get("X-Message-Id") if response.headers else None
+        if response.status_code >= 400:
+            return {"success": False, "message_id": message_id, "error": f"SendGrid returned status {response.status_code}"}
+        logger.info("Tracked email sent to %s: %s (status %s, id %s)", to_email, subject, response.status_code, message_id)
+        return {"success": True, "message_id": message_id, "error": None}
+    except Exception as e:
+        logger.error("Tracked email failed to %s: %s", to_email, e)
+        return {"success": False, "message_id": None, "error": str(e)}
+
+
+async def _send_tracked(to_email: str, subject: str, html: str, cc_email: str | None = None) -> dict:
+    return await asyncio.to_thread(_send_tracked_sync, to_email, subject, html, cc_email)
 
 
 async def send_booking_received(b: dict) -> None:
@@ -410,7 +453,7 @@ async def send_stay_expiry_reminder(stay: dict) -> None:
     await _send(to_email, f"Your stay at {hotel_name} ends in 14 days", _base_html("Stay Expiry Reminder", body))
 
 
-async def send_hotel_invoice_email(hotel_name: str, hotel_email: str, month: str, billing: dict) -> None:
+def _hotel_invoice_content(hotel_name: str, month: str, billing: dict) -> tuple[str, str]:
     stays_list = billing.get("stays", [])
     total_revenue = float(billing.get("total_revenue", 0))
     total_commission = float(billing.get("total_commission", 0))
@@ -454,7 +497,19 @@ async def send_hotel_invoice_email(hotel_name: str, hotel_email: str, month: str
       Questions? Email <a href="mailto:hello@stayvoo.com" style="color:{ACCENT_COLOR};">hello@stayvoo.com</a>
       or call <strong>{SUPPORT_PHONE}</strong>.
     </p>"""
-    await _send(hotel_email, f"Stayvoo Commission Invoice: {month}", _base_html("Monthly Invoice", body))
+    return f"Stayvoo Commission Invoice: {month}", _base_html("Monthly Invoice", body)
+
+
+async def send_hotel_invoice_email(hotel_name: str, hotel_email: str, month: str, billing: dict) -> None:
+    subject, html = _hotel_invoice_content(hotel_name, month, billing)
+    await _send(hotel_email, subject, html)
+
+
+async def send_hotel_invoice_email_tracked(
+    hotel_name: str, hotel_email: str, month: str, billing: dict, cc_email: str | None = None
+) -> dict:
+    subject, html = _hotel_invoice_content(hotel_name, month, billing)
+    return await _send_tracked(hotel_email, subject, html, cc_email)
 
 
 async def send_guest_login_email(guest: dict, portal_url: str) -> None:

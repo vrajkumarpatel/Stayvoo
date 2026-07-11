@@ -3,12 +3,14 @@ import {
   getAdminBookings, confirmAdminBooking, cancelAdminBooking, testAdminEmail,
   getAdminInquiries, updateAdminInquiry, getInquiryMessages, sendInquiryMessage,
   getAdminStays, createAdminStay, updateAdminStay, checkoutAdminStay,
-  getAdminBilling, sendHotelInvoice,
+  getAdminBilling,
   getAdminBookingMessages, sendAdminBookingMessage, updateAdminBooking,
   getAdminReservations, confirmAdminReservation, cancelAdminReservation,
   checkinAdminReservation, checkoutAdminReservation, updateAdminReservation,
   getAdminReservationMessages, sendAdminReservationMessage,
 } from '../lib/api'
+import { ModalShell, ModalHeader } from '../components/admin/shared'
+import InvoiceSendModal, { InvoiceStatusBadge } from '../components/admin/InvoiceSendModal'
 
 const STORAGE_KEY = 'stayvoo_admin_pw'
 
@@ -88,10 +90,18 @@ interface Reservation {
   guest: { first_name: string; last_name: string; email: string; phone: string; guest_type: string | null; company: string | null; total_stays: number } | null
 }
 
+interface LatestInvoice {
+  id: string; hotel_name: string; month: string; sent_to: string; cc_email: string | null
+  sent_at: string | null; sendgrid_message_id: string | null; delivery_status: string
+  delivered_at: string | null; opened_at: string | null; bounced_at: string | null
+}
+
 interface BillingHotel {
-  hotel_name: string; hotel_id: string | null; total_stays: number; active_stays: number
+  hotel_name: string; hotel_id: string | null; hotel_email: string | null
+  total_stays: number; active_stays: number
   completed_stays: number; total_revenue: number; total_commission: number
   commission_paid: number; commission_pending: number; stays: Stay[]
+  latest_invoice: LatestInvoice | null
 }
 
 interface BillingData {
@@ -110,34 +120,6 @@ function InfoRow({ label, children }: { label: string; children: React.ReactNode
 
 function SectionHeader({ title }: { title: string }) {
   return <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 mt-6 first:mt-0">{title}</h3>
-}
-
-function ModalShell({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-stretch sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="bg-white rounded-none sm:rounded-2xl shadow-2xl w-full sm:max-w-[720px] lg:max-w-[800px] max-h-screen sm:h-auto sm:max-h-[85vh] flex flex-col">
-        {children}
-      </div>
-    </div>
-  )
-}
-
-function ModalHeader({ title, sub, onClose }: { title: React.ReactNode; sub?: string; onClose: () => void }) {
-  return (
-    <div className="bg-[#10192b] px-5 py-4 sm:rounded-t-2xl flex-shrink-0">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2.5 flex-wrap">{title}</div>
-          {sub && <p className="text-white/50 text-xs mt-1.5">{sub}</p>}
-        </div>
-        <button onClick={onClose} className="text-white/50 hover:text-white w-8 h-8 flex items-center justify-center rounded-xl hover:bg-white/10 transition-colors flex-shrink-0">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-    </div>
-  )
 }
 
 function BookingDetailModal({ booking: b, password, onClose, onUpdate }: {
@@ -1346,7 +1328,7 @@ export default function Admin() {
   const [billingLoading, setBillingLoading] = useState(false)
   const [emailTestResult, setEmailTestResult] = useState<string | null>(null)
   const [testingEmail, setTestingEmail] = useState(false)
-  const [invoicingSending, setInvoicingSending] = useState<string | null>(null)
+  const [invoiceModalHotel, setInvoiceModalHotel] = useState<BillingHotel | null>(null)
 
   const today = new Date().toISOString().split('T')[0]
 
@@ -1505,16 +1487,8 @@ export default function Admin() {
     }
   }
 
-  const handleSendInvoice = async (hotelName: string) => {
-    setInvoicingSending(hotelName)
-    try {
-      await sendHotelInvoice(hotelName, billingMonth, password)
-      alert(`Invoice sent for ${hotelName}`)
-    } catch (err: any) {
-      alert(`Invoice failed: ${err.message}`)
-    } finally {
-      setInvoicingSending(null)
-    }
+  const handleInvoiceSent = () => {
+    loadBilling(billingMonth, password)
   }
 
   const formatDate = (s: string) => {
@@ -2018,6 +1992,7 @@ export default function Admin() {
                         <div>
                           <h3 className="text-[#10192b] font-black text-base">{h.hotel_name}</h3>
                           <p className="text-slate-400 text-xs mt-0.5">{h.total_stays} stays · {h.active_stays} active · {h.completed_stays} completed</p>
+                          <div className="mt-1"><InvoiceStatusBadge invoice={h.latest_invoice} /></div>
                         </div>
                         <div className="flex items-center gap-3">
                           <div className="text-right">
@@ -2025,11 +2000,10 @@ export default function Admin() {
                             <div className="text-slate-400 text-xs">commission</div>
                           </div>
                           <button
-                            onClick={() => handleSendInvoice(h.hotel_name)}
-                            disabled={invoicingSending === h.hotel_name}
-                            className="bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white font-bold px-3 py-2 rounded-lg text-xs transition-colors"
+                            onClick={() => setInvoiceModalHotel(h)}
+                            className="bg-orange-500 hover:bg-orange-600 text-white font-bold px-3 py-2 rounded-lg text-xs transition-colors"
                           >
-                            {invoicingSending === h.hotel_name ? '...' : 'Send Invoice'}
+                            Send Invoice
                           </button>
                         </div>
                       </div>
@@ -2092,6 +2066,16 @@ export default function Admin() {
       )}
       {showCreateStay && (
         <CreateStayModal inquiry={createStayInquiry} password={password} onClose={() => { setShowCreateStay(false); setCreateStayInquiry(null) }} onCreated={handleStayCreated} />
+      )}
+      {invoiceModalHotel && (
+        <InvoiceSendModal
+          hotelName={invoiceModalHotel.hotel_name}
+          hotelEmail={invoiceModalHotel.hotel_email}
+          month={billingMonth}
+          password={password}
+          onClose={() => setInvoiceModalHotel(null)}
+          onSent={handleInvoiceSent}
+        />
       )}
     </div>
   )

@@ -263,6 +263,25 @@ class Reservation(Base):
     messages = relationship("ReservationMessage", back_populates="reservation", cascade="all, delete-orphan")
 
 
+class HotelInvoice(Base):
+    __tablename__ = "hotel_invoices"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    hotel_name = Column(String, nullable=False)
+    month = Column(String, nullable=False)  # YYYY-MM
+    sent_to = Column(String, nullable=False)
+    cc_email = Column(String, nullable=True)
+    sent_at = Column(DateTime, default=datetime.utcnow)
+    sendgrid_message_id = Column(String, nullable=True)
+    delivery_status = Column(String, default="queued")  # queued | delivered | bounced | blocked | error
+    delivered_at = Column(DateTime, nullable=True)
+    opened_at = Column(DateTime, nullable=True)
+    bounced_at = Column(DateTime, nullable=True)
+    total_revenue = Column(Numeric(10, 2), nullable=False)
+    total_commission = Column(Numeric(10, 2), nullable=False)
+    sent_by = Column(String, default="admin")
+
+
 class ReservationMessage(Base):
     __tablename__ = "reservation_messages"
 
