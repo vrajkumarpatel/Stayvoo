@@ -3,22 +3,17 @@ import uuid
 import logging
 from datetime import date, datetime
 from typing import Optional
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, extract
 from database import get_db
 from models import Stay, Hotel, HotelInvoice
 from services.audit import record_change
+from services.admin_auth import verify_admin as _verify_admin
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["stays"])
-
-
-def _verify_admin(x_admin_password: str = Header(...)):
-    expected = os.getenv("ADMIN_PASSWORD", "admin123")
-    if x_admin_password != expected:
-        raise HTTPException(status_code=401, detail="Unauthorized")
 
 
 def stay_to_dict(s: Stay) -> dict:

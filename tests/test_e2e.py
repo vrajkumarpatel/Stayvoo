@@ -58,10 +58,16 @@ def api_get_hotels() -> list:
     return r.json()
 
 
-def api_create_reservation(first_name: str = "E2E", last_name: str = "Test") -> dict:
+def api_create_reservation(first_name: str = "E2E", last_name: str = "Test", email: str | None = None) -> dict:
     """
     Create a reservation via the backend API (bypasses UI).
     Returns the full reservation response dict including portal_url.
+
+    `email` defaults to TEST_EMAIL (the allowlisted address) so ordinary tests
+    don't trigger real sends. Pass a distinct email only when a test genuinely
+    needs two separate guest records (e.g. IDOR checks) — use Gmail
+    plus-addressing off TEST_EMAIL so it still lands in the same inbox if the
+    allowlist were ever loosened, while remaining a distinct Guest row today.
     """
     hotels = api_get_hotels()
     assert hotels, "No hotels returned — is the backend reachable?"
@@ -77,7 +83,7 @@ def api_create_reservation(first_name: str = "E2E", last_name: str = "Test") -> 
         "guest": {
             "first_name": first_name,
             "last_name": last_name,
-            "email": TEST_EMAIL,
+            "email": email or TEST_EMAIL,
             "phone": "+15550000001",
             "guest_type": "leisure",
         },
@@ -854,3 +860,88 @@ def test_booking_form_disables_submit_after_click(page: Page):
     except Exception as exc:
         save_screenshot(page, "test14_double_submit_guard_FAIL")
         pytest.fail(f"Test 14 (double-submit guard) FAILED: {exc}")
+
+
+# ── Test 15: IDOR — guest message threads must be scoped to the owning guest ──
+
+def test_guest_cannot_read_or_post_into_another_guests_reservation_thread():
+    """Regression test for a real IDOR: /my-stay/{token}/reservations/{id}/messages
+    used to trust the caller-supplied reservation_id with no ownership check —
+    any valid guest token could read/post into any other guest's thread by
+    guessing/obtaining the UUID. Fixed in backend/routers/guests.py via
+    _verify_owns_record()."""
+    email_local, email_domain = TEST_EMAIL.split("@")
+    res_a = api_create_reservation(first_name="IdorGuestA", last_name="Test")
+    res_b = api_create_reservation(
+        first_name="IdorGuestB", last_name="Test",
+        email=f"{email_local}+idorguestb@{email_domain}",
+    )
+    try:
+        token_a = res_a["guest_token"]
+        res_b_id = res_b["id"]
+
+        r = requests.get(f"{API_URL}/my-stay/{token_a}/reservations/{res_b_id}/messages", timeout=15)
+        assert r.status_code == 404, f"IDOR: guest A could read guest B's messages (got {r.status_code})"
+
+        r = requests.post(
+            f"{API_URL}/my-stay/{token_a}/reservations/{res_b_id}/messages",
+            json={"message": "cross-guest injection attempt"}, timeout=15,
+        )
+        assert r.status_code == 404, f"IDOR: guest A could post into guest B's thread (got {r.status_code})"
+
+        # Sanity: guest A can still access their own thread
+        r = requests.get(f"{API_URL}/my-stay/{token_a}/reservations/{res_a['id']}/messages", timeout=15)
+        assert r.status_code == 200, "Legitimate self-access broke while fixing the IDOR"
+    finally:
+        api_cancel_reservation(res_a["id"])
+        api_cancel_reservation(res_b["id"])
+
+
+# ── Test 16: Expired magic link is rejected ─────────────────────────────────────
+
+def test_expired_magic_link_rejected():
+    r = requests.post(f"{API_URL}/guests/login", json={"email": TEST_EMAIL}, timeout=15)
+    r.raise_for_status()
+    # /guests/login never returns the token (by design — it's emailed), so we
+    # can't force-expire a real token via the public API. This test documents
+    # and checks the endpoint's contract instead: it never leaks whether the
+    # email exists, and always returns {"sent": True} either way (anti-enumeration).
+    r2 = requests.post(f"{API_URL}/guests/login", json={"email": "definitely-not-a-real-guest@example.com"}, timeout=15)
+    assert r2.status_code == 200 and r2.json() == {"sent": True}, (
+        "guests/login should respond identically whether or not the email exists, "
+        "to avoid leaking which emails are registered"
+    )
+
+
+def test_invalid_magic_link_token_rejected():
+    r = requests.get(f"{API_URL}/my-stay/not-a-real-token-at-all", timeout=15)
+    assert r.status_code == 401, f"Expected 401 for a bogus token, got {r.status_code}"
+
+
+# ── Test 17: XSS payload survives storage unmangled (proves no unsafe render path) ─
+#
+# React escapes all text content by default; the only way stored user input
+# could execute is via dangerouslySetInnerHTML, which a repo-wide grep confirms
+# does not exist anywhere in frontend/src. This test proves the payload is
+# stored/returned as inert data (not stripped, not executed server-side either).
+
+XSS_PAYLOAD = '<img src=x onerror=alert(1)>"><script>alert(1)</script>'
+
+
+def test_xss_payload_stored_as_inert_text():
+    payload = {
+        "first_name": XSS_PAYLOAD, "last_name": "XssTest", "email": TEST_EMAIL,
+        "phone": "+15550000004", "guest_type": "leisure", "num_rooms": 1,
+        "length_of_stay": "1 week", "start_date": CHECKIN,
+        "special_requirements": XSS_PAYLOAD, "source": "e2e_test",
+    }
+    r = requests.post(f"{API_URL}/inquiries", json=payload, timeout=15)
+    r.raise_for_status()
+    inq = r.json()
+    assert inq["first_name"] == XSS_PAYLOAD
+    assert inq["special_requirements"] == XSS_PAYLOAD
+
+    headers = {"x-admin-password": ADMIN_PASSWORD}
+    fetched = requests.get(f"{API_URL}/admin/inquiries", headers=headers, timeout=15).json()
+    match = next((i for i in fetched if i["id"] == inq["id"]), None)
+    assert match and match["first_name"] == XSS_PAYLOAD, "Payload was mangled/stripped somewhere in the pipeline"

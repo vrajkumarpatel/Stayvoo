@@ -4,7 +4,7 @@ import uuid
 import logging
 from datetime import date, timedelta
 from typing import Optional, Union
-from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -14,15 +14,11 @@ from services.guests import get_or_create_guest
 from services.email_service import send_inquiry_notification, send_inquiry_auto_reply, send_admin_message
 from services.notifications import notify_new_inquiry
 from services.audit import record_change
+from services.rate_limit import rate_limit_by_ip
+from services.admin_auth import verify_admin as _verify_admin
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["inquiries"])
-
-
-def _verify_admin(x_admin_password: str = Header(...)):
-    expected = os.getenv("ADMIN_PASSWORD", "admin123")
-    if x_admin_password != expected:
-        raise HTTPException(status_code=401, detail="Unauthorized")
 
 
 class InquiryIn(BaseModel):
@@ -107,9 +103,11 @@ def inquiry_to_dict(inq: Inquiry) -> dict:
 @router.post("/inquiries")
 async def create_inquiry(
     payload: InquiryIn,
+    request: Request,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ):
+    rate_limit_by_ip(request, "create_inquiry", max_requests=5, window_seconds=600)
     guest = await get_or_create_guest(db, payload.email, payload.first_name, payload.last_name, payload.phone)
 
     inq = Inquiry(id=uuid.uuid4(), guest_id=guest.id, **payload.model_dump())

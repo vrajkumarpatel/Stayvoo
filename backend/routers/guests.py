@@ -1,7 +1,7 @@
 import uuid as _uuid
 import logging
 from datetime import datetime
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
@@ -9,6 +9,7 @@ from sqlalchemy.orm import selectinload
 from database import get_db
 from models import Guest, Booking, Stay, Inquiry, StayMessage, Reservation, ReservationMessage
 from services.guests import issue_new_token, extend_token
+from services.rate_limit import rate_limit_by_ip
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["guests"])
@@ -38,9 +39,11 @@ class MsgPayload(BaseModel):
 @router.post("/guests/login")
 async def guest_login(
     payload: LoginIn,
+    request: Request,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ):
+    rate_limit_by_ip(request, "guests_login", max_requests=5, window_seconds=600)
     result = await db.execute(select(Guest).where(Guest.email == payload.email.strip().lower()))
     guest = result.scalar_one_or_none()
     if guest:
@@ -136,6 +139,7 @@ async def get_my_stay_messages(
     result = await db.execute(select(Guest).where(Guest.access_token == token))
     guest = result.scalar_one_or_none()
     _validate_token(guest)
+    await _verify_owns_record(db, record_type, record_id, guest)
 
     # For bookings, also fetch messages saved under the linked stay (admin replies go there)
     if record_type == "booking":
@@ -177,6 +181,7 @@ async def send_my_stay_message(
     result = await db.execute(select(Guest).where(Guest.access_token == token))
     guest = result.scalar_one_or_none()
     _validate_token(guest)
+    await _verify_owns_record(db, record_type, record_id, guest)
 
     kwargs: dict = {
         "id": _uuid.uuid4(),
@@ -223,6 +228,7 @@ async def get_reservation_messages(
     result = await db.execute(select(Guest).where(Guest.access_token == token))
     guest = result.scalar_one_or_none()
     _validate_token(guest)
+    await _verify_owns_record(db, "reservation", reservation_id, guest)
 
     msgs_result = await db.execute(
         select(ReservationMessage)
@@ -255,13 +261,7 @@ async def send_reservation_message(
     result = await db.execute(select(Guest).where(Guest.access_token == token))
     guest = result.scalar_one_or_none()
     _validate_token(guest)
-
-    res_result = await db.execute(
-        select(Reservation).where(Reservation.id == _uuid.UUID(reservation_id))
-    )
-    reservation = res_result.scalar_one_or_none()
-    if not reservation:
-        raise HTTPException(status_code=404, detail="Reservation not found")
+    await _verify_owns_record(db, "reservation", reservation_id, guest)
 
     msg = ReservationMessage(
         id=_uuid.uuid4(),
@@ -296,6 +296,44 @@ def _resmsg_dict(m: ReservationMessage) -> dict:
         "is_read": m.is_read,
         "created_at": m.created_at.isoformat() if m.created_at else None,
     }
+
+
+async def _verify_owns_record(db: AsyncSession, record_type: str, record_id: str, guest: Guest) -> None:
+    """Raise 404 unless the given record actually belongs to this guest.
+    Falls back to matching the record's denormalized guest_email for older
+    rows that predate guest_id linking, rather than trusting the caller."""
+    try:
+        rid = _uuid.UUID(record_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Not found")
+
+    if record_type == "booking":
+        result = await db.execute(select(Booking).where(Booking.id == rid))
+        record = result.scalar_one_or_none()
+        owns = record is not None and record.guest_id == guest.id
+    elif record_type == "stay":
+        result = await db.execute(select(Stay).where(Stay.id == rid))
+        record = result.scalar_one_or_none()
+        owns = record is not None and (
+            record.guest_id == guest.id or record.guest_email == guest.email
+        )
+    elif record_type == "inquiry":
+        result = await db.execute(select(Inquiry).where(Inquiry.id == rid))
+        record = result.scalar_one_or_none()
+        owns = record is not None and (
+            record.guest_id == guest.id or record.email == guest.email
+        )
+    elif record_type == "reservation":
+        result = await db.execute(select(Reservation).where(Reservation.id == rid))
+        record = result.scalar_one_or_none()
+        owns = record is not None and (
+            record.guest_id == guest.id or record.guest_email == guest.email
+        )
+    else:
+        owns = False
+
+    if not owns:
+        raise HTTPException(status_code=404, detail="Not found")
 
 
 def _record_filter(record_type: str, record_id: str):

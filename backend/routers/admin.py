@@ -3,7 +3,7 @@ import uuid
 import logging
 from datetime import date, datetime, timedelta
 from typing import Optional
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Header
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
@@ -15,6 +15,7 @@ from routers.reservations import reservation_to_dict
 from routers.inquiries import inquiry_to_dict
 from routers.stays import invoice_to_dict
 from services.audit import record_change
+from services.admin_auth import verify_admin as _verify_admin
 from services.notifications import (
     notify_guest_confirmed,
     notify_pre_arrival,
@@ -31,12 +32,6 @@ from services.email_service import (
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/admin", tags=["admin"])
-
-
-def _verify_admin(x_admin_password: str = Header(...)):
-    expected = os.getenv("ADMIN_PASSWORD", "admin123")
-    if x_admin_password != expected:
-        raise HTTPException(status_code=401, detail="Unauthorized")
 
 
 async def _load_booking(booking_id: str, db: AsyncSession) -> Booking:

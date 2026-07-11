@@ -2,7 +2,7 @@ import os
 import logging
 from datetime import date
 from decimal import Decimal
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -12,6 +12,7 @@ from models import Hotel, Room, Guest, Booking
 from services.guests import get_or_create_guest
 from services.notifications import notify_new_booking, notify_guest_received
 from services.email_service import send_booking_received
+from services.rate_limit import rate_limit_by_ip
 
 logger = logging.getLogger(__name__)
 
@@ -128,9 +129,11 @@ async def create_setup_intent():
 @router.post("")
 async def create_booking(
     payload: BookingIn,
+    request: Request,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ):
+    rate_limit_by_ip(request, "create_booking", max_requests=10, window_seconds=600)
     hotel_result = await db.execute(
         select(Hotel).where(Hotel.id == payload.hotel_id, Hotel.active == True)
     )
