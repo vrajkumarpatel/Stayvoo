@@ -824,6 +824,8 @@ async def global_search(
     db: AsyncSession = Depends(get_db),
     _: None = Depends(_verify_admin),
 ):
+    from sqlalchemy import func
+
     q = q.strip()
     if not q or len(q) < 2:
         return {"guests": [], "reservations": [], "bookings": [], "inquiries": []}
@@ -833,6 +835,7 @@ async def global_search(
         select(Guest).where(
             or_(
                 Guest.first_name.ilike(like), Guest.last_name.ilike(like),
+                func.concat(Guest.first_name, ' ', Guest.last_name).ilike(like),
                 Guest.email.ilike(like), Guest.phone.ilike(like),
             )
         ).limit(10)
@@ -846,6 +849,7 @@ async def global_search(
         select(Reservation).options(selectinload(Reservation.guest)).where(
             or_(
                 Reservation.guest_first_name.ilike(like), Reservation.guest_last_name.ilike(like),
+                func.concat(Reservation.guest_first_name, ' ', Reservation.guest_last_name).ilike(like),
                 Reservation.guest_email.ilike(like), Reservation.reservation_ref.ilike(like),
                 Reservation.pms_confirmation.ilike(like), Reservation.hotel_name_snapshot.ilike(like),
             )
@@ -859,6 +863,7 @@ async def global_search(
         .where(
             or_(
                 Guest.first_name.ilike(like), Guest.last_name.ilike(like),
+                func.concat(Guest.first_name, ' ', Guest.last_name).ilike(like),
                 Guest.email.ilike(like), Booking.booking_ref.ilike(like),
                 Booking.pms_confirmation.ilike(like),
             )
@@ -870,6 +875,7 @@ async def global_search(
         select(Inquiry).where(
             or_(
                 Inquiry.first_name.ilike(like), Inquiry.last_name.ilike(like),
+                func.concat(Inquiry.first_name, ' ', Inquiry.last_name).ilike(like),
                 Inquiry.email.ilike(like), Inquiry.phone.ilike(like),
             )
         ).order_by(Inquiry.created_at.desc()).limit(10)

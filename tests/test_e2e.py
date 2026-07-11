@@ -3,7 +3,9 @@ End-to-end Playwright tests against https://stayvoo.com (live production).
 
 Stripe test card: 4242 4242 4242 4242  exp: 12/29  cvc: 123
 Admin password: set via required ADMIN_PASSWORD env var (no fallback — never hardcode it here)
-Test email: e2etest@stayvoo.com
+Test email: vp431030@gmail.com — must be the allowlisted address (see
+backend/services/allowlist.py) or every outbound send in these tests gets
+silently blocked+logged rather than actually sent.
 
 Run:
     ADMIN_PASSWORD=... pytest tests/test_e2e.py -v --headed
@@ -30,7 +32,7 @@ if not ADMIN_PASSWORD:
         "ADMIN_PASSWORD env var is required to run these tests — "
         "never hardcode the production admin password in this file."
     )
-TEST_EMAIL = "e2etest@stayvoo.com"
+TEST_EMAIL = "vp431030@gmail.com"
 STRIPE_TEST_CARD = "4242424242424242"
 
 SCREENSHOT_DIR = Path("tests/screenshots")
@@ -573,3 +575,282 @@ def test_cancellation(page: Page):
     except Exception as exc:
         save_screenshot(page, "test5_cancellation_FAIL")
         pytest.fail(f"Test 5 (cancellation) FAILED: {exc}")
+
+
+# ── Test 6: Admin login / logout ───────────────────────────────────────────────
+
+def test_admin_login_logout(page: Page):
+    try:
+        admin_login(page)
+        expect(page.get_by_text("Stayvoo Admin")).to_be_visible(timeout=10_000)
+
+        page.get_by_role("button", name="Logout").click()
+        pw_field = page.get_by_placeholder("Enter admin password")
+        pw_field.wait_for(state="visible", timeout=10_000)
+
+        save_screenshot(page, "test6_admin_login_logout_PASS")
+    except Exception as exc:
+        save_screenshot(page, "test6_admin_login_logout_FAIL")
+        pytest.fail(f"Test 6 (admin login/logout) FAILED: {exc}")
+
+
+# ── Test 7: Every /admin/* route rejects requests without the password ────────
+
+ADMIN_ROUTES_NO_AUTH = [
+    ("GET", "/admin/bookings"),
+    ("GET", "/admin/reservations"),
+    ("GET", "/admin/inquiries"),
+    ("GET", "/admin/stays"),
+    ("GET", "/admin/hotels"),
+    ("GET", "/admin/commission-rates"),
+    ("GET", "/admin/guests"),
+    ("GET", "/admin/today"),
+    ("GET", "/admin/search?q=test"),
+    ("GET", "/admin/audit-log"),
+    ("GET", "/admin/billing/2026-01"),
+    ("GET", "/admin/test-email"),
+]
+
+
+def test_admin_routes_require_auth():
+    for method, path in ADMIN_ROUTES_NO_AUTH:
+        r = requests.request(method, f"{API_URL}{path}", timeout=15)
+        assert r.status_code in (401, 422), (
+            f"{method} {path} without x-admin-password should reject (401/422), got {r.status_code}"
+        )
+        if r.status_code == 200:
+            pytest.fail(f"{method} {path} returned 200 with no admin password — auth bypass!")
+    print(f"\n  [PASS] {len(ADMIN_ROUTES_NO_AUTH)} admin routes all reject unauthenticated requests")
+
+
+# ── Test 8: Edge cases ─────────────────────────────────────────────────────────
+
+def test_edge_case_checkout_before_checkin():
+    hotels = api_get_hotels()
+    hotel = hotels[0]
+    room = hotel["rooms"][0]
+    payload = {
+        "hotel_id": hotel["id"],
+        "room_id": room.get("id") or room.get("room_id"),
+        "guest": {
+            "first_name": "Edge", "last_name": "Case", "email": TEST_EMAIL,
+            "phone": "+15550000001", "guest_type": "leisure",
+        },
+        "checkin_date": CHECKOUT,   # deliberately swapped
+        "checkout_date": CHECKIN,
+        "source": "e2e_test",
+    }
+    r = requests.post(f"{API_URL}/reservations", json=payload, timeout=15)
+    assert r.status_code == 400, f"Expected 400 for checkout <= checkin, got {r.status_code}: {r.text}"
+
+
+def test_edge_case_missing_required_fields():
+    r = requests.post(f"{API_URL}/reservations", json={"hotel_id": "not-a-real-id"}, timeout=15)
+    assert r.status_code in (400, 404, 422), f"Expected a rejection, got {r.status_code}: {r.text}"
+
+
+def test_edge_case_invalid_reservation_id():
+    r = requests.get(f"{API_URL}/reservations/SD-DOES-NOT-EXIST-9999", params={"token": "x"}, timeout=15)
+    assert r.status_code in (401, 404), f"Expected 401/404 for a nonexistent ref, got {r.status_code}"
+
+    r2 = requests.get(
+        f"{API_URL}/admin/guests/00000000-0000-0000-0000-000000000000",
+        headers={"x-admin-password": ADMIN_PASSWORD}, timeout=15,
+    )
+    assert r2.status_code == 404, f"Expected 404 for a nonexistent guest id, got {r2.status_code}"
+
+
+def test_edge_case_reservation_get_requires_correct_token():
+    res = api_create_reservation(first_name="TokenCheck", last_name="Test")
+    ref = res["reservation_ref"]
+    try:
+        r = requests.get(f"{API_URL}/reservations/{ref}", params={"token": "wrong-token"}, timeout=15)
+        assert r.status_code == 401, f"Expected 401 for a wrong token, got {r.status_code}"
+
+        r2 = requests.get(f"{API_URL}/reservations/{ref}", timeout=15)
+        assert r2.status_code == 401, f"Expected 401 with no token at all, got {r2.status_code}"
+    finally:
+        api_cancel_reservation(res["id"])
+
+
+# ── Test 9: Full reservation status lifecycle ──────────────────────────────────
+
+def test_reservation_status_lifecycle():
+    res = api_create_reservation(first_name="Lifecycle", last_name="Test")
+    res_id, ref, token = res["id"], res["reservation_ref"], res["guest_token"]
+    headers = {"x-admin-password": ADMIN_PASSWORD}
+    try:
+        assert api_get_reservation(ref, token)["status"] == "pending"
+
+        r = requests.put(
+            f"{API_URL}/admin/reservations/{res_id}/confirm",
+            json={"pms_confirmation": "E2E-LIFECYCLE"}, headers=headers, timeout=15,
+        )
+        r.raise_for_status()
+        assert api_get_reservation(ref, token)["status"] == "confirmed"
+
+        r = requests.post(f"{API_URL}/admin/reservations/{res_id}/checkin", headers=headers, timeout=15)
+        r.raise_for_status()
+        assert api_get_reservation(ref, token)["status"] == "checked_in"
+
+        r = requests.post(f"{API_URL}/admin/reservations/{res_id}/checkout", headers=headers, timeout=15)
+        r.raise_for_status()
+        assert api_get_reservation(ref, token)["status"] == "checked_out"
+
+        # Cannot cancel a checked-out reservation
+        r = requests.put(f"{API_URL}/admin/reservations/{res_id}/cancel", headers=headers, timeout=15)
+        assert r.status_code == 400, "Expected checked-out reservations to reject cancellation"
+
+        # Every status transition should be in the audit log
+        audit = requests.get(
+            f"{API_URL}/admin/audit-log", params={"entity_type": "reservation", "entity_id": res_id},
+            headers=headers, timeout=15,
+        ).json()
+        statuses_logged = {a["new_value"] for a in audit if a["field"] == "status"}
+        assert {"confirmed", "checked_in", "checked_out"} <= statuses_logged, (
+            f"Expected all 3 status transitions in audit log, got {statuses_logged}"
+        )
+        print(f"\n  [PASS] {ref} completed full lifecycle, audit log has {len(audit)} entries")
+    finally:
+        # already checked out — nothing to clean up via cancel; leave the record as-is (real lifecycle data)
+        pass
+
+
+# ── Test 10: Inquiry → respond → convert to stay ───────────────────────────────
+
+def test_inquiry_respond_and_convert_to_stay():
+    headers = {"x-admin-password": ADMIN_PASSWORD}
+    payload = {
+        "first_name": "InqE2E", "last_name": "Test", "email": TEST_EMAIL, "phone": "+15550000002",
+        "guest_type": "group", "num_rooms": 3, "length_of_stay": "2 weeks",
+        "start_date": CHECKIN, "source": "e2e_test",
+    }
+    r = requests.post(f"{API_URL}/inquiries", json=payload, timeout=15)
+    r.raise_for_status()
+    inq = r.json()
+    inq_id = inq["id"]
+
+    # Admin responds
+    r = requests.post(
+        f"{API_URL}/admin/inquiries/{inq_id}/messages",
+        json={"sender": "admin", "sender_name": "Stayvoo Team", "message": "E2E test reply"},
+        headers=headers, timeout=15,
+    )
+    r.raise_for_status()
+
+    msgs = requests.get(f"{API_URL}/admin/inquiries/{inq_id}/messages", headers=headers, timeout=15).json()
+    assert any(m["message"] == "E2E test reply" for m in msgs)
+
+    # Convert to stay
+    stay_payload = {
+        "inquiry_id": inq_id, "guest_first_name": "InqE2E", "guest_last_name": "Test",
+        "guest_email": TEST_EMAIL, "guest_phone": "+15550000002", "hotel_name": "E2E Test Hotel",
+        "num_rooms": 3, "checkin_date": CHECKIN, "expected_checkout": CHECKOUT, "rate_per_night": 100,
+    }
+    r = requests.post(f"{API_URL}/admin/stays", json=stay_payload, headers=headers, timeout=15)
+    r.raise_for_status()
+    stay = r.json()
+    assert stay["inquiry_id"] == inq_id
+    print(f"\n  [PASS] Inquiry {inq_id[:8]} converted to stay {stay['id'][:8]}")
+
+
+# ── Test 11: Global search ──────────────────────────────────────────────────────
+
+def test_global_search_finds_reservation():
+    res = api_create_reservation(first_name="Searchable", last_name="Unicorn")
+    try:
+        headers = {"x-admin-password": ADMIN_PASSWORD}
+        r = requests.get(f"{API_URL}/admin/search", params={"q": "Searchable Unicorn"}, headers=headers, timeout=15)
+        r.raise_for_status()
+        data = r.json()
+        assert any(rr["reservation_ref"] == res["reservation_ref"] for rr in data["reservations"]), (
+            "Global search did not find the reservation we just created"
+        )
+    finally:
+        api_cancel_reservation(res["id"])
+
+
+# ── Test 12: Today view renders expected shape ─────────────────────────────────
+
+def test_today_view_shape():
+    headers = {"x-admin-password": ADMIN_PASSWORD}
+    r = requests.get(f"{API_URL}/admin/today", headers=headers, timeout=15)
+    r.raise_for_status()
+    data = r.json()
+    for key in ("date", "arrivals_today", "departures_today", "new_inquiries",
+                "pending_reservations", "unpaid_invoices_past_due", "stats"):
+        assert key in data, f"Today view response missing key: {key}"
+    for key in ("active_stays", "week_arrivals", "pending_commission"):
+        assert key in data["stats"], f"Today view stats missing key: {key}"
+
+
+# ── Test 13: Invoice send validation ────────────────────────────────────────────
+
+def test_invoice_send_rejects_missing_email():
+    headers = {"x-admin-password": ADMIN_PASSWORD}
+    r = requests.post(
+        f"{API_URL}/admin/billing/invoice/2026-01",
+        json={"hotel_name": "Wyndham Brookfield"}, headers=headers, timeout=15,
+    )
+    assert r.status_code == 422, f"Expected 422 for missing recipient_email, got {r.status_code}"
+
+
+def test_invoice_send_blocks_non_allowlisted_recipient():
+    headers = {"x-admin-password": ADMIN_PASSWORD}
+    r = requests.post(
+        f"{API_URL}/admin/billing/invoice/2026-01",
+        json={"hotel_name": "Wyndham Brookfield", "recipient_email": "not-the-allowlisted-address@example.com"},
+        headers=headers, timeout=15,
+    )
+    assert r.status_code == 502, (
+        f"Expected 502 (blocked by allowlist, never falsely marked sent), got {r.status_code}: {r.text}"
+    )
+
+
+# ── Test 14: Double-submit protection on the booking form ─────────────────────
+
+def test_booking_form_disables_submit_after_click(page: Page):
+    """Confirms the existing double-submit guard: the Confirm Booking button
+    disables itself (via `submitting` state) as soon as it's clicked, so a
+    fast double-click/double-Enter can't fire two reservation creates."""
+    try:
+        page.goto(BASE_URL, wait_until="networkidle")
+        date_inputs = page.locator('input[type="date"]')
+        date_inputs.nth(0).fill(CHECKIN)
+        date_inputs.nth(1).fill(CHECKOUT)
+        page.get_by_role("button", name=re.compile("Search Hotels", re.I)).click()
+        page.wait_for_url(f"{BASE_URL}/search*", timeout=12_000)
+        page.wait_for_load_state("networkidle")
+
+        hotel_btn = page.get_by_role("button", name=re.compile("Get Exclusive Rate|View Rooms", re.I)).first
+        hotel_btn.wait_for(state="visible", timeout=10_000)
+        hotel_btn.click()
+        page.wait_for_url(f"{BASE_URL}/hotels/*", timeout=12_000)
+        page.wait_for_load_state("networkidle")
+
+        book_btn = page.get_by_role("button", name=re.compile("Book This Room", re.I)).first
+        book_btn.wait_for(state="visible", timeout=10_000)
+        book_btn.click()
+        page.wait_for_url(f"{BASE_URL}/book*", timeout=12_000)
+        page.wait_for_load_state("load")
+
+        page.locator('input[placeholder="Jane"]').fill("Double")
+        page.locator('input[placeholder="Smith"]').fill("Submit")
+        email_field = page.locator('input[placeholder="jane@example.com"]')
+        email_field.fill(TEST_EMAIL)
+        email_field.blur()
+        page.locator('input[placeholder="+1 (xxx) xxx-xxxx"]').fill("+15550000003")
+        fill_stripe_card(page)
+
+        submit = page.get_by_role("button", name=re.compile(r"Confirm Booking", re.I))
+        submit.wait_for(state="visible", timeout=10_000)
+        expect(submit).not_to_be_disabled(timeout=20_000)
+        submit.click()
+
+        # Immediately after the click, the button must already be disabled
+        expect(submit).to_be_disabled(timeout=2_000)
+
+        save_screenshot(page, "test14_double_submit_guard_PASS")
+    except Exception as exc:
+        save_screenshot(page, "test14_double_submit_guard_FAIL")
+        pytest.fail(f"Test 14 (double-submit guard) FAILED: {exc}")
