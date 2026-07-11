@@ -127,7 +127,7 @@ function BookingFormInner({ hotel, room, checkin, checkout, total }: InnerProps)
         stripe_payment_method_id: stripePaymentMethodId,
         sms_consent: form.smsConsent,
       })
-      navigate(`/confirmation?ref=${res.reservation_ref}`)
+      navigate(`/confirmation?ref=${res.reservation_ref}&token=${encodeURIComponent(res.guest_token ?? '')}`)
     } catch (err: any) {
       setFormError(err.message)
     } finally {

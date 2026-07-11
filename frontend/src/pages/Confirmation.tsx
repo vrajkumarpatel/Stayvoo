@@ -51,6 +51,7 @@ export default function Confirmation() {
   )
   const [searchParams] = useSearchParams()
   const ref = searchParams.get('ref') ?? ''
+  const token = searchParams.get('token') ?? ''
 
   const [reservation, setReservation] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -58,11 +59,12 @@ export default function Confirmation() {
 
   useEffect(() => {
     if (!ref) { setError('No booking reference found.'); setLoading(false); return }
-    getReservation(ref)
+    if (!token) { setError('Missing access token.'); setLoading(false); return }
+    getReservation(ref, token)
       .then(setReservation)
       .catch(() => setError('Reservation not found'))
       .finally(() => setLoading(false))
-  }, [ref])
+  }, [ref, token])
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50">

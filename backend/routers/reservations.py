@@ -251,6 +251,7 @@ async def create_reservation(
     res_dict = reservation_to_dict(reservation)
     if reservation.guest and reservation.guest.access_token:
         res_dict["portal_url"] = f"https://stayvoo.com/my-stay/{reservation.guest.access_token}"
+        res_dict["guest_token"] = reservation.guest.access_token
 
     background_tasks.add_task(notify_new_booking, {
         "booking_ref": res_dict["reservation_ref"],
@@ -272,7 +273,7 @@ async def create_reservation(
 
 
 @router.get("/{reservation_ref}")
-async def get_reservation(reservation_ref: str, db: AsyncSession = Depends(get_db)):
+async def get_reservation(reservation_ref: str, token: str | None = None, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         select(Reservation)
         .where(Reservation.reservation_ref == reservation_ref)
@@ -281,4 +282,6 @@ async def get_reservation(reservation_ref: str, db: AsyncSession = Depends(get_d
     reservation = result.scalar_one_or_none()
     if not reservation:
         raise HTTPException(status_code=404, detail="Reservation not found")
+    if not token or not reservation.guest or reservation.guest.access_token != token:
+        raise HTTPException(status_code=401, detail="Invalid or missing access token")
     return reservation_to_dict(reservation)

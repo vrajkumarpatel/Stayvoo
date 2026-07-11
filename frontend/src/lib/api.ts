@@ -57,8 +57,9 @@ export async function createBooking(data: {
   return r.json()
 }
 
-export async function getBooking(ref: string) {
-  const r = await fetch(`${BASE}/bookings/${ref}`)
+export async function getBooking(ref: string, token: string) {
+  const r = await fetch(`${BASE}/bookings/${ref}?token=${encodeURIComponent(token)}`)
+  if (r.status === 401) throw new Error('Invalid or missing access token')
   if (!r.ok) throw new Error('Booking not found')
   return r.json()
 }
@@ -398,8 +399,9 @@ export async function createReservation(data: {
   return r.json()
 }
 
-export async function getReservation(ref: string) {
-  const r = await fetch(`${BASE}/reservations/${ref}`)
+export async function getReservation(ref: string, token: string) {
+  const r = await fetch(`${BASE}/reservations/${ref}?token=${encodeURIComponent(token)}`)
+  if (r.status === 401) throw new Error('Invalid or missing access token')
   if (!r.ok) throw new Error('Reservation not found')
   return r.json()
 }
