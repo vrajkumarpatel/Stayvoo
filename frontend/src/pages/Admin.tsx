@@ -3,7 +3,7 @@ import {
   getAdminBookings, confirmAdminBooking, cancelAdminBooking, testAdminEmail,
   getAdminInquiries, updateAdminInquiry, getInquiryMessages, sendInquiryMessage,
   getAdminStays, createAdminStay, updateAdminStay, checkoutAdminStay,
-  getAdminBilling,
+  getAdminBilling, getAdminToday,
   getAdminBookingMessages, sendAdminBookingMessage, updateAdminBooking,
   getAdminReservations, confirmAdminReservation, cancelAdminReservation,
   checkinAdminReservation, checkoutAdminReservation, updateAdminReservation,
@@ -11,6 +11,7 @@ import {
 } from '../lib/api'
 import { ModalShell, ModalHeader } from '../components/admin/shared'
 import InvoiceSendModal, { InvoiceStatusBadge } from '../components/admin/InvoiceSendModal'
+import TodayTab, { type TodayData } from '../components/admin/TodayTab'
 
 const STORAGE_KEY = 'stayvoo_admin_pw'
 
@@ -53,7 +54,7 @@ interface Booking {
   room: { id: string; name: string; price_per_night: number } | null
 }
 
-interface Inquiry {
+export interface Inquiry {
   id: string; first_name: string; last_name: string; email: string; phone: string
   guest_type: string; hotel_preference: string | null; num_rooms: number
   length_of_stay: string; start_date: string; special_requirements: string | null
@@ -76,7 +77,7 @@ interface Stay {
   status: string; created_at: string | null; updated_at: string | null
 }
 
-interface Reservation {
+export interface Reservation {
   id: string; reservation_ref: string; status: string; guest_type: string | null
   hotel_source: string; hotel_name_snapshot: string; hotel_address_snapshot: string | null
   room_type_snapshot: string | null; guest_first_name: string; guest_last_name: string
@@ -1311,7 +1312,9 @@ export default function Admin() {
   const [resLoaded, setResLoaded] = useState(false)
   const [loading, setLoading] = useState(false)
   const [staysLoaded, setStaysLoaded] = useState(false)
-  const [activeTab, setActiveTab] = useState<'reservations' | 'bookings' | 'inquiries' | 'stays' | 'billing'>('reservations')
+  const [activeTab, setActiveTab] = useState<'today' | 'reservations' | 'bookings' | 'inquiries' | 'stays' | 'billing'>('today')
+  const [todayData, setTodayData] = useState<TodayData | null>(null)
+  const [todayLoading, setTodayLoading] = useState(false)
   const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null)
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
   const [selectedInquiry, setSelectedInquiry] = useState<Inquiry | null>(null)
@@ -1356,6 +1359,15 @@ export default function Admin() {
     } catch { setStaysLoaded(true) }
   }
 
+  const loadToday = async (pw: string) => {
+    setTodayLoading(true)
+    try {
+      const data = await getAdminToday(pw)
+      setTodayData(data)
+    } catch { setTodayData(null) }
+    finally { setTodayLoading(false) }
+  }
+
   const loadBilling = async (month: string, pw: string) => {
     setBillingLoading(true)
     try {
@@ -1392,6 +1404,7 @@ export default function Admin() {
           setPassword(saved)
           loadStays(saved)
           loadReservations(saved, { date: new Date().toISOString().split('T')[0] })
+          loadToday(saved)
         } else {
           localStorage.removeItem(STORAGE_KEY)
         }
@@ -1416,6 +1429,7 @@ export default function Admin() {
       localStorage.setItem(STORAGE_KEY, inputPw)
       loadStays(inputPw)
       loadReservations(inputPw, { date: new Date().toISOString().split('T')[0] })
+      loadToday(inputPw)
     } else {
       setLoginError('Incorrect password')
     }
@@ -1426,7 +1440,7 @@ export default function Admin() {
     setReservations([]); setResGrouped(null); setResLoaded(false)
     setSelectedBooking(null); setSelectedInquiry(null); setSelectedStay(null)
     setSelectedReservation(null)
-    setBillingData(null); setStaysLoaded(false)
+    setBillingData(null); setStaysLoaded(false); setTodayData(null)
     localStorage.removeItem(STORAGE_KEY)
   }
 
@@ -1577,6 +1591,7 @@ export default function Admin() {
         {/* Tabs */}
         <div className="flex gap-2 mb-6 flex-wrap">
           {([
+            { key: 'today', label: 'Today', badge: undefined },
             { key: 'reservations', label: 'Reservations', badge: reservations.filter(r => r.status === 'pending').length > 0 ? `${reservations.filter(r => r.status === 'pending').length} new` : undefined },
             { key: 'bookings', label: 'Bookings (Legacy)', badge: total > 0 ? String(total) : undefined },
             { key: 'inquiries', label: 'Inquiries', badge: inqNew > 0 ? `${inqNew} new` : undefined },
@@ -1592,10 +1607,20 @@ export default function Admin() {
               {t.badge && <span className="ml-1.5 bg-orange-500 text-white text-xs px-1.5 py-0.5 rounded-full">{t.badge}</span>}
             </button>
           ))}
-          <button onClick={() => { loadData(password); loadStays(password); loadReservations(password, { date: resNavDate }) }} disabled={loading} className="ml-auto text-sm text-[#10192b] hover:text-orange-500 font-semibold transition-colors">
+          <button onClick={() => { loadData(password); loadStays(password); loadReservations(password, { date: resNavDate }); loadToday(password) }} disabled={loading} className="ml-auto text-sm text-[#10192b] hover:text-orange-500 font-semibold transition-colors">
             {loading ? 'Loading...' : '↻ Refresh'}
           </button>
         </div>
+
+        {/* ── TODAY TAB ── */}
+        {activeTab === 'today' && (
+          <TodayTab
+            data={todayData}
+            loading={todayLoading}
+            onSelectReservation={setSelectedReservation}
+            onSelectInquiry={setSelectedInquiry}
+          />
+        )}
 
         {/* ── RESERVATIONS TAB ── */}
         {activeTab === 'reservations' && (() => {

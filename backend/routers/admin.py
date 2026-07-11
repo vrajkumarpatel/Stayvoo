@@ -1,7 +1,7 @@
 import os
 import uuid
 import logging
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Header
 from pydantic import BaseModel
@@ -9,9 +9,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
 from sqlalchemy.orm import selectinload
 from database import get_db
-from models import Booking, Room, Stay, Guest, StayMessage, Reservation, ReservationMessage
+from models import Booking, Room, Stay, Guest, StayMessage, Reservation, ReservationMessage, Inquiry, HotelInvoice
 from routers.bookings import booking_to_dict
 from routers.reservations import reservation_to_dict
+from routers.inquiries import inquiry_to_dict
+from routers.stays import invoice_to_dict
 from services.notifications import (
     notify_guest_confirmed,
     notify_pre_arrival,
@@ -773,6 +775,73 @@ async def billing_reservations(
         "commission_paid": comm_paid_total,
         "commission_pending": total_commission - comm_paid_total,
         "by_hotel": summary,
+    }
+
+
+@router.get("/today")
+async def admin_today(
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(_verify_admin),
+):
+    today = date.today()
+    week_end = today + timedelta(days=7)
+
+    res_result = await db.execute(
+        select(Reservation).options(selectinload(Reservation.guest)).order_by(Reservation.created_at.desc())
+    )
+    all_res = res_result.scalars().all()
+
+    arrivals_today = [reservation_to_dict(r) for r in all_res if r.checkin_date == today and r.status in ("pending", "confirmed")]
+    departures_today = [reservation_to_dict(r) for r in all_res if r.checkout_date == today and r.status == "checked_in"]
+    pending_reservations = [reservation_to_dict(r) for r in all_res if r.status == "pending"]
+    week_arrivals = sum(1 for r in all_res if today <= r.checkin_date < week_end and r.status in ("pending", "confirmed"))
+    active_stays_count = sum(1 for r in all_res if r.status == "checked_in")
+    pending_commission = sum(
+        float(r.commission_amount) for r in all_res
+        if not r.commission_paid and r.status in ("confirmed", "checked_in", "checked_out")
+    )
+
+    inq_result = await db.execute(
+        select(Inquiry).where(Inquiry.status.in_(["new", "contacted"])).order_by(Inquiry.created_at.asc())
+    )
+    new_inquiries = [inquiry_to_dict(i) for i in inq_result.scalars().all()]
+
+    # Invoices sent >30 days ago where the underlying Stay rows for that hotel/month
+    # (Send Invoice is Stay-backed, see routers/stays.py) still show unpaid commission.
+    cutoff = datetime.utcnow() - timedelta(days=30)
+    inv_result = await db.execute(
+        select(HotelInvoice).where(HotelInvoice.sent_at <= cutoff).order_by(HotelInvoice.sent_at.asc())
+    )
+    stay_result = await db.execute(select(Stay))
+    all_stays = stay_result.scalars().all()
+
+    past_due = []
+    for inv in inv_result.scalars().all():
+        try:
+            year, month_num = (int(x) for x in inv.month.split("-"))
+        except ValueError:
+            continue
+        unpaid = any(
+            s.hotel_name == inv.hotel_name
+            and s.checkin_date.year == year and s.checkin_date.month == month_num
+            and not s.commission_paid
+            for s in all_stays
+        )
+        if unpaid:
+            past_due.append(invoice_to_dict(inv))
+
+    return {
+        "date": today.isoformat(),
+        "arrivals_today": arrivals_today,
+        "departures_today": departures_today,
+        "new_inquiries": new_inquiries,
+        "pending_reservations": pending_reservations,
+        "unpaid_invoices_past_due": past_due,
+        "stats": {
+            "active_stays": active_stays_count,
+            "week_arrivals": week_arrivals,
+            "pending_commission": pending_commission,
+        },
     }
 
 

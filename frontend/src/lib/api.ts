@@ -248,6 +248,15 @@ export async function getAdminBilling(month: string, password: string) {
   return r.json()
 }
 
+export async function getAdminToday(password: string) {
+  const r = await fetch(`${BASE}/admin/today`, {
+    headers: { 'x-admin-password': password },
+  })
+  if (r.status === 401) throw new Error('Invalid password')
+  if (!r.ok) throw new Error('Failed to fetch today view')
+  return r.json()
+}
+
 export async function getStayMessages(stayId: string, password: string) {
   const r = await fetch(`${BASE}/admin/stays/${stayId}/messages`, {
     headers: { 'x-admin-password': password },
