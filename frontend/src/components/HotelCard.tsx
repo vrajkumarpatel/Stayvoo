@@ -128,7 +128,7 @@ export default function HotelCard({ hotel, large = false, twoButton = false, vie
           </div>
         ) : (
           <div className="mt-4 pt-4 border-t border-slate-100">
-            <p className="text-xs text-slate-400 mb-3">Rates are negotiated — request a quote for your dates.</p>
+            <p className="text-xs text-slate-400 mb-3">Rates are negotiated, request a quote for your dates.</p>
             {hotel.exclusive ? (
               <Link
                 to={contactHref}
