@@ -649,7 +649,6 @@ function CreateStayModal({ inquiry, password, onClose, onCreated }: {
     num_rooms: String(inquiry?.num_rooms ?? 1),
     checkin_date: inquiry?.start_date ?? today,
     expected_checkout: '',
-    nights_total: '',
     rate_per_night: '120',
     commission_rate: '10',
     pms_confirmation: '',
@@ -661,12 +660,24 @@ function CreateStayModal({ inquiry, password, onClose, onCreated }: {
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm(f => ({ ...f, [k]: e.target.value }))
 
+  const nights = form.checkin_date && form.expected_checkout
+    ? Math.round((new Date(form.expected_checkout).getTime() - new Date(form.checkin_date).getTime()) / 86400000)
+    : 0
+  const numRooms = parseInt(form.num_rooms) || 0
+  const rate = parseFloat(form.rate_per_night) || 0
+  const commRate = parseFloat(form.commission_rate) || 0
+  const total = nights > 0 ? nights * rate * numRooms : 0
+  const commission = total * commRate / 100
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (nights <= 0) {
+      setError('Checkout must be after checkin')
+      return
+    }
     setSaving(true)
     setError(null)
     try {
-      const nights = parseInt(form.nights_total)
       const payload: Record<string, unknown> = {
         guest_first_name: form.guest_first_name,
         guest_last_name: form.guest_last_name,
@@ -678,7 +689,6 @@ function CreateStayModal({ inquiry, password, onClose, onCreated }: {
         num_rooms: parseInt(form.num_rooms),
         checkin_date: form.checkin_date,
         expected_checkout: form.expected_checkout,
-        nights_total: nights,
         rate_per_night: parseFloat(form.rate_per_night),
         commission_rate: parseFloat(form.commission_rate),
         pms_confirmation: form.pms_confirmation || null,
@@ -723,15 +733,19 @@ function CreateStayModal({ inquiry, password, onClose, onCreated }: {
           <div><label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Check-in *</label><input required type="date" value={form.checkin_date} onChange={set('checkin_date')} className={inp} /></div>
           <div><label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Expected Checkout *</label><input required type="date" value={form.expected_checkout} onChange={set('expected_checkout')} min={form.checkin_date} className={inp} /></div>
         </div>
-        <div className="grid grid-cols-3 gap-3">
-          <div><label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Nights *</label><input required type="number" min="1" value={form.nights_total} onChange={set('nights_total')} className={inp} /></div>
+        <div className="grid grid-cols-2 gap-3">
           <div><label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Rate/Night *</label><input required type="number" min="1" step="0.01" value={form.rate_per_night} onChange={set('rate_per_night')} className={inp} /></div>
           <div><label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Commission %</label><input type="number" min="0" max="100" step="0.1" value={form.commission_rate} onChange={set('commission_rate')} className={inp} /></div>
+        </div>
+        <div className="bg-slate-50 rounded-xl px-4 py-3 flex flex-col gap-1.5 text-sm">
+          <div className="flex justify-between"><span className="text-slate-500">Nights</span><span className="font-bold text-[#10192b]">{nights > 0 ? nights : '—'}</span></div>
+          <div className="flex justify-between"><span className="text-slate-500">Total ({nights || 0} × ${rate.toFixed(2)} × {numRooms} room{numRooms === 1 ? '' : 's'})</span><span className="font-bold text-[#10192b]">${total.toFixed(2)}</span></div>
+          <div className="flex justify-between"><span className="text-slate-500">Commission ({commRate}%)</span><span className="font-bold text-[#10192b]">${commission.toFixed(2)}</span></div>
         </div>
         <div><label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">PMS Confirmation</label><input value={form.pms_confirmation} onChange={set('pms_confirmation')} placeholder="Optional" className={inp} /></div>
         <div><label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Notes</label><textarea rows={2} value={form.notes} onChange={set('notes')} className={`${inp} resize-none`} /></div>
         {error && <p className="text-red-500 text-sm bg-red-50 rounded-xl px-3 py-2 border border-red-200">{error}</p>}
-        <button type="submit" disabled={saving} className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-black py-3.5 rounded-xl text-sm transition-colors">
+        <button type="submit" disabled={saving || nights <= 0} className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-black py-3.5 rounded-xl text-sm transition-colors">
           {saving ? 'Creating...' : 'Create Stay'}
         </button>
       </form>
@@ -773,13 +787,9 @@ function StayDetailModal({ stay: s, password, onClose, onUpdate }: {
   }
 
   const handleExtend = async (newCheckout: string, extNotes: string) => {
-    const checkin = new Date(s.checkin_date)
-    const checkout = new Date(newCheckout)
-    const nights = Math.round((checkout.getTime() - checkin.getTime()) / 86400000)
     try {
       const updated = await updateAdminStay(s.id, {
         expected_checkout: newCheckout,
-        nights_total: nights,
         status: 'extended',
         notes: extNotes ? ((s.notes ?? '') + `\n[Extended to ${newCheckout}]: ${extNotes}`).trim() : s.notes,
       }, password)

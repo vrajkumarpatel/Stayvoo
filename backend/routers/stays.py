@@ -66,7 +66,6 @@ class StayIn(BaseModel):
     num_rooms: int = 1
     checkin_date: date
     expected_checkout: date
-    nights_total: int
     rate_per_night: float
     commission_rate: float = 10.0
     pms_confirmation: Optional[str] = None
@@ -83,7 +82,6 @@ class StayUpdate(BaseModel):
     room_number: Optional[str] = None
     num_rooms: Optional[int] = None
     expected_checkout: Optional[date] = None
-    nights_total: Optional[int] = None
     rate_per_night: Optional[float] = None
     amount_paid: Optional[float] = None
     commission_rate: Optional[float] = None
@@ -135,7 +133,11 @@ async def create_stay(
     db: AsyncSession = Depends(get_db),
     _: None = Depends(_verify_admin),
 ):
-    total = payload.nights_total * payload.rate_per_night
+    if payload.expected_checkout <= payload.checkin_date:
+        raise HTTPException(status_code=400, detail="Checkout must be after checkin")
+
+    nights = (payload.expected_checkout - payload.checkin_date).days
+    total = nights * payload.rate_per_night * payload.num_rooms
     commission = round(total * payload.commission_rate / 100, 2)
 
     s = Stay(
@@ -152,7 +154,7 @@ async def create_stay(
         num_rooms=payload.num_rooms,
         checkin_date=payload.checkin_date,
         expected_checkout=payload.expected_checkout,
-        nights_total=payload.nights_total,
+        nights_total=nights,
         rate_per_night=payload.rate_per_night,
         total_amount=total,
         amount_paid=0,
@@ -185,8 +187,11 @@ async def update_stay(
     for k, v in update_data.items():
         setattr(s, k, v)
 
-    if any(f in update_data for f in ("nights_total", "rate_per_night", "commission_rate")):
-        total = float(s.nights_total) * float(s.rate_per_night)
+    if any(f in update_data for f in ("expected_checkout", "rate_per_night", "num_rooms", "commission_rate")):
+        if s.expected_checkout <= s.checkin_date:
+            raise HTTPException(status_code=400, detail="Checkout must be after checkin")
+        s.nights_total = (s.expected_checkout - s.checkin_date).days
+        total = float(s.nights_total) * float(s.rate_per_night) * s.num_rooms
         s.total_amount = total
         s.balance_due = total - float(s.amount_paid)
         s.commission_amount = round(total * float(s.commission_rate) / 100, 2)
