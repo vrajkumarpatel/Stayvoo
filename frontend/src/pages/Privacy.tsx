@@ -16,7 +16,6 @@ export default function Privacy() {
           <p>Card information is securely processed by Stripe and never stored on our servers. Stripe is a PCI-DSS Level 1 certified payment processor.</p>
           <p>We may send transactional emails related to your booking or inquiry (confirmation, pre-arrival, post-stay). We do not send marketing emails without your consent.</p>
           <p>Your information is shared only with the hotel you are booking, solely for the purpose of fulfilling your stay.</p>
-          <p className="font-semibold text-[#10192b]">Questions? Contact us at <a href="mailto:hello@stayvoo.com" className="text-orange-500 hover:underline">hello@stayvoo.com</a></p>
         </div>
       </div>
     </div>

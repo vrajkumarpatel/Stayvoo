@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Building2, CheckCircle2, Gift, Phone, X } from 'lucide-react'
+import { Building2, CheckCircle2, Gift, X } from 'lucide-react'
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
+
+// Temporary: group inquiry submission is paused for site maintenance. Flip to false to restore it.
+const MESSAGING_DISABLED = true
 
 interface BookingCard {
   hotelName: string
@@ -159,6 +162,15 @@ export default function AIChat() {
 
   const submitGroupInquiry = async (name: string, email: string, rooms: string, dates: string) => {
     setLoading(true)
+    if (MESSAGING_DISABLED) {
+      setTimeout(() => {
+        addAIMessage(
+          "Thanks for the details! Stayvoo is currently undergoing scheduled maintenance, so we're unable to submit group requests right now. Please check back shortly."
+        )
+        setLoading(false)
+      }, 500)
+      return
+    }
     try {
       const parts = name.trim().split(' ')
       const firstName = parts[0]
@@ -187,7 +199,7 @@ export default function AIChat() {
       )
     } catch {
       addAIMessage(
-        "We've received your group request! Call or text +18883528151 for immediate assistance."
+        "Sorry, we're unable to submit your request right now. Please check back shortly."
       )
     } finally {
       setLoading(false)
@@ -250,7 +262,7 @@ export default function AIChat() {
     } catch {
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: "Sorry, I'm having trouble connecting. Call or text us at +18883528151 and we'll help right away!",
+        content: "Sorry, I'm having trouble connecting right now. Please check back shortly.",
         ts: now(),
       }])
     } finally {
@@ -320,12 +332,6 @@ export default function AIChat() {
                         {qr.label}
                       </button>
                     ))}
-                    <a
-                      href="tel:+18883528151"
-                      className="bg-white border border-slate-200 hover:border-slate-300 text-slate-600 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors flex items-center gap-1"
-                    >
-                      <Phone className="w-3 h-3" /> Call Us
-                    </a>
                   </div>
                 )}
 

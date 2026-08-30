@@ -24,7 +24,7 @@ export default function MyReservations() {
       await guestLogin(email.trim())
       setSent(true)
     } catch {
-      setError('Something went wrong. Please try again or call +1 (888) 352-8151.')
+      setError('Something went wrong. Please try again shortly.')
     } finally {
       setLoading(false)
     }
@@ -108,14 +108,6 @@ export default function MyReservations() {
             >
               ← Try a different email
             </button>
-            <div className="mt-6 pt-6 border-t border-slate-100">
-              <p className="text-slate-400 text-xs">
-                Need immediate help?{' '}
-                <a href="tel:+18883528151" className="text-[#10192b] font-semibold hover:text-orange-500">
-                  Call +1 (888) 352-8151
-                </a>
-              </p>
-            </div>
           </div>
         )}
       </div>

@@ -41,6 +41,9 @@ const inputCls =
   'w-full border border-border rounded-control px-4 py-3 text-sm font-sans text-navy placeholder:text-ink-muted/50 bg-paper focus:outline-none focus:ring-2 focus:ring-accent/40'
 const labelCls = 'font-sans text-xs font-medium uppercase tracking-wide text-ink-muted block mb-1.5'
 
+// Temporary: messaging is paused for site maintenance. Flip to false to restore the contact form.
+const MESSAGING_DISABLED = true
+
 function Field({ label, required, children }: { label: string; required?: boolean; children: ReactElement<{ id?: string }> }) {
   const id = `field-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
   return (
@@ -147,15 +150,23 @@ export default function Contact() {
         <SectionEyebrow>Contact</SectionEyebrow>
         <h1 className="font-serif font-bold text-navy text-4xl sm:text-5xl mt-2">Tell us the brief.</h1>
         <p className="font-sans text-ink-muted text-base sm:text-lg mt-4 leading-relaxed max-w-xl mx-auto">
-          Dates, headcount, and one line on the purpose of the stay is enough to get started. You'll get a same-day
-          response during business hours.
+          We're currently undergoing scheduled maintenance. Quote requests are temporarily paused —
+          please check back shortly.
         </p>
       </section>
 
       {/* Form + sidebar */}
       <section className="max-w-5xl mx-auto px-4 pb-20 grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 bg-white border border-border rounded-card p-6 sm:p-8">
-          {success ? (
+          {MESSAGING_DISABLED ? (
+            <div className="text-center py-8">
+              <h2 className="font-serif font-bold text-navy text-2xl">Temporarily Unavailable</h2>
+              <p className="font-sans text-ink-muted mt-3 leading-relaxed max-w-md mx-auto">
+                Stayvoo is currently undergoing scheduled maintenance. We're unable to process quote
+                requests or messages right now — please check back shortly.
+              </p>
+            </div>
+          ) : success ? (
             <div className="text-center py-8">
               <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-5">
                 <svg className="w-8 h-8 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -302,23 +313,14 @@ export default function Contact() {
         {/* Sidebar */}
         <div className="flex flex-col gap-6">
           <div className="bg-mist/40 border border-border rounded-card p-6">
-            <h2 className="font-serif font-bold text-navy text-lg mb-3">Direct lines</h2>
-            <div className="flex flex-col gap-2 font-sans text-sm text-ink-muted">
-              <a href="mailto:hello@stayvoo.com" className="hover:text-navy transition-colors">
-                hello@stayvoo.com
-              </a>
-              <a href="tel:+18883528151" className="hover:text-navy transition-colors">
-                +1 (888) 352-8151
-              </a>
-              <p>Milwaukee Area &amp; Chicagoland, Serving all of Southeast Wisconsin</p>
-            </div>
+            <h2 className="font-serif font-bold text-navy text-lg mb-3">Service area</h2>
+            <p className="font-sans text-sm text-ink-muted">Milwaukee Area &amp; Chicagoland, Serving all of Southeast Wisconsin</p>
           </div>
 
           <div className="bg-paper border border-border rounded-card p-6">
             <h2 className="font-serif font-bold text-navy text-lg mb-3">Response time</h2>
             <p className="font-sans text-sm text-ink-muted leading-relaxed">
-              Same-day first reply during business hours. A quote typically follows within 24 hours of a complete
-              brief.
+              Quote requests are temporarily paused for scheduled maintenance. Please check back shortly.
             </p>
           </div>
         </div>

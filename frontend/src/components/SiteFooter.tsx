@@ -27,8 +27,6 @@ export default function SiteFooter() {
           <nav className="flex flex-col gap-2 font-sans text-sm">
             <Link to="/about" className="hover:text-paper transition-colors">About</Link>
             <Link to="/contact" className="hover:text-paper transition-colors">Contact</Link>
-            <a href="mailto:hello@stayvoo.com" className="hover:text-paper transition-colors">hello@stayvoo.com</a>
-            <a href="tel:+18883528151" className="hover:text-paper transition-colors">+1 (888) 352-8151</a>
           </nav>
         </div>
       </div>

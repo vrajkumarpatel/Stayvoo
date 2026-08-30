@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 import {
-  Building2, Frown, Star, MapPin, Phone, Check, Tag, Gift, Zap, Handshake,
+  Building2, Frown, Star, MapPin, Check, Tag, Gift, Zap, Handshake,
   Car, Wifi, Waves, Dumbbell, Coffee, PawPrint, ClipboardList, Briefcase,
   UtensilsCrossed, Wine, type LucideIcon,
 } from 'lucide-react'
@@ -129,9 +129,6 @@ export default function HotelDetail() {
                     <MapPin className="w-4 h-4" />{hotel.address}
                   </p>
                 </div>
-                <a href="tel:+18883528151" className="flex items-center gap-2 bg-[#10192b] text-white font-semibold px-4 py-2.5 rounded-xl text-sm hover:bg-[#0a1220] transition-colors whitespace-nowrap">
-                  <Phone className="w-4 h-4" /> +1 (888) 352-8151
-                </a>
               </div>
 
               {hotel.description && (
@@ -245,16 +242,12 @@ export default function HotelDetail() {
                 </ul>
               </div>
 
-              {/* Need help */}
-              <div className="bg-orange-50 border border-orange-100 rounded-2xl p-5 text-center">
-                <p className="text-[#10192b] font-semibold text-sm mb-1">Need help booking?</p>
-                <p className="text-slate-500 text-xs mb-3">We'll confirm within 30 minutes</p>
-                <a
-                  href="tel:+18883528151"
-                  className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-colors"
-                >
-                  <Phone className="w-4 h-4" /> Call Us
-                </a>
+              {/* Maintenance notice */}
+              <div className="bg-amber-50 border border-amber-100 rounded-2xl p-5 text-center">
+                <p className="text-[#10192b] font-semibold text-sm mb-1">Booking Temporarily Unavailable</p>
+                <p className="text-slate-500 text-xs leading-relaxed">
+                  Stayvoo is currently undergoing scheduled maintenance. Please check back shortly.
+                </p>
               </div>
             </div>
           </div>

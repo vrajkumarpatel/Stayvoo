@@ -10,8 +10,6 @@ const TRAVEL_AGENCY_SCHEMA = {
   '@context': 'https://schema.org',
   '@type': 'TravelAgency',
   name: 'Stayvoo LLC',
-  telephone: '+1-888-352-8151',
-  email: 'hello@stayvoo.com',
   url: 'https://stayvoo.com',
   areaServed: ['Milwaukee', 'Waukesha', 'Brookfield', 'Kenosha', 'Racine', 'Chicago'],
 }

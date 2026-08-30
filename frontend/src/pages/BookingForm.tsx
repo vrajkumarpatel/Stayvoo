@@ -10,6 +10,9 @@ const stripePromise = PUBLISHABLE_KEY ? loadStripe(PUBLISHABLE_KEY) : null
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
+// Temporary: bookings are paused for site maintenance. Flip to false to restore the booking form.
+const BOOKING_DISABLED = true
+
 const GUEST_TYPES = [
   { value: 'leisure', label: 'Individual / Leisure' },
   { value: 'business', label: 'Business' },
@@ -383,7 +386,15 @@ export default function BookingForm() {
           <div className="lg:col-span-3">
             <h1 className="text-[#10192b] font-black text-2xl mb-6">Guest Details</h1>
 
-            {stripePromise ? (
+            {BOOKING_DISABLED ? (
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 text-center">
+                <p className="text-[#10192b] font-black text-lg mb-2">Booking Temporarily Unavailable</p>
+                <p className="text-slate-600 text-sm leading-relaxed">
+                  Stayvoo is currently undergoing scheduled maintenance and is unable to process new
+                  bookings. Please check back shortly — we apologize for the inconvenience.
+                </p>
+              </div>
+            ) : stripePromise ? (
               <Elements stripe={stripePromise}>
                 <BookingFormInner
                   hotel={hotel}

@@ -17,7 +17,6 @@ export default function Terms() {
           <p>Cancellation policies vary by hotel and will be communicated at the time of booking confirmation. A card guarantee may be required to hold your reservation.</p>
           <p>Stayvoo acts as a booking intermediary and is not responsible for hotel service quality, room availability changes, or force majeure events. All disputes regarding the stay should be directed to the hotel property.</p>
           <p>By submitting a booking or inquiry, you consent to Stayvoo contacting you via email or SMS regarding your reservation.</p>
-          <p className="font-semibold text-[#10192b]">Questions? Contact us at <a href="mailto:hello@stayvoo.com" className="text-orange-500 hover:underline">hello@stayvoo.com</a></p>
         </div>
       </div>
     </div>

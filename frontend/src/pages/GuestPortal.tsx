@@ -4,6 +4,9 @@ import { MessageCircle, Building2, KeyRound, ClipboardList } from 'lucide-react'
 import { getMyStay, getMyStayReservationMessages, sendMyStayReservationMessage, getMyStayMessages, sendMyStayMessage } from '../lib/api'
 import { useDocumentMeta } from '../hooks/useDocumentMeta'
 
+// Temporary: guest messaging is paused for site maintenance. Flip to false to restore messaging.
+const MESSAGING_DISABLED = true
+
 const STATUS_COLORS: Record<string, string> = {
   pending: 'bg-amber-100 text-amber-700',
   confirmed: 'bg-green-100 text-green-700',
@@ -83,22 +86,28 @@ function ReservationMessageThread({ token, reservationId }: { token: string; res
           </div>
         ))}
       </div>
-      <div className="flex gap-2">
-        <input
-          value={text}
-          onChange={e => setText(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send()}
-          placeholder="Message Stayvoo team..."
-          className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
-        />
-        <button
-          onClick={send}
-          disabled={sending || !text.trim()}
-          className="bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white rounded-xl px-4 py-2 text-sm font-bold transition-colors"
-        >
-          {sending ? '...' : 'Send'}
-        </button>
-      </div>
+      {MESSAGING_DISABLED ? (
+        <p className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 text-amber-800 text-xs text-center">
+          Messaging is temporarily unavailable for scheduled maintenance.
+        </p>
+      ) : (
+        <div className="flex gap-2">
+          <input
+            value={text}
+            onChange={e => setText(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send()}
+            placeholder="Message Stayvoo team..."
+            className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+          />
+          <button
+            onClick={send}
+            disabled={sending || !text.trim()}
+            className="bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white rounded-xl px-4 py-2 text-sm font-bold transition-colors"
+          >
+            {sending ? '...' : 'Send'}
+          </button>
+        </div>
+      )}
     </div>
   )
 }
@@ -149,22 +158,28 @@ function InquiryMessageThread({ token, inquiryId }: { token: string; inquiryId: 
           </div>
         ))}
       </div>
-      <div className="flex gap-2">
-        <input
-          value={text}
-          onChange={e => setText(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send()}
-          placeholder="Message Stayvoo team..."
-          className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
-        />
-        <button
-          onClick={send}
-          disabled={sending || !text.trim()}
-          className="bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white rounded-xl px-4 py-2 text-sm font-bold transition-colors"
-        >
-          {sending ? '...' : 'Send'}
-        </button>
-      </div>
+      {MESSAGING_DISABLED ? (
+        <p className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 text-amber-800 text-xs text-center">
+          Messaging is temporarily unavailable for scheduled maintenance.
+        </p>
+      ) : (
+        <div className="flex gap-2">
+          <input
+            value={text}
+            onChange={e => setText(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send()}
+            placeholder="Message Stayvoo team..."
+            className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+          />
+          <button
+            onClick={send}
+            disabled={sending || !text.trim()}
+            className="bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white rounded-xl px-4 py-2 text-sm font-bold transition-colors"
+          >
+            {sending ? '...' : 'Send'}
+          </button>
+        </div>
+      )}
     </div>
   )
 }
@@ -441,9 +456,6 @@ export default function GuestPortal() {
             <Link to="/search" className="text-[#10192b] font-semibold hover:text-orange-500 transition-colors">Search Hotels</Link>
             <Link to="/exclusive" className="text-[#10192b] font-semibold hover:text-orange-500 transition-colors">Get a Quote</Link>
           </div>
-          <a href="tel:+18883528151" className="text-slate-400 text-xs hover:text-slate-600">
-            Need help? Call +1 (888) 352-8151
-          </a>
         </div>
       </div>
     </div>
