@@ -1,15 +1,24 @@
 """
 Outbound-comms lockdown: while this is in effect, email/SMS can only reach
-the developer, never a real guest or hotel. Hardcoded per explicit instruction —
-this stays in place until told otherwise, so it is not env-var-configurable.
+addresses/numbers listed in ALLOWLIST_EMAILS/ALLOWLIST_PHONES, never a real
+guest or hotel. Configured via env vars; if unset, nothing is allowed through
+(fails closed, not open).
 """
+import os
 import re
 import logging
 
 logger = logging.getLogger(__name__)
 
-ALLOWED_EMAILS = {"vp431030@gmail.com"}
-ALLOWED_PHONES = {"7472445131"}  # compared against the last 10 digits
+
+def _parse_list(env_value: str | None) -> set[str]:
+    if not env_value:
+        return set()
+    return {item.strip() for item in env_value.split(",") if item.strip()}
+
+
+ALLOWED_EMAILS = {e.lower() for e in _parse_list(os.getenv("ALLOWLIST_EMAILS"))}
+ALLOWED_PHONES = _parse_list(os.getenv("ALLOWLIST_PHONES"))  # compared against the last 10 digits
 
 
 def _normalize_phone(phone: str) -> str:
