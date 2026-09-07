@@ -2,6 +2,8 @@
 
 Extended-stay and group hotel booking platform — a booking engine, guest self-service portal, and admin operations console built on a FastAPI/React SaaS stack, live in production at [stayvoo.com](https://stayvoo.com).
 
+![Stayvoo homepage](docs/screenshots/homepage.jpg)
+
 ## Problem
 
 Independent hotels that handle extended-stay guests (travel nurses, construction crews, corporate teams) and group bookings rely on phone calls, spreadsheets, and generic OTA listings. There's no lightweight system for: taking a booking with a card on file, giving guests a way to check their reservation and message the property without an account/password, and giving the operator a single dashboard to confirm bookings, track commissions, and bill hotels — without paying for full hotel-PMS software.
