@@ -117,7 +117,38 @@ Stayvoo went through a real hardening pass, not a checklist exercise — the fix
 - `tests/test_e2e.py` — 22 test functions, Playwright (browser-driven flows) + `requests` (API-level checks) + pytest, run with `pytest tests/test_e2e.py -v`
 - Runs **against live production** (`https://stayvoo.com` / the Railway API), by design — there's no seeded staging environment, so tests use real endpoints with a dedicated allowlisted test email/phone and Stripe's test card (`4242 4242 4242 4242`)
 - Coverage includes: full booking flow, returning-guest autofill, admin confirm flow, guest↔admin messaging round-trip, cancellation, admin login/logout and auth-required checks, checkout-before-checkin and missing-field validation, reservation status lifecycle, inquiry-to-stay conversion, global search, the "Today" admin view shape, invoice-send guardrails, double-submit protection on the booking form, the IDOR fix, expired/invalid magic links, and XSS-payload storage
-- No unit test suite exists — see Future Improvements
+- No unit test suite exists for the core booking product — see Future Improvements. The B2B lead pipeline (below) is the exception: `backend/tests/test_leads_pipeline.py` is a 22-test pytest unit suite (isolated in-memory SQLite DB, mocked SendGrid/Groq clients, no network calls), run with `cd backend && venv\Scripts\python -m pytest tests/test_leads_pipeline.py -v`
+
+## B2B Lead Generation Pipeline
+
+A separate outbound lead-gen and tracking pipeline for B2B prospecting (construction firms, staffing agencies, travel-nurse agencies, corporate travel managers who book multi-room/multi-week stays) — distinct from the guest-facing booking product above, and built with the same fail-closed outbound-comms discipline (see Security).
+
+**Data model** (`backend/models.py`): `Lead` (company + contact + score/tier), `LeadActivity` (append-only event log — created/scored/status_changed/email_sent/etc.), `LeadEmailSuppression` (persistent CAN-SPAM suppression list), `LeadFollowUp` (scheduled outreach with retry tracking).
+
+**Services** (`backend/services/`):
+- `apollo_client.py` — Apollo.io company search; returns realistic mock data if `APOLLO_API_KEY` is unset, so the rest of the pipeline works without a paid account
+- `lead_dedup.py` — domain-match + fuzzy company-name matching (normalizes case/whitespace/legal suffixes like "LLC"/"Inc")
+- `lead_scoring.py` — LLM fit scoring via Groq (`openai/gpt-oss-120b`), structured JSON `{tier, score, reasoning}`; falls back to a real weighted heuristic (industry fit, Milwaukee/Chicago-metro proximity, company-size fit) if `GROQ_API_KEY` is unset
+- `lead_outreach.py` — templated SendGrid email sequences, gated by **both** the allowlist (`services/allowlist.py`) **and** the persistent suppression list, with a signed unsubscribe token, a real `List-Unsubscribe` header (RFC 8058 one-click), and an in-process rate limiter
+- `lead_activity.py` — shared `LeadActivity` insert helper
+
+**Router** (`backend/routers/leads.py`, mounted at `/leads`): webhook intake (`POST /leads/webhook`, shared-secret `X-Webhook-Secret` header — not the admin password, since it's machine-to-machine), admin CRUD/status/notes/send-email/schedule-followup/retry-failed-send (existing `X-Admin-Password` admin auth), `GET /leads/funnel/summary`, `POST /leads/apollo-sync`, follow-up dispatch (`GET /leads/followups/due`, `POST /leads/followups/dispatch`), and a public token-based `GET|POST /leads/unsubscribe`.
+
+**n8n workflows** (`n8n/`) — exported n8n workflow JSON, each a cron/webhook trigger calling one of the endpoints above:
+
+| File | Trigger | Calls |
+|---|---|---|
+| `lead-intake.json` | Webhook (external form / n8n) | `POST /leads/webhook` |
+| `apollo-sync-trigger.json` | Cron (weekdays 6am) | `POST /leads/apollo-sync` |
+| `followup-dispatcher.json` | Cron (every 30min, business hours) | `GET /leads/followups/due` → `POST /leads/followups/dispatch` |
+
+To import: in n8n, **Workflows → Import from File** and select the JSON, or via CLI: `n8n import:workflow --input=n8n/lead-intake.json` (repeat per file). Each workflow references two n8n credentials by name, created once in n8n's credential store (never embedded in the exported JSON):
+- **Stayvoo Leads Webhook Secret** — HTTP Header Auth, header `X-Webhook-Secret`, value = `LEADS_WEBHOOK_SECRET`
+- **Stayvoo Admin Password** — HTTP Header Auth, header `X-Admin-Password`, value = `ADMIN_PASSWORD`
+
+Also set the `STAYVOO_API_BASE_URL` environment variable in n8n (Settings → Environment, or container env) to the backend's base URL. Verified by importing all three into a real n8n instance (Docker, `n8nio/n8n:latest`, v2.37.10) via `n8n import:workflow`/`n8n list:workflow`/`n8n export:workflow --all` — all three imported and round-tripped cleanly with their nodes/connections intact.
+
+**Env vars** (see `backend/.env.example`): `APOLLO_API_KEY` (optional — mock data if unset), `LEADS_WEBHOOK_SECRET` (required for webhook intake — fails closed if unset), `LEADS_UNSUBSCRIBE_SECRET` (optional — falls back to `ADMIN_PASSWORD`), `API_BASE_URL` (used to build unsubscribe links).
 
 ## Deployment
 
