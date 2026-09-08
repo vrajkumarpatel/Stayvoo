@@ -641,6 +641,104 @@ export async function sendMyStayReservationMessage(token: string, reservationId:
   return r.json()
 }
 
+// ── B2B Lead Pipeline ──
+
+export async function getAdminLeads(
+  password: string,
+  params?: { status?: string; tier?: string; industry?: string; min_score?: number; search?: string }
+) {
+  const q = new URLSearchParams()
+  if (params?.status && params.status !== 'all') q.set('status', params.status)
+  if (params?.tier && params.tier !== 'all') q.set('tier', params.tier)
+  if (params?.industry && params.industry !== 'all') q.set('industry', params.industry)
+  if (params?.min_score != null) q.set('min_score', String(params.min_score))
+  if (params?.search) q.set('search', params.search)
+  const qs = q.toString()
+  const r = await fetch(`${BASE}/admin/leads${qs ? `?${qs}` : ''}`, {
+    headers: { 'x-admin-password': password },
+  })
+  if (r.status === 401) throw new Error('Invalid password')
+  if (!r.ok) throw new Error('Failed to fetch leads')
+  return r.json()
+}
+
+export async function getAdminLead(id: string, password: string) {
+  const r = await fetch(`${BASE}/admin/leads/${id}`, {
+    headers: { 'x-admin-password': password },
+  })
+  if (r.status === 401) throw new Error('Invalid password')
+  if (!r.ok) throw new Error('Failed to fetch lead')
+  return r.json()
+}
+
+export async function updateAdminLeadStatus(id: string, status: string, password: string) {
+  const r = await fetch(`${BASE}/admin/leads/${id}/status`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', 'x-admin-password': password },
+    body: JSON.stringify({ status }),
+  })
+  if (r.status === 401) throw new Error('Invalid password')
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}))
+    throw new Error((err as any).detail ?? 'Status update failed')
+  }
+  return r.json()
+}
+
+export async function addAdminLeadNote(id: string, note: string, password: string) {
+  const r = await fetch(`${BASE}/admin/leads/${id}/note`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-admin-password': password },
+    body: JSON.stringify({ note }),
+  })
+  if (r.status === 401) throw new Error('Invalid password')
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}))
+    throw new Error((err as any).detail ?? 'Failed to add note')
+  }
+  return r.json()
+}
+
+export async function sendAdminLeadEmail(
+  id: string,
+  data: { subject?: string; body?: string; template?: string },
+  password: string
+) {
+  const r = await fetch(`${BASE}/admin/leads/${id}/send-email`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-admin-password': password },
+    body: JSON.stringify(data),
+  })
+  if (r.status === 401) throw new Error('Invalid password')
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}))
+    throw new Error((err as any).detail ?? 'Failed to send email')
+  }
+  return r.json()
+}
+
+export async function retryAdminLeadEmail(id: string, activityId: string, password: string) {
+  const r = await fetch(`${BASE}/admin/leads/${id}/activities/${activityId}/retry`, {
+    method: 'POST',
+    headers: { 'x-admin-password': password },
+  })
+  if (r.status === 401) throw new Error('Invalid password')
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}))
+    throw new Error((err as any).detail ?? 'Retry failed')
+  }
+  return r.json()
+}
+
+export async function getAdminLeadFunnel(password: string) {
+  const r = await fetch(`${BASE}/admin/leads/funnel`, {
+    headers: { 'x-admin-password': password },
+  })
+  if (r.status === 401) throw new Error('Invalid password')
+  if (!r.ok) throw new Error('Failed to fetch funnel')
+  return r.json()
+}
+
 export async function sendHotelInvoice(
   hotelName: string,
   month: string,

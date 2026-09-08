@@ -8,6 +8,7 @@ import {
   getAdminReservations, confirmAdminReservation, cancelAdminReservation,
   checkinAdminReservation, checkoutAdminReservation, updateAdminReservation,
   getAdminReservationMessages, sendAdminReservationMessage,
+  getAdminLeads,
 } from '../lib/api'
 import { ModalShell, ModalHeader } from '../components/admin/shared'
 import InvoiceSendModal, { InvoiceStatusBadge } from '../components/admin/InvoiceSendModal'
@@ -17,6 +18,8 @@ import AuditHistory from '../components/admin/AuditHistory'
 import HotelsTab from '../components/admin/HotelsTab'
 import CommissionRatesTab from '../components/admin/CommissionRatesTab'
 import GuestsTab from '../components/admin/GuestsTab'
+import LeadsTab from '../components/admin/LeadsTab'
+import PipelineFunnelTab from '../components/admin/PipelineFunnelTab'
 
 const STORAGE_KEY = 'stayvoo_admin_pw'
 
@@ -1378,7 +1381,7 @@ export default function Admin() {
   const [resLoaded, setResLoaded] = useState(false)
   const [loading, setLoading] = useState(false)
   const [staysLoaded, setStaysLoaded] = useState(false)
-  const [activeTab, setActiveTab] = useState<'today' | 'reservations' | 'bookings' | 'inquiries' | 'stays' | 'billing' | 'hotels' | 'rates' | 'guests'>('today')
+  const [activeTab, setActiveTab] = useState<'today' | 'reservations' | 'bookings' | 'inquiries' | 'stays' | 'billing' | 'hotels' | 'rates' | 'guests' | 'leads' | 'funnel'>('today')
   const [todayData, setTodayData] = useState<TodayData | null>(null)
   const [todayLoading, setTodayLoading] = useState(false)
   const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null)
@@ -1401,6 +1404,7 @@ export default function Admin() {
   const [emailTestResult, setEmailTestResult] = useState<string | null>(null)
   const [testingEmail, setTestingEmail] = useState(false)
   const [invoiceModalHotel, setInvoiceModalHotel] = useState<BillingHotel | null>(null)
+  const [newLeadCount, setNewLeadCount] = useState(0)
 
   const today = new Date().toISOString().split('T')[0]
 
@@ -1484,6 +1488,14 @@ export default function Admin() {
   useEffect(() => {
     if (activeTab === 'billing' && password && !billingData) loadBilling(billingMonth, password)
   }, [activeTab])
+
+  // Unworked-lead count for the Leads tab badge. Best-effort — the badge just hides on failure.
+  useEffect(() => {
+    if (!password) return
+    getAdminLeads(password, { status: 'new' })
+      .then((rows: unknown) => setNewLeadCount(Array.isArray(rows) ? rows.length : 0))
+      .catch(() => setNewLeadCount(0))
+  }, [password, activeTab])
 
   useEffect(() => {
     if (activeTab === 'billing' && password) loadBilling(billingMonth, password)
@@ -1675,6 +1687,8 @@ export default function Admin() {
             { key: 'hotels', label: 'Hotels', badge: undefined },
             { key: 'rates', label: 'Commission Rates', badge: undefined },
             { key: 'guests', label: 'Guests', badge: undefined },
+            { key: 'leads', label: 'Leads', badge: newLeadCount > 0 ? `${newLeadCount} new` : undefined },
+            { key: 'funnel', label: 'Pipeline', badge: undefined },
           ] as const).map(t => (
             <button
               key={t.key}
@@ -2201,6 +2215,12 @@ export default function Admin() {
 
         {/* ── GUESTS TAB ── */}
         {activeTab === 'guests' && <GuestsTab password={password} />}
+
+        {/* ── LEADS TAB ── */}
+        {activeTab === 'leads' && <LeadsTab password={password} />}
+
+        {/* ── PIPELINE FUNNEL TAB ── */}
+        {activeTab === 'funnel' && <PipelineFunnelTab password={password} />}
       </div>
 
       {/* Modals */}
