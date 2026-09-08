@@ -16,6 +16,18 @@ Extended-stay and group hotel booking platform — a booking engine, guest self-
 ![Admin guest CRM](docs/screenshots/admin-guests.png)
 *Guest records with stay history, searchable by name, email, or phone.*
 
+![B2B leads list](docs/screenshots/leads-list.png)
+*The lead-generation pipeline: filterable by status, tier, score, and industry, with a live score meter and tier badge per lead. Shown with representative fake B2B companies, no real businesses.*
+
+![Lead detail with activity history](docs/screenshots/lead-detail.png)
+*Every touch on a lead — creation, scoring, status changes, notes — logged with a timestamp and actor in a reverse-chronological activity feed.*
+
+![Pipeline funnel](docs/screenshots/pipeline-funnel.png)
+*Lead counts per pipeline stage with stage-to-stage carry-over percentages.*
+
+![n8n lead intake workflow](docs/screenshots/n8n-workflow.png)
+*One of three importable n8n workflows: a webhook receives a new lead, validates it, and routes to an acceptance or rejection response.*
+
 ## Problem
 
 Independent hotels that handle extended-stay guests (travel nurses, construction crews, corporate teams) and group bookings rely on phone calls, spreadsheets, and generic OTA listings. There's no lightweight system for: taking a booking with a card on file, giving guests a way to check their reservation and message the property without an account/password, and giving the operator a single dashboard to confirm bookings, track commissions, and bill hotels — without paying for full hotel-PMS software.
