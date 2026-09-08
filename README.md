@@ -2,7 +2,19 @@
 
 Extended-stay and group hotel booking platform — a booking engine, guest self-service portal, and admin operations console built on a FastAPI/React SaaS stack, live in production at [stayvoo.com](https://stayvoo.com).
 
+## Screenshots
+
 ![Stayvoo homepage](docs/screenshots/homepage.jpg)
+*The public-facing site, live at stayvoo.com.*
+
+![Admin daily operations view](docs/screenshots/admin-today.png)
+*Core workflow: today's arrivals, departures, pending reservations, and outstanding commission at a glance. Shown with representative demo data seeded locally, not real guest bookings.*
+
+![Admin reservations with global search](docs/screenshots/admin-reservations.png)
+*Global search and filtering across every reservation status, grouped by date and request type.*
+
+![Admin guest CRM](docs/screenshots/admin-guests.png)
+*Guest records with stay history, searchable by name, email, or phone.*
 
 ## Problem
 
