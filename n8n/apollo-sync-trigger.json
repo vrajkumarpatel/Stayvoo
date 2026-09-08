@@ -22,7 +22,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{$env.STAYVOO_API_BASE_URL}}/leads/apollo-sync",
+        "url": "={{$env.STAYVOO_API_BASE_URL}}/admin/leads/apollo-sync",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [

@@ -440,6 +440,7 @@ app.include_router(guests.router)
 app.include_router(webhooks.router)
 app.include_router(directory.router)
 app.include_router(leads.router)
+app.include_router(leads.admin_router)
 
 
 @app.get("/")

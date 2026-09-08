@@ -132,15 +132,19 @@ A separate outbound lead-gen and tracking pipeline for B2B prospecting (construc
 - `lead_outreach.py` — templated SendGrid email sequences, gated by **both** the allowlist (`services/allowlist.py`) **and** the persistent suppression list, with a signed unsubscribe token, a real `List-Unsubscribe` header (RFC 8058 one-click), and an in-process rate limiter
 - `lead_activity.py` — shared `LeadActivity` insert helper
 
-**Router** (`backend/routers/leads.py`, mounted at `/leads`): webhook intake (`POST /leads/webhook`, shared-secret `X-Webhook-Secret` header — not the admin password, since it's machine-to-machine), admin CRUD/status/notes/send-email/schedule-followup/retry-failed-send (existing `X-Admin-Password` admin auth), `GET /leads/funnel/summary`, `POST /leads/apollo-sync`, follow-up dispatch (`GET /leads/followups/due`, `POST /leads/followups/dispatch`), and a public token-based `GET|POST /leads/unsubscribe`.
+**Router** (`backend/routers/leads.py`) — two routers:
+- `router`, mounted at `/leads`: public endpoints — webhook intake (`POST /leads/webhook`, shared-secret `X-Webhook-Secret` header, not the admin password, since it's machine-to-machine) and a token-based `GET|POST /leads/unsubscribe`.
+- `admin_router`, mounted at `/admin/leads` (matching this codebase's existing admin-resource convention, e.g. `/admin/bookings`): CRUD (`POST /admin/leads`, `GET /admin/leads` with `status`/`tier`/`source`/`industry`/`min_score`/`search` filters, `GET /admin/leads/{id}`, `PUT /admin/leads/{id}`), `PATCH /admin/leads/{id}/status`, `POST /admin/leads/{id}/note`, outreach (`POST /admin/leads/{id}/send-email` — either a `template`/`template_key` from the built-in set or a freeform `subject`/`body`; `POST /admin/leads/{id}/schedule-followup`; `POST /admin/leads/{id}/retry-failed-send`; `POST /admin/leads/{id}/activities/{activity_id}/retry`), `GET /admin/leads/funnel` (flat `{status: count}`), `POST /admin/leads/apollo-sync`, and follow-up dispatch (`GET /admin/leads/followups/due`, `POST /admin/leads/followups/dispatch`) — all gated by the existing `X-Admin-Password` admin auth.
+
+*Response shapes carry a couple of view-only aliases (`website`/`location` on a lead, `activity_type`/`status` on an activity, and both `closed`/`lost` and `closed_won`/`closed_lost` accepted as valid statuses) so the responses match the admin frontend's existing view-model contract on top of the fields named in the underlying data model.*
 
 **n8n workflows** (`n8n/`) — exported n8n workflow JSON, each a cron/webhook trigger calling one of the endpoints above:
 
 | File | Trigger | Calls |
 |---|---|---|
 | `lead-intake.json` | Webhook (external form / n8n) | `POST /leads/webhook` |
-| `apollo-sync-trigger.json` | Cron (weekdays 6am) | `POST /leads/apollo-sync` |
-| `followup-dispatcher.json` | Cron (every 30min, business hours) | `GET /leads/followups/due` → `POST /leads/followups/dispatch` |
+| `apollo-sync-trigger.json` | Cron (weekdays 6am) | `POST /admin/leads/apollo-sync` |
+| `followup-dispatcher.json` | Cron (every 30min, business hours) | `GET /admin/leads/followups/due` → `POST /admin/leads/followups/dispatch` |
 
 To import: in n8n, **Workflows → Import from File** and select the JSON, or via CLI: `n8n import:workflow --input=n8n/lead-intake.json` (repeat per file). Each workflow references two n8n credentials by name, created once in n8n's credential store (never embedded in the exported JSON):
 - **Stayvoo Leads Webhook Secret** — HTTP Header Auth, header `X-Webhook-Secret`, value = `LEADS_WEBHOOK_SECRET`

@@ -22,7 +22,7 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "={{$env.STAYVOO_API_BASE_URL}}/leads/followups/due",
+        "url": "={{$env.STAYVOO_API_BASE_URL}}/admin/leads/followups/due",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "options": {}
@@ -72,7 +72,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{$env.STAYVOO_API_BASE_URL}}/leads/followups/dispatch",
+        "url": "={{$env.STAYVOO_API_BASE_URL}}/admin/leads/followups/dispatch",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "options": {}

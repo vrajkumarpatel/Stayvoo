@@ -317,3 +317,63 @@ async def send_lead_outreach_email(
             await log_activity(db, lead.id, "send_failed_retry", actor, f"template={template_key}, error={result['error']}")
 
     return result
+
+
+def _plain_text_to_html(text: str) -> str:
+    """Minimal, safe plain-text -> HTML for the admin's freeform email composer.
+    Escapes the text (no raw HTML injection) and turns blank-line-separated
+    paragraphs into <p> blocks, single newlines into <br>."""
+    import html as _html
+    text = (text or "").strip()
+    if not text:
+        return "<p style=\"margin:0;color:#475569;font-size:15px;\">&nbsp;</p>"
+    paragraphs = text.split("\n\n")
+    out = []
+    for para in paragraphs:
+        if not para.strip():
+            continue
+        escaped = _html.escape(para.strip()).replace("\n", "<br>")
+        out.append(f'<p style="margin:0 0 16px;color:#475569;font-size:15px;line-height:1.6;">{escaped}</p>')
+    return "".join(out)
+
+
+async def send_lead_custom_email(
+    db: AsyncSession,
+    lead: Lead,
+    subject: str,
+    body_text: str,
+    actor: str = "admin",
+) -> dict:
+    """Freeform subject/body send (the admin frontend's "Compose Follow-Up" path) —
+    same gating as send_lead_outreach_email (suppression -> allowlist -> rate limit ->
+    SendGrid -> LeadActivity log), just without a fixed template. Still wraps the body
+    in the branded envelope with a real unsubscribe link/List-Unsubscribe header, so
+    CAN-SPAM compliance holds for ad hoc sends too."""
+    email = (lead.contact_email or "").strip().lower()
+
+    if not email:
+        await log_activity(db, lead.id, "send_failed_retry", actor, "custom send, no contact_email on lead")
+        return {"success": False, "message_id": None, "error": "Lead has no contact_email"}
+
+    if await is_suppressed(db, email):
+        await log_activity(db, lead.id, "email_suppressed", actor, "custom send, recipient on suppression list")
+        return {"success": False, "message_id": None, "error": "Recipient is on the suppression list"}
+
+    if not _rate_limit_ok():
+        await log_activity(db, lead.id, "send_failed_retry", actor, "custom send, rate limited")
+        return {"success": False, "message_id": None, "error": "Rate limit exceeded, try again shortly"}
+
+    unsubscribe_url = unsubscribe_url_for(email)
+    html = _wrap_html(_plain_text_to_html(body_text), unsubscribe_url)
+
+    result = await asyncio.to_thread(_send_lead_email_sync, email, subject, html, unsubscribe_url)
+
+    if result["success"]:
+        await log_activity(db, lead.id, "email_sent", actor, f"custom send: subject={subject!r} message_id={result['message_id']}")
+    else:
+        if result["error"] == "Recipient blocked by allowlist lockdown":
+            await log_activity(db, lead.id, "send_failed_retry", actor, "custom send, blocked by allowlist")
+        else:
+            await log_activity(db, lead.id, "send_failed_retry", actor, f"custom send, error={result['error']}")
+
+    return result

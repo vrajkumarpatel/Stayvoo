@@ -1,21 +1,30 @@
 """
 B2B lead-generation and tracking pipeline endpoints.
 
-Three auth models on this one router, matched to who calls each group of routes:
-- Inbound webhook intake: a shared secret header (X-Webhook-Secret / LEADS_WEBHOOK_SECRET),
-  NOT the interactive admin password — this is machine-to-machine (n8n / external forms).
-- Admin CRUD/actions: the existing `_verify_admin` dependency (X-Admin-Password header),
-  same as every other admin route in this codebase.
-- Public unsubscribe: token-only, no auth beyond the signed token itself (CAN-SPAM).
+Two routers in this module (both included in main.py):
+- `router` (prefix "/leads"): public endpoints — inbound webhook intake (shared-secret
+  header, NOT the interactive admin password, since it's machine-to-machine n8n/form
+  traffic) and the token-based unsubscribe link.
+- `admin_router` (prefix "/admin/leads"): everything admin-facing, gated by the same
+  `_verify_admin` dependency every other admin route in this codebase uses. Mounted
+  under /admin/leads (not /leads) to match this codebase's existing convention for
+  admin resources (see /admin/bookings, /admin/reservations, /admin/inquiries).
+
+Response shapes below carry a couple of small view-only aliases (`website`/`location`
+on Lead, `activity_type`/`summary`/`status` on LeadActivity) on top of the fields named
+in the underlying data model — these exist purely to match the admin frontend's
+existing view-model contract; the underlying stored columns/action vocabulary are
+exactly what's documented in models.py.
 """
 import os
+import re
 import uuid
 import secrets
 import logging
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from sqlalchemy import select, func
@@ -29,6 +38,7 @@ from services.lead_dedup import find_duplicate_lead, normalize_domain
 from services.lead_scoring import score_lead
 from services.lead_outreach import (
     send_lead_outreach_email,
+    send_lead_custom_email,
     add_suppression,
     verify_unsubscribe_token,
     TEMPLATES,
@@ -37,6 +47,16 @@ from services import apollo_client
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/leads", tags=["leads"])
+admin_router = APIRouter(prefix="/admin/leads", tags=["leads-admin"])
+
+# Canonical statuses per the data model spec, plus the admin frontend's own
+# closed_won/closed_lost split on the terminal stage — both vocabularies are
+# accepted so either caller works; whatever value is sent is what's stored and
+# what the funnel endpoint reports back.
+_VALID_STATUSES = {
+    "new", "contacted", "responded", "qualified", "closed", "lost",
+    "closed_won", "closed_lost",
+}
 
 
 # ─── Webhook auth (machine-to-machine, not the admin password) ─────────────────
@@ -55,14 +75,17 @@ def _verify_webhook_secret(x_webhook_secret: str = Header(...)) -> None:
 # ─── Serialization ──────────────────────────────────────────────────────────
 
 def lead_to_dict(lead: Lead) -> dict:
+    location = ", ".join(p for p in (lead.city, lead.state) if p) or None
     return {
         "id": str(lead.id),
         "company_name": lead.company_name,
         "domain": lead.domain,
+        "website": lead.domain,  # view alias for the admin frontend
         "industry": lead.industry,
         "company_size": lead.company_size,
         "city": lead.city,
         "state": lead.state,
+        "location": location,  # view alias: "City, ST"
         "source": lead.source,
         "status": lead.status,
         "score": lead.score,
@@ -73,17 +96,33 @@ def lead_to_dict(lead: Lead) -> dict:
         "contact_title": lead.contact_title,
         "contact_phone": lead.contact_phone,
         "apollo_id": lead.apollo_id,
+        "last_contacted_at": None,  # populated below for detail views where activities are loaded
         "created_at": lead.created_at.isoformat() if lead.created_at else None,
         "updated_at": lead.updated_at.isoformat() if lead.updated_at else None,
     }
 
 
+# Activity actions that represent a failed/blocked send — surfaced as status="failed"
+# so the admin UI's generic "is this retryable" check (activity_type === 'email_failed'
+# OR status in {failed,error,bounced}) works without renaming our action vocabulary.
+_FAILED_SEND_ACTIONS = {"send_failed_retry"}
+_BOUNCED_ACTIONS = {"email_bounced"}
+
+
 def activity_to_dict(a: LeadActivity) -> dict:
+    status = None
+    if a.action in _FAILED_SEND_ACTIONS:
+        status = "failed"
+    elif a.action in _BOUNCED_ACTIONS:
+        status = "bounced"
     return {
         "id": str(a.id),
         "lead_id": str(a.lead_id),
         "action": a.action,
+        "activity_type": a.action,  # view alias for the admin frontend
         "actor": a.actor,
+        "summary": None,
+        "status": status,
         "detail": a.detail,
         "created_at": a.created_at.isoformat() if a.created_at else None,
     }
@@ -149,7 +188,7 @@ async def _score_lead_background(lead_id) -> None:
             logger.error("Background scoring failed for lead %s: %s", lead_id, e)
 
 
-# ─── Inbound webhook intake (n8n / external forms) ──────────────────────────
+# ─── Inbound webhook intake (n8n / external forms) — public router ──────────
 
 class LeadWebhookIn(BaseModel):
     company_name: str
@@ -204,7 +243,7 @@ async def leads_webhook_intake(
     return {"status": "created", "lead": lead_to_dict(lead)}
 
 
-# ─── Public unsubscribe (token-only, CAN-SPAM) ──────────────────────────────
+# ─── Public unsubscribe (token-only, CAN-SPAM) — public router ──────────────
 
 @router.get("/unsubscribe", response_class=HTMLResponse)
 @router.post("/unsubscribe", response_class=HTMLResponse)
@@ -240,7 +279,7 @@ class LeadCreateIn(BaseModel):
     contact_phone: Optional[str] = None
 
 
-@router.post("")
+@admin_router.post("")
 async def create_lead(
     payload: LeadCreateIn,
     background_tasks: BackgroundTasks,
@@ -275,11 +314,13 @@ async def create_lead(
     return lead_to_dict(lead)
 
 
-@router.get("")
+@admin_router.get("")
 async def list_leads(
     status: Optional[str] = None,
     tier: Optional[str] = None,
     source: Optional[str] = None,
+    industry: Optional[str] = None,
+    min_score: Optional[int] = None,
     search: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
     _: None = Depends(_verify_admin),
@@ -291,6 +332,10 @@ async def list_leads(
         q = q.where(Lead.tier == tier)
     if source:
         q = q.where(Lead.source == source)
+    if industry:
+        q = q.where(Lead.industry.ilike(f"%{industry}%"))
+    if min_score is not None:
+        q = q.where(Lead.score.isnot(None), Lead.score >= min_score)
     result = await db.execute(q)
     leads = result.scalars().all()
 
@@ -307,199 +352,18 @@ async def list_leads(
     return [lead_to_dict(l) for l in leads]
 
 
-@router.get("/funnel/summary")
+@admin_router.get("/funnel")
 async def funnel_summary(
     db: AsyncSession = Depends(get_db),
     _: None = Depends(_verify_admin),
 ):
+    """Flat {status: count} map — matches the admin frontend's expected shape directly
+    (no wrapper object), covering every status value actually present on any Lead."""
     result = await db.execute(select(Lead.status, func.count()).group_by(Lead.status))
-    counts = {status: count for status, count in result.all()}
-    total = sum(counts.values())
-    return {"total": total, "by_status": counts}
+    return {status: count for status, count in result.all()}
 
 
-@router.get("/{lead_id}")
-async def get_lead(
-    lead_id: str,
-    db: AsyncSession = Depends(get_db),
-    _: None = Depends(_verify_admin),
-):
-    lead = await _load_lead(lead_id, db)
-    act_result = await db.execute(
-        select(LeadActivity).where(LeadActivity.lead_id == lead.id).order_by(LeadActivity.created_at.desc())
-    )
-    fu_result = await db.execute(
-        select(LeadFollowUp).where(LeadFollowUp.lead_id == lead.id).order_by(LeadFollowUp.scheduled_for.asc())
-    )
-    data = lead_to_dict(lead)
-    data["activities"] = [activity_to_dict(a) for a in act_result.scalars().all()]
-    data["followups"] = [followup_to_dict(f) for f in fu_result.scalars().all()]
-    return data
-
-
-class LeadUpdateIn(BaseModel):
-    company_name: Optional[str] = None
-    industry: Optional[str] = None
-    company_size: Optional[str] = None
-    city: Optional[str] = None
-    state: Optional[str] = None
-    contact_name: Optional[str] = None
-    contact_email: Optional[str] = None
-    contact_title: Optional[str] = None
-    contact_phone: Optional[str] = None
-
-
-@router.put("/{lead_id}")
-async def update_lead(
-    lead_id: str,
-    payload: LeadUpdateIn,
-    db: AsyncSession = Depends(get_db),
-    _: None = Depends(_verify_admin),
-):
-    lead = await _load_lead(lead_id, db)
-    updates = payload.model_dump(exclude_unset=True)
-    for field, value in updates.items():
-        setattr(lead, field, value)
-    lead.updated_at = datetime.utcnow()
-    await log_activity(db, lead.id, "note_added", "admin", f"Fields updated: {', '.join(updates.keys())}" if updates else "No-op update")
-    await db.commit()
-    await db.refresh(lead)
-    return lead_to_dict(lead)
-
-
-class StatusUpdateIn(BaseModel):
-    status: str
-
-
-@router.post("/{lead_id}/status")
-async def update_lead_status(
-    lead_id: str,
-    payload: StatusUpdateIn,
-    db: AsyncSession = Depends(get_db),
-    _: None = Depends(_verify_admin),
-):
-    valid_statuses = {"new", "contacted", "responded", "qualified", "closed", "lost"}
-    if payload.status not in valid_statuses:
-        raise HTTPException(status_code=422, detail=f"status must be one of {sorted(valid_statuses)}")
-
-    lead = await _load_lead(lead_id, db)
-    old_status = lead.status
-    lead.status = payload.status
-    lead.updated_at = datetime.utcnow()
-    await log_activity(db, lead.id, "status_changed", "admin", f"{old_status} -> {payload.status}")
-    await db.commit()
-    await db.refresh(lead)
-    return lead_to_dict(lead)
-
-
-class NoteIn(BaseModel):
-    note: str
-
-
-@router.post("/{lead_id}/notes")
-async def add_note(
-    lead_id: str,
-    payload: NoteIn,
-    db: AsyncSession = Depends(get_db),
-    _: None = Depends(_verify_admin),
-):
-    lead = await _load_lead(lead_id, db)
-    activity = await log_activity(db, lead.id, "note_added", "admin", payload.note)
-    await db.commit()
-    await db.refresh(activity)
-    return activity_to_dict(activity)
-
-
-# ─── Admin: outreach ─────────────────────────────────────────────────────────
-
-class SendEmailIn(BaseModel):
-    template_key: str
-
-
-@router.post("/{lead_id}/send-email")
-async def send_email(
-    lead_id: str,
-    payload: SendEmailIn,
-    db: AsyncSession = Depends(get_db),
-    _: None = Depends(_verify_admin),
-):
-    if payload.template_key not in TEMPLATES:
-        raise HTTPException(status_code=422, detail=f"template_key must be one of {sorted(TEMPLATES.keys())}")
-    lead = await _load_lead(lead_id, db)
-    result = await send_lead_outreach_email(db, lead, payload.template_key, actor="admin")
-    if lead.status == "new" and result["success"]:
-        lead.status = "contacted"
-        lead.updated_at = datetime.utcnow()
-    await db.commit()
-    return result
-
-
-class ScheduleFollowUpIn(BaseModel):
-    scheduled_for: datetime
-    template_key: str
-
-
-@router.post("/{lead_id}/schedule-followup")
-async def schedule_followup(
-    lead_id: str,
-    payload: ScheduleFollowUpIn,
-    db: AsyncSession = Depends(get_db),
-    _: None = Depends(_verify_admin),
-):
-    if payload.template_key not in TEMPLATES:
-        raise HTTPException(status_code=422, detail=f"template_key must be one of {sorted(TEMPLATES.keys())}")
-    lead = await _load_lead(lead_id, db)
-
-    followup = LeadFollowUp(
-        id=uuid.uuid4(),
-        lead_id=lead.id,
-        scheduled_for=payload.scheduled_for,
-        template_key=payload.template_key,
-    )
-    db.add(followup)
-    await db.flush()
-    await log_activity(
-        db, lead.id, "followup_scheduled", "admin",
-        f"template={payload.template_key} scheduled_for={payload.scheduled_for.isoformat()}",
-    )
-    await db.commit()
-    await db.refresh(followup)
-    return followup_to_dict(followup)
-
-
-@router.post("/{lead_id}/retry-failed-send")
-async def retry_failed_send(
-    lead_id: str,
-    db: AsyncSession = Depends(get_db),
-    _: None = Depends(_verify_admin),
-):
-    lead = await _load_lead(lead_id, db)
-    fu_result = await db.execute(
-        select(LeadFollowUp)
-        .where(LeadFollowUp.lead_id == lead.id, LeadFollowUp.status == "failed")
-        .order_by(LeadFollowUp.scheduled_for.desc())
-    )
-    followup = fu_result.scalars().first()
-    if not followup:
-        raise HTTPException(status_code=404, detail="No failed follow-up to retry for this lead")
-
-    result = await send_lead_outreach_email(db, lead, followup.template_key, actor="admin")
-    followup.retry_count = (followup.retry_count or 0) + 1
-    if result["success"]:
-        followup.status = "sent"
-        followup.last_error = None
-        await log_activity(db, lead.id, "followup_sent", "admin", f"retry #{followup.retry_count}, template={followup.template_key}")
-    else:
-        followup.last_error = result["error"]
-        await log_activity(db, lead.id, "send_failed_retry", "admin", f"retry #{followup.retry_count} failed: {result['error']}")
-    await db.commit()
-    await db.refresh(followup)
-    return followup_to_dict(followup)
-
-
-# ─── Admin: follow-up dispatch (for the n8n cron dispatcher) ────────────────
-
-@router.get("/followups/due")
+@admin_router.get("/followups/due")
 async def list_due_followups(
     db: AsyncSession = Depends(get_db),
     _: None = Depends(_verify_admin),
@@ -513,7 +377,7 @@ async def list_due_followups(
     return [followup_to_dict(f) for f in result.scalars().all()]
 
 
-@router.post("/followups/dispatch")
+@admin_router.post("/followups/dispatch")
 async def dispatch_due_followups(
     db: AsyncSession = Depends(get_db),
     _: None = Depends(_verify_admin),
@@ -553,15 +417,13 @@ async def dispatch_due_followups(
     return {"processed": len(due), "sent": sent, "failed": failed}
 
 
-# ─── Admin: Apollo sync ───────────────────────────────────────────────────────
-
 class ApolloSyncIn(BaseModel):
     industries: Optional[list[str]] = None
     locations: Optional[list[str]] = None
     per_page: int = 10
 
 
-@router.post("/apollo-sync")
+@admin_router.post("/apollo-sync")
 async def apollo_sync(
     payload: ApolloSyncIn,
     background_tasks: BackgroundTasks,
@@ -608,3 +470,244 @@ async def apollo_sync(
         "created_count": len(created),
         "duplicates_skipped_count": len(duplicates),
     }
+
+
+@admin_router.get("/{lead_id}")
+async def get_lead(
+    lead_id: str,
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(_verify_admin),
+):
+    lead = await _load_lead(lead_id, db)
+    act_result = await db.execute(
+        select(LeadActivity).where(LeadActivity.lead_id == lead.id).order_by(LeadActivity.created_at.desc())
+    )
+    activities = act_result.scalars().all()
+    fu_result = await db.execute(
+        select(LeadFollowUp).where(LeadFollowUp.lead_id == lead.id).order_by(LeadFollowUp.scheduled_for.asc())
+    )
+
+    lead_dict = lead_to_dict(lead)
+    last_sent = next((a for a in activities if a.action in ("email_sent", "followup_sent")), None)
+    lead_dict["last_contacted_at"] = last_sent.created_at.isoformat() if last_sent else None
+
+    # Nested under "lead" (admin frontend's LeadDetail shape) — kept flat-compatible
+    # too isn't needed since the admin UI only reads the nested form.
+    return {
+        "lead": lead_dict,
+        "activities": [activity_to_dict(a) for a in activities],
+        "followups": [followup_to_dict(f) for f in fu_result.scalars().all()],
+    }
+
+
+class LeadUpdateIn(BaseModel):
+    company_name: Optional[str] = None
+    industry: Optional[str] = None
+    company_size: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    contact_name: Optional[str] = None
+    contact_email: Optional[str] = None
+    contact_title: Optional[str] = None
+    contact_phone: Optional[str] = None
+
+
+@admin_router.put("/{lead_id}")
+async def update_lead(
+    lead_id: str,
+    payload: LeadUpdateIn,
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(_verify_admin),
+):
+    lead = await _load_lead(lead_id, db)
+    updates = payload.model_dump(exclude_unset=True)
+    for field, value in updates.items():
+        setattr(lead, field, value)
+    lead.updated_at = datetime.utcnow()
+    await log_activity(db, lead.id, "note_added", "admin", f"Fields updated: {', '.join(updates.keys())}" if updates else "No-op update")
+    await db.commit()
+    await db.refresh(lead)
+    return lead_to_dict(lead)
+
+
+class StatusUpdateIn(BaseModel):
+    status: str
+
+
+@admin_router.patch("/{lead_id}/status")
+@admin_router.post("/{lead_id}/status")
+async def update_lead_status(
+    lead_id: str,
+    payload: StatusUpdateIn,
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(_verify_admin),
+):
+    if payload.status not in _VALID_STATUSES:
+        raise HTTPException(status_code=422, detail=f"status must be one of {sorted(_VALID_STATUSES)}")
+
+    lead = await _load_lead(lead_id, db)
+    old_status = lead.status
+    lead.status = payload.status
+    lead.updated_at = datetime.utcnow()
+    await log_activity(db, lead.id, "status_changed", "admin", f"{old_status} -> {payload.status}")
+    await db.commit()
+    await db.refresh(lead)
+    return lead_to_dict(lead)
+
+
+class NoteIn(BaseModel):
+    note: str
+
+
+@admin_router.post("/{lead_id}/note")
+@admin_router.post("/{lead_id}/notes")
+async def add_note(
+    lead_id: str,
+    payload: NoteIn,
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(_verify_admin),
+):
+    lead = await _load_lead(lead_id, db)
+    activity = await log_activity(db, lead.id, "note_added", "admin", payload.note)
+    await db.commit()
+    await db.refresh(activity)
+    return activity_to_dict(activity)
+
+
+# ─── Admin: outreach ─────────────────────────────────────────────────────────
+
+class SendEmailIn(BaseModel):
+    template_key: Optional[str] = None
+    template: Optional[str] = None
+    subject: Optional[str] = None
+    body: Optional[str] = None
+
+
+@admin_router.post("/{lead_id}/send-email")
+async def send_email(
+    lead_id: str,
+    payload: SendEmailIn,
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(_verify_admin),
+):
+    lead = await _load_lead(lead_id, db)
+
+    if payload.subject or payload.body:
+        # Freeform composer path (admin frontend's "Compose Follow-Up").
+        subject = payload.subject or f"Following up — {lead.company_name}"
+        result = await send_lead_custom_email(db, lead, subject, payload.body or "", actor="admin")
+    else:
+        template_key = payload.template_key or payload.template or "intro"
+        if template_key not in TEMPLATES:
+            raise HTTPException(status_code=422, detail=f"template must be one of {sorted(TEMPLATES.keys())}")
+        result = await send_lead_outreach_email(db, lead, template_key, actor="admin")
+
+    if lead.status == "new" and result["success"]:
+        lead.status = "contacted"
+        lead.updated_at = datetime.utcnow()
+    await db.commit()
+    return result
+
+
+class ScheduleFollowUpIn(BaseModel):
+    scheduled_for: datetime
+    template_key: str
+
+
+@admin_router.post("/{lead_id}/schedule-followup")
+async def schedule_followup(
+    lead_id: str,
+    payload: ScheduleFollowUpIn,
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(_verify_admin),
+):
+    if payload.template_key not in TEMPLATES:
+        raise HTTPException(status_code=422, detail=f"template_key must be one of {sorted(TEMPLATES.keys())}")
+    lead = await _load_lead(lead_id, db)
+
+    followup = LeadFollowUp(
+        id=uuid.uuid4(),
+        lead_id=lead.id,
+        scheduled_for=payload.scheduled_for,
+        template_key=payload.template_key,
+    )
+    db.add(followup)
+    await db.flush()
+    await log_activity(
+        db, lead.id, "followup_scheduled", "admin",
+        f"template={payload.template_key} scheduled_for={payload.scheduled_for.isoformat()}",
+    )
+    await db.commit()
+    await db.refresh(followup)
+    return followup_to_dict(followup)
+
+
+@admin_router.post("/{lead_id}/retry-failed-send")
+async def retry_failed_send(
+    lead_id: str,
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(_verify_admin),
+):
+    """Retries the most recent failed LeadFollowUp for this lead (the scheduled-followup
+    retry path). For retrying a specific failed one-off send logged as a LeadActivity,
+    see POST /{lead_id}/activities/{activity_id}/retry below."""
+    lead = await _load_lead(lead_id, db)
+    fu_result = await db.execute(
+        select(LeadFollowUp)
+        .where(LeadFollowUp.lead_id == lead.id, LeadFollowUp.status == "failed")
+        .order_by(LeadFollowUp.scheduled_for.desc())
+    )
+    followup = fu_result.scalars().first()
+    if not followup:
+        raise HTTPException(status_code=404, detail="No failed follow-up to retry for this lead")
+
+    result = await send_lead_outreach_email(db, lead, followup.template_key, actor="admin")
+    followup.retry_count = (followup.retry_count or 0) + 1
+    if result["success"]:
+        followup.status = "sent"
+        followup.last_error = None
+        await log_activity(db, lead.id, "followup_sent", "admin", f"retry #{followup.retry_count}, template={followup.template_key}")
+    else:
+        followup.last_error = result["error"]
+        await log_activity(db, lead.id, "send_failed_retry", "admin", f"retry #{followup.retry_count} failed: {result['error']}")
+    await db.commit()
+    await db.refresh(followup)
+    return followup_to_dict(followup)
+
+
+_TEMPLATE_KEY_RE = re.compile(r"template=(\S+)")
+
+
+@admin_router.post("/{lead_id}/activities/{activity_id}/retry")
+async def retry_activity(
+    lead_id: str,
+    activity_id: str,
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(_verify_admin),
+):
+    """Retries the specific failed send this LeadActivity row recorded — matches the
+    admin frontend's per-activity retry button. Re-derives which template was used
+    from the activity's logged detail text (every outreach send logs `template=<key>`);
+    falls back to the "intro" template if that can't be determined (e.g. it was a
+    freeform/custom send, which isn't reconstructable from the log alone)."""
+    lead = await _load_lead(lead_id, db)
+    try:
+        activity_uuid = uuid.UUID(activity_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid activity id")
+
+    act_result = await db.execute(
+        select(LeadActivity).where(LeadActivity.id == activity_uuid, LeadActivity.lead_id == lead.id)
+    )
+    activity = act_result.scalar_one_or_none()
+    if not activity:
+        raise HTTPException(status_code=404, detail="Activity not found for this lead")
+
+    match = _TEMPLATE_KEY_RE.search(activity.detail or "")
+    template_key = match.group(1).rstrip(",") if match else "intro"
+    if template_key not in TEMPLATES:
+        template_key = "intro"
+
+    result = await send_lead_outreach_email(db, lead, template_key, actor="admin")
+    await db.commit()
+    return result
