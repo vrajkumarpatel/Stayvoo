@@ -295,6 +295,79 @@ class HotelInvoice(Base):
     sent_by = Column(String, default="admin")
 
 
+class Lead(Base):
+    """B2B outbound lead-gen pipeline (construction firms, staffing agencies, travel-nurse
+    agencies, corporate travel managers) — entirely separate from guest/reservation data."""
+    __tablename__ = "leads"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_name = Column(String, nullable=False)
+    domain = Column(String, nullable=True, index=True)  # used for dedup
+    industry = Column(String, nullable=True)
+    company_size = Column(String, nullable=True)
+    city = Column(String, nullable=True)
+    state = Column(String, nullable=True)
+    source = Column(String, default="manual")  # apollo | manual | webhook
+    status = Column(String, default="new")  # new/contacted/responded/qualified/closed/lost
+    score = Column(Integer, nullable=True)
+    tier = Column(String, nullable=True)  # hot | warm | cold
+    score_reasoning = Column(Text, nullable=True)
+    contact_name = Column(String, nullable=True)
+    contact_email = Column(String, nullable=True)
+    contact_title = Column(String, nullable=True)
+    contact_phone = Column(String, nullable=True)
+    apollo_id = Column(String, nullable=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    activities = relationship("LeadActivity", back_populates="lead", cascade="all, delete-orphan")
+    followups = relationship("LeadFollowUp", back_populates="lead", cascade="all, delete-orphan")
+
+
+class LeadActivity(Base):
+    """Append-only activity/audit trail for a Lead — action-oriented (not field-diff like
+    AuditLog), since lead activity is about events (email sent, scored, status changed)
+    rather than tracking individual column changes."""
+    __tablename__ = "lead_activities"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    lead_id = Column(UUID(as_uuid=True), ForeignKey("leads.id"), nullable=False, index=True)
+    action = Column(String, nullable=False)
+    # e.g. created, enrichment_completed, scored, status_changed, email_sent, email_bounced,
+    # email_suppressed, note_added, followup_scheduled, followup_sent, send_failed_retry
+    actor = Column(String, default="system")  # "system" or an admin identifier
+    detail = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    lead = relationship("Lead", back_populates="activities")
+
+
+class LeadEmailSuppression(Base):
+    """Persistent CAN-SPAM suppression list — separate from and IN ADDITION TO the
+    allowlist in services/allowlist.py. A lead outreach email must pass BOTH checks."""
+    __tablename__ = "lead_email_suppressions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    email = Column(String, unique=True, nullable=False, index=True)
+    reason = Column(String, nullable=False)  # unsubscribed | bounced | manual
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class LeadFollowUp(Base):
+    __tablename__ = "lead_followups"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    lead_id = Column(UUID(as_uuid=True), ForeignKey("leads.id"), nullable=False, index=True)
+    scheduled_for = Column(DateTime, nullable=False)
+    template_key = Column(String, nullable=False)
+    status = Column(String, default="pending")  # pending/sent/cancelled/failed
+    retry_count = Column(Integer, default=0)
+    last_error = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    lead = relationship("Lead", back_populates="followups")
+
+
 class ReservationMessage(Base):
     __tablename__ = "reservation_messages"
 
