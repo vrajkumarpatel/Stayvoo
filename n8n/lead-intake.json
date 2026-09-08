@@ -1,0 +1,161 @@
+{
+  "id": "stayvoo-lead-intake-wf",
+  "name": "Stayvoo - Lead Intake",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "stayvoo-lead-intake",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "6f1a1e2a-1a1a-4a1a-8a1a-1a1a1a1a1a01",
+      "name": "Webhook - New Lead Form",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-320, 0],
+      "webhookId": "stayvoo-lead-intake"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "a1a1a1a1-0001-4001-8001-a1a1a1a1a001",
+              "leftValue": "={{$json.body.company_name}}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "6f1a1e2a-1a1a-4a1a-8a1a-1a1a1a1a1a02",
+      "name": "IF - Has company_name",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-80, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.STAYVOO_API_BASE_URL}}/leads/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"company_name\": $json.body.company_name, \"domain\": $json.body.domain, \"industry\": $json.body.industry, \"company_size\": $json.body.company_size, \"city\": $json.body.city, \"state\": $json.body.state, \"contact_name\": $json.body.contact_name, \"contact_email\": $json.body.contact_email, \"contact_title\": $json.body.contact_title, \"contact_phone\": $json.body.contact_phone, \"source\": \"webhook\" } }}",
+        "options": {}
+      },
+      "id": "6f1a1e2a-1a1a-4a1a-8a1a-1a1a1a1a1a03",
+      "name": "POST /leads/webhook",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [160, -100],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "stayvoo-leads-webhook-secret",
+          "name": "Stayvoo Leads Webhook Secret"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "id": "6f1a1e2a-1a1a-4a1a-8a1a-1a1a1a1a1a04",
+      "name": "Respond - Lead Accepted",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [400, -100]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"rejected\", \"reason\": \"company_name is required\" } }}",
+        "options": {
+          "responseCode": 422
+        }
+      },
+      "id": "6f1a1e2a-1a1a-4a1a-8a1a-1a1a1a1a1a05",
+      "name": "Respond - Rejected",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [160, 120]
+    }
+  ],
+  "connections": {
+    "Webhook - New Lead Form": {
+      "main": [
+        [
+          {
+            "node": "IF - Has company_name",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Has company_name": {
+      "main": [
+        [
+          {
+            "node": "POST /leads/webhook",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond - Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "POST /leads/webhook": {
+      "main": [
+        [
+          {
+            "node": "Respond - Lead Accepted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "pinData": {},
+  "tags": [
+    {
+      "name": "stayvoo-leads"
+    }
+  ]
+}

@@ -1,0 +1,142 @@
+{
+  "id": "stayvoo-followup-dispatcher-wf",
+  "name": "Stayvoo - Follow-Up Dispatcher",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "*/30 8-18 * * 1-5"
+            }
+          ]
+        }
+      },
+      "id": "8c3c3f4b-3a3a-4a3a-8a3a-3a3a3a3a3a01",
+      "name": "Schedule - Every 30min, Business Hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-320, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.STAYVOO_API_BASE_URL}}/leads/followups/due",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "8c3c3f4b-3a3a-4a3a-8a3a-3a3a3a3a3a02",
+      "name": "GET /leads/followups/due",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-80, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "stayvoo-admin-password",
+          "name": "Stayvoo Admin Password"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "c3c3c3c3-0003-4003-8003-c3c3c3c3c003",
+              "leftValue": "={{$json.length}}",
+              "rightValue": 0,
+              "operator": {
+                "type": "array",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "8c3c3f4b-3a3a-4a3a-8a3a-3a3a3a3a3a03",
+      "name": "IF - Any Due",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [160, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.STAYVOO_API_BASE_URL}}/leads/followups/dispatch",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "8c3c3f4b-3a3a-4a3a-8a3a-3a3a3a3a3a04",
+      "name": "POST /leads/followups/dispatch",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [400, -100],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "stayvoo-admin-password",
+          "name": "Stayvoo Admin Password"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule - Every 30min, Business Hours": {
+      "main": [
+        [
+          {
+            "node": "GET /leads/followups/due",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET /leads/followups/due": {
+      "main": [
+        [
+          {
+            "node": "IF - Any Due",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Any Due": {
+      "main": [
+        [
+          {
+            "node": "POST /leads/followups/dispatch",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "pinData": {},
+  "tags": [
+    {
+      "name": "stayvoo-leads"
+    }
+  ]
+}
