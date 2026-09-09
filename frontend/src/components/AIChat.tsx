@@ -4,8 +4,7 @@ import { Building2, CheckCircle2, Gift, X } from 'lucide-react'
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
-// Temporary: group inquiry submission is paused for site maintenance. Flip to false to restore it.
-const MESSAGING_DISABLED = true
+const MESSAGING_DISABLED = false
 
 interface BookingCard {
   hotelName: string

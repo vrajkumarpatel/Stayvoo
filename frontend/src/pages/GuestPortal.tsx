@@ -4,8 +4,7 @@ import { MessageCircle, Building2, KeyRound, ClipboardList } from 'lucide-react'
 import { getMyStay, getMyStayReservationMessages, sendMyStayReservationMessage, getMyStayMessages, sendMyStayMessage } from '../lib/api'
 import { useDocumentMeta } from '../hooks/useDocumentMeta'
 
-// Temporary: guest messaging is paused for site maintenance. Flip to false to restore messaging.
-const MESSAGING_DISABLED = true
+const MESSAGING_DISABLED = false
 
 const STATUS_COLORS: Record<string, string> = {
   pending: 'bg-amber-100 text-amber-700',

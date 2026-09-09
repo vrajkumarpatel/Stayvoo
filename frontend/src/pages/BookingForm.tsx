@@ -10,8 +10,7 @@ const stripePromise = PUBLISHABLE_KEY ? loadStripe(PUBLISHABLE_KEY) : null
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
-// Temporary: bookings are paused for site maintenance. Flip to false to restore the booking form.
-const BOOKING_DISABLED = true
+const BOOKING_DISABLED = false
 
 const GUEST_TYPES = [
   { value: 'leisure', label: 'Individual / Leisure' },

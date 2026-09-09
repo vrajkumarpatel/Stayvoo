@@ -41,8 +41,7 @@ const inputCls =
   'w-full border border-border rounded-control px-4 py-3 text-sm font-sans text-navy placeholder:text-ink-muted/50 bg-paper focus:outline-none focus:ring-2 focus:ring-accent/40'
 const labelCls = 'font-sans text-xs font-medium uppercase tracking-wide text-ink-muted block mb-1.5'
 
-// Temporary: messaging is paused for site maintenance. Flip to false to restore the contact form.
-const MESSAGING_DISABLED = true
+const MESSAGING_DISABLED = false
 
 function Field({ label, required, children }: { label: string; required?: boolean; children: ReactElement<{ id?: string }> }) {
   const id = `field-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
