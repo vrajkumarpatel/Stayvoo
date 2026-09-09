@@ -149,8 +149,8 @@ export default function Contact() {
         <SectionEyebrow>Contact</SectionEyebrow>
         <h1 className="font-serif font-bold text-navy text-4xl sm:text-5xl mt-2">Tell us the brief.</h1>
         <p className="font-sans text-ink-muted text-base sm:text-lg mt-4 leading-relaxed max-w-xl mx-auto">
-          We're currently undergoing scheduled maintenance. Quote requests are temporarily paused —
-          please check back shortly.
+          Dates, headcount, and one line on the purpose of the stay is enough to get started. You'll get a same-day
+          response during business hours.
         </p>
       </section>
 
@@ -319,7 +319,8 @@ export default function Contact() {
           <div className="bg-paper border border-border rounded-card p-6">
             <h2 className="font-serif font-bold text-navy text-lg mb-3">Response time</h2>
             <p className="font-sans text-sm text-ink-muted leading-relaxed">
-              Quote requests are temporarily paused for scheduled maintenance. Please check back shortly.
+              Same-day first reply during business hours. A quote typically follows within 24 hours of a complete
+              brief.
             </p>
           </div>
         </div>

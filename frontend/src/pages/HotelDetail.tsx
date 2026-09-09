@@ -242,13 +242,6 @@ export default function HotelDetail() {
                 </ul>
               </div>
 
-              {/* Maintenance notice */}
-              <div className="bg-amber-50 border border-amber-100 rounded-2xl p-5 text-center">
-                <p className="text-[#10192b] font-semibold text-sm mb-1">Booking Temporarily Unavailable</p>
-                <p className="text-slate-500 text-xs leading-relaxed">
-                  Stayvoo is currently undergoing scheduled maintenance. Please check back shortly.
-                </p>
-              </div>
             </div>
           </div>
         </div>
